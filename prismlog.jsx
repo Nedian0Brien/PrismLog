@@ -697,33 +697,7 @@ export default function PrismLog() {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.7; }
         }
-        @keyframes rotateBorder {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .fab-btn { position: relative; }
-        .fab-btn::before {
-          content: '';
-          position: absolute;
-          inset: -2px;
-          border-radius: 50%;
-          background: conic-gradient(
-            from 0deg,
-            #2db5a3, #5de0c8, #f0c930, #f7da5e, #e63946, #f25d69, #2db5a3
-          );
-          animation: rotateBorder 3s linear infinite;
-          z-index: -1;
-        }
-        .fab-btn::after {
-          content: '';
-          position: absolute;
-          inset: 2px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.08);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          z-index: -1;
-        }
+
         * { box-sizing: border-box; }
         *::-webkit-scrollbar { width: 4px; }
         *::-webkit-scrollbar-track { background: transparent; }
@@ -792,38 +766,21 @@ export default function PrismLog() {
         {renderPage()}
       </main>
 
-      {/* FAB - Liquid Glass */}
-      {/* SVG 리퀴드 글래스 필터 정의 */}
-      <svg style={{ position: "absolute", width: 0, height: 0 }}>
-        <defs>
-          <filter id="fab-liquid-glass" x="-50%" y="-50%" width="200%" height="200%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" seed="2" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="4" xChannelSelector="R" yChannelSelector="G" result="displaced" />
-            <feGaussianBlur in="displaced" stdDeviation="0.3" result="blurred" />
-            <feComposite in="blurred" in2="SourceGraphic" operator="in" />
-          </filter>
-        </defs>
-      </svg>
+      {/* FAB */}
       <button
-        className="fab-btn"
         onClick={() => { setSheetOpen(true); setNewLogCat(page === "reading" || page === "study" || page === "culture" ? page : "reading"); }}
         style={{
           position: "fixed", bottom: 88, right: "calc(50% - 230px)",
-          width: 56, height: 56, borderRadius: "50%",
-          border: "none",
-          background: "rgba(255, 255, 255, 0.12)",
-          backdropFilter: "blur(24px) saturate(180%)",
-          WebkitBackdropFilter: "blur(24px) saturate(180%)",
-          boxShadow: "0 2px 32px rgba(45,181,163,0.18), 0 2px 32px rgba(230,57,70,0.12), inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -1px 0 rgba(0,0,0,0.1)",
+          width: 56, height: 56, borderRadius: "50%", border: "none",
+          background: "#2db5a3",
+          boxShadow: "0 4px 16px rgba(45,181,163,0.4)",
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          transition: "transform 0.2s cubic-bezier(.4,0,.2,1), box-shadow 0.2s",
-          zIndex: 60,
-          filter: "url(#fab-liquid-glass)",
+          transition: "transform 0.2s, box-shadow 0.2s", zIndex: 60,
         }}
-        onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.08)"; }}
+        onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; }}
         onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
       >
-        <PlusIcon size={24} color="rgba(0,0,0,0.85)" />
+        <PlusIcon size={26} color="#fff" />
       </button>
 
       {/* Bottom Nav */}
