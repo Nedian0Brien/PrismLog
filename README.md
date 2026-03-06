@@ -1,9 +1,7 @@
-# PrismLog — Record the colors of your life 🌈
+# PrismLog — Record the colors of your life
 
 **PrismLog**는 독서·공부·문화생활 기록을 한 곳에서 관리하는 올인원 기록 플랫폼입니다.
 흩어져 있는 개인의 성장을 시각화하고, 취향의 역사를 기록합니다.
-
-> "삶은 하나의 빛이고, 경험은 그 빛이 만들어내는 다양한 색이다."
 
 [![Deploy Status](https://img.shields.io/badge/Status-Live-brightgreen)](https://prism.lawdigest.cloud)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
@@ -206,10 +204,6 @@ const COLORS = {
 
 **https://prism.lawdigest.cloud**
 
-## 👤 작가
-
-- **Claude Code** — AI 어시스턴트 by Anthropic
-
 ---
 
-**PrismLog** — 당신의 삶의 색을 기록하세요. 🌈
+**PrismLog** — Record the colors of your life
