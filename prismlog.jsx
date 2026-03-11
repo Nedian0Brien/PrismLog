@@ -189,6 +189,13 @@ const safeNumber = (value, fallback = 0) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
 };
+const normalizeMetadataObject = (value) => (
+  value && typeof value === "object" && !Array.isArray(value) ? value : {}
+);
+const ENRICHMENT_PROVIDER_LABELS = {
+  google_books: "Google Books",
+  nl_isbn: "국립중앙도서관",
+};
 
 const createReadingFormState = () => ({
   title: "",
@@ -211,6 +218,8 @@ const createReadingFormState = () => ({
   tags: "",
   sourceProvider: "",
   sourceId: "",
+  enrichmentProvider: "",
+  sourceMetadata: {},
 });
 
 const extractIsbn13 = (value) => {
@@ -238,6 +247,8 @@ const clearReadingMetadata = (form) => ({
   progressValue: form.readingStatus === "finished" ? "100" : "0",
   sourceProvider: "",
   sourceId: "",
+  enrichmentProvider: "",
+  sourceMetadata: {},
 });
 
 const applyBookSelectionToReadingForm = (form, book) => {
@@ -258,6 +269,8 @@ const applyBookSelectionToReadingForm = (form, book) => {
     progressValue: nextProgressValue,
     sourceProvider: book.source_provider || "",
     sourceId: book.source_id || "",
+    enrichmentProvider: "",
+    sourceMetadata: {},
   };
 };
 
@@ -276,6 +289,58 @@ const applyPageEnrichmentToReadingForm = (form, pages) => {
     pages: nextPages,
     readPages: nextReadPages,
   };
+};
+
+const applyBookEnrichmentToReadingForm = (form, enrichment) => {
+  const metadata = normalizeMetadataObject(enrichment?.source_metadata);
+  const nextForm = {
+    ...form,
+    title: enrichment?.title || form.title,
+    author: Array.isArray(enrichment?.authors) && enrichment.authors.length > 0
+      ? enrichment.authors.join(", ")
+      : form.author,
+    publisher: enrichment?.publisher || form.publisher,
+    isbn: form.isbn || enrichment?.isbn || "",
+    publishedDate: enrichment?.published_date || form.publishedDate,
+    description: enrichment?.description || form.description,
+    cover: enrichment?.cover_url || form.cover,
+    enrichmentProvider: enrichment?.source_provider || form.enrichmentProvider,
+    sourceMetadata: Object.keys(metadata).length > 0
+      ? { ...normalizeMetadataObject(form.sourceMetadata), ...metadata }
+      : normalizeMetadataObject(form.sourceMetadata),
+  };
+  const pages = safeNumber(enrichment?.pages_total);
+  return pages > 0 ? applyPageEnrichmentToReadingForm(nextForm, pages) : nextForm;
+};
+
+const hasReadingEnrichmentMetadata = (enrichment) => {
+  const metadata = normalizeMetadataObject(enrichment?.source_metadata);
+  return Boolean(
+    enrichment?.title
+      || enrichment?.publisher
+      || enrichment?.published_date
+      || enrichment?.description
+      || enrichment?.cover_url
+      || (Array.isArray(enrichment?.authors) && enrichment.authors.length > 0)
+      || Object.keys(metadata).length > 0
+  );
+};
+
+const getReadingEnrichmentMessage = (enrichment) => {
+  const pages = safeNumber(enrichment?.pages_total);
+  if (pages > 0) {
+    return `전체 페이지를 자동으로 불러왔습니다. (${pages}p)`;
+  }
+  if (hasReadingEnrichmentMetadata(enrichment)) {
+    return "페이지 수는 찾지 못했지만 메타데이터를 보강했습니다.";
+  }
+  return "자동 입력 실패: 해당 ISBN으로 페이지 정보를 찾지 못했습니다.";
+};
+
+const formatReadingSourceSummary = (sourceProvider, enrichmentProvider) => {
+  const searchLabel = sourceProvider ? `${sourceProvider.toUpperCase()} 검색` : "";
+  const enrichLabel = enrichmentProvider ? `${ENRICHMENT_PROVIDER_LABELS[enrichmentProvider] || enrichmentProvider} 보강` : "";
+  return [searchLabel, enrichLabel].filter(Boolean).join(" · ") || "수동 입력";
 };
 
 const buildReadingPayload = (form) => {
@@ -303,6 +368,10 @@ const buildReadingPayload = (form) => {
     progress_value: isPercentMode ? progressValue : null,
     source_provider: form.sourceProvider || null,
     source_id: form.sourceId || null,
+    enrichment_provider: form.enrichmentProvider || null,
+    source_metadata: Object.keys(normalizeMetadataObject(form.sourceMetadata)).length > 0
+      ? normalizeMetadataObject(form.sourceMetadata)
+      : null,
     pages_read: readPages,
     pages_total: pages,
     progress,
@@ -311,7 +380,7 @@ const buildReadingPayload = (form) => {
   };
 };
 
-const fetchReadingPageCount = async (apiBaseUrl, isbn) => {
+const fetchReadingEnrichment = async (apiBaseUrl, isbn) => {
   const normalized = String(isbn || "").replace(/[^\dXx]/g, "");
   if (!normalized) return null;
   const response = await fetch(
@@ -319,8 +388,13 @@ const fetchReadingPageCount = async (apiBaseUrl, isbn) => {
   );
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const payload = await response.json();
-  const pages = Number(payload.pages_total);
-  return Number.isFinite(pages) && pages > 0 ? pages : null;
+  const pages = Number(payload?.pages_total);
+  return {
+    ...payload,
+    pages_total: Number.isFinite(pages) && pages > 0 ? pages : null,
+    authors: Array.isArray(payload?.authors) ? payload.authors.filter(Boolean) : [],
+    source_metadata: normalizeMetadataObject(payload?.source_metadata),
+  };
 };
 
 const normalizeCultureType = (value) => {
@@ -393,6 +467,8 @@ const mapReadingLog = (log) => {
     progressValue: safeNumber(payload.progress_value, progress),
     sourceProvider: payload.source_provider || "",
     sourceId: payload.source_id || "",
+    enrichmentProvider: payload.enrichment_provider || "",
+    sourceMetadata: normalizeMetadataObject(payload.source_metadata),
     progress,
     pages,
     readPages,
@@ -987,17 +1063,14 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
                 }
                 setReadingEnrichingPages(true);
                 try {
-                  const pages = await fetchReadingPageCount(apiBaseUrl, isbn);
-                  if (!pages) {
-                    setReadingPageMessage("자동 입력 실패: 해당 ISBN으로 페이지 정보를 찾지 못했습니다.");
-                    return;
-                  }
+                  const enrichment = await fetchReadingEnrichment(apiBaseUrl, isbn);
+                  if (!enrichment) return;
                   setReadingForm((prev) => (
                     prev.sourceId === selectedSourceId
-                      ? applyPageEnrichmentToReadingForm(prev, pages)
+                      ? applyBookEnrichmentToReadingForm(prev, enrichment)
                       : prev
                   ));
-                  setReadingPageMessage(`전체 페이지를 자동으로 불러왔습니다. (${pages}p)`);
+                  setReadingPageMessage(getReadingEnrichmentMessage(enrichment));
                 } catch (error) {
                   console.error("page enrichment failed", error);
                   setReadingPageMessage("자동 입력 실패: 페이지 정보를 불러오는 중 오류가 발생했습니다.");
@@ -1100,17 +1173,14 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
       setReadingPageMessage("");
       setReadingEnrichingPages(true);
       try {
-        const pages = await fetchReadingPageCount(apiBaseUrl, isbn);
-        if (!pages) {
-          setReadingPageMessage("자동 입력 실패: 해당 ISBN으로 페이지 정보를 찾지 못했습니다.");
-          return;
-        }
+        const enrichment = await fetchReadingEnrichment(apiBaseUrl, isbn);
+        if (!enrichment) return;
         setReadingForm((prev) => (
           prev.sourceId === activeSourceId
-            ? applyPageEnrichmentToReadingForm(prev, pages)
+            ? applyBookEnrichmentToReadingForm(prev, enrichment)
             : prev
         ));
-        setReadingPageMessage(`전체 페이지를 자동으로 불러왔습니다. (${pages}p)`);
+        setReadingPageMessage(getReadingEnrichmentMessage(enrichment));
       } catch (error) {
         console.error("manual page enrichment failed", error);
         setReadingPageMessage("자동 입력 실패: 페이지 정보를 불러오는 중 오류가 발생했습니다.");
@@ -1443,7 +1513,7 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
             <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
-              ISBN이 있으면 버튼으로 전체 페이지를 다시 불러올 수 있습니다.
+              ISBN이 있으면 전체 페이지와 추가 메타데이터를 다시 보강할 수 있습니다.
             </p>
             <button
               type="button"
@@ -1777,6 +1847,8 @@ const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layout, api
       tags: (record.tags || []).map((tag) => `#${tag}`).join(" "),
       sourceProvider: record.sourceProvider || "",
       sourceId: record.sourceId || "",
+      enrichmentProvider: record.enrichmentProvider || "",
+      sourceMetadata: normalizeMetadataObject(record.sourceMetadata),
     });
     setPageEnriching(false);
     setMessage("");
@@ -1855,11 +1927,11 @@ const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layout, api
               if (!isbn) return;
               setPageEnriching(true);
               try {
-                const pages = await fetchReadingPageCount(apiBaseUrl, isbn);
-                if (!pages) return;
+                const enrichment = await fetchReadingEnrichment(apiBaseUrl, isbn);
+                if (!enrichment) return;
                 setForm((prev) => (
                   prev.sourceId === selectedSourceId
-                    ? applyPageEnrichmentToReadingForm(prev, pages)
+                    ? applyBookEnrichmentToReadingForm(prev, enrichment)
                     : prev
                 ));
               } catch (error) {
@@ -1882,7 +1954,7 @@ const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layout, api
           <div><label style={labelStyle}>출간일</label><input value={form.publishedDate} onChange={(e) => setForm((prev) => ({ ...prev, publishedDate: e.target.value }))} style={inputStyle} placeholder="YYYY-MM-DD" /></div>
         </div>
         <div><label style={labelStyle}>표지 이미지 URL</label><input value={form.cover} onChange={(e) => setForm((prev) => ({ ...prev, cover: e.target.value }))} style={inputStyle} placeholder="https://.../cover.jpg" /></div>
-        {(form.cover || form.sourceProvider || form.description) && (
+        {(form.cover || form.sourceProvider || form.enrichmentProvider || form.description || Object.keys(normalizeMetadataObject(form.sourceMetadata)).length > 0) && (
           <div style={{
             display: "flex",
             gap: 12,
@@ -1911,7 +1983,7 @@ const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layout, api
             </div>
             <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.reading.main }}>
-                {form.sourceProvider ? `${form.sourceProvider.toUpperCase()} 자동 입력` : "수동 입력"}
+                {formatReadingSourceSummary(form.sourceProvider, form.enrichmentProvider)}
               </span>
               <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>
                 {[form.author, form.publisher, form.publishedDate].filter(Boolean).join(" · ") || "메타데이터를 직접 수정할 수 있습니다."}
@@ -1923,7 +1995,7 @@ const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layout, api
               )}
               {pageEnriching && (
                 <p style={{ margin: 0, fontSize: 11, color: COLORS.reading.main }}>
-                  Google Books에서 페이지 정보를 보강하는 중...
+                  페이지와 메타데이터를 보강하는 중...
                 </p>
               )}
             </div>
@@ -3745,6 +3817,10 @@ export default function PrismLog() {
           cover: book.cover || null,
           source_provider: book.sourceProvider || null,
           source_id: book.sourceId || null,
+          enrichment_provider: book.enrichmentProvider || null,
+          source_metadata: Object.keys(normalizeMetadataObject(book.sourceMetadata)).length > 0
+            ? normalizeMetadataObject(book.sourceMetadata)
+            : null,
           pages_read: boundedRead,
           pages_total: nextTotal,
           progress: nextProgress,
