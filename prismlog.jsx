@@ -233,24 +233,33 @@ const clearReadingMetadata = (form) => ({
   publishedDate: "",
   description: "",
   cover: "",
+  pages: "",
+  readPages: form.readingStatus === "planned" ? "0" : "",
+  progressValue: form.readingStatus === "finished" ? "100" : "0",
   sourceProvider: "",
   sourceId: "",
 });
 
-const applyBookSelectionToReadingForm = (form, book) => ({
-  ...form,
-  title: book.title || form.title,
-  author: Array.isArray(book.authors) ? book.authors.join(", ") : form.author,
-  publisher: book.publisher || "",
-  isbn: book.isbn13 || book.isbn || "",
-  publishedDate: book.published_date || "",
-  description: book.description || "",
-  cover: book.cover_url || "",
-  pages: book.pages_total ? String(book.pages_total) : form.pages,
-  progressValue: form.progressValue || "0",
-  sourceProvider: book.source_provider || "",
-  sourceId: book.source_id || "",
-});
+const applyBookSelectionToReadingForm = (form, book) => {
+  const nextPages = book.pages_total ? String(book.pages_total) : "";
+  const nextProgressValue = form.readingStatus === "finished" ? "100" : form.readingStatus === "planned" ? "0" : "0";
+  const nextReadPages = form.readingStatus === "finished" ? nextPages : form.readingStatus === "planned" ? "0" : "";
+  return {
+    ...form,
+    title: book.title || form.title,
+    author: Array.isArray(book.authors) ? book.authors.join(", ") : form.author,
+    publisher: book.publisher || "",
+    isbn: book.isbn13 || book.isbn || "",
+    publishedDate: book.published_date || "",
+    description: book.description || "",
+    cover: book.cover_url || "",
+    pages: nextPages,
+    readPages: nextReadPages,
+    progressValue: nextProgressValue,
+    sourceProvider: book.source_provider || "",
+    sourceId: book.source_id || "",
+  };
+};
 
 const buildReadingPayload = (form) => {
   const pages = safeNumber(form.pages);
@@ -957,7 +966,12 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
                   if (!pages) return;
                   setReadingForm((prev) => (
                     prev.sourceId === selectedSourceId
-                      ? { ...prev, pages: prev.pages || String(pages) }
+                      ? {
+                          ...prev,
+                          pages: String(pages),
+                          readPages: prev.readingStatus === "finished" ? String(pages) : prev.readPages,
+                          progressValue: prev.readingStatus === "finished" ? "100" : prev.progressValue,
+                        }
                       : prev
                   ));
                 } catch (error) {
@@ -1748,7 +1762,12 @@ const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layout, api
                 if (!pages) return;
                 setForm((prev) => (
                   prev.sourceId === selectedSourceId
-                    ? { ...prev, pages: prev.pages || String(pages) }
+                    ? {
+                        ...prev,
+                        pages: String(pages),
+                        readPages: prev.readingStatus === "finished" ? String(pages) : prev.readPages,
+                        progressValue: prev.readingStatus === "finished" ? "100" : prev.progressValue,
+                      }
                     : prev
                 ));
               } catch (error) {
