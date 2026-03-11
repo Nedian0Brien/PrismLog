@@ -492,32 +492,79 @@ export default function PrismLog() {
         </div>
       </main>
 
-      {/* FAB */}
-      {page !== "settings" && !isAnySheetOpen && (
-        <button
-          onClick={() => { setSheetOpen(true); setNewLogCat("reading"); }}
-          style={{
-            position: "fixed",
-            bottom: layout.isPhone ? "calc(6.9rem + var(--viewport-safe-bottom))" : "calc(28px + var(--viewport-safe-bottom))",
-            right: layout.isPhone ? "calc(20px + var(--safe-area-right))" : "calc(28px + var(--safe-area-right))",
-            width: 56, height: 56, borderRadius: "50%", border: "none",
-            background: COLORS.reading.main,
-            boxShadow: `0 4px 16px ${COLORS.reading.glow}`,
-            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "transform 0.2s, box-shadow 0.2s", zIndex: 60,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
-        >
-          <PlusIcon size={26} color="#fff" />
-        </button>
-      )}
-
-      {/* Bottom Nav */}
-      {!layout.isTabletUp && !isAnySheetOpen && (
-        <Suspense fallback={null}>
-          <MobileFloatingNav items={navItems} activeKey={page} onChange={setPage} scrollContainerRef={mainScrollRef} />
-        </Suspense>
+      {/* FAB / Bottom Dock */}
+      {!isAnySheetOpen && (
+        layout.isPhone ? (
+          <div
+            style={{
+              position: "fixed",
+              left: 0,
+              right: 0,
+              bottom: 0,
+              padding: "0 16px calc(12px + var(--viewport-safe-bottom))",
+              background: "linear-gradient(180deg, rgba(26,24,22,0) 0%, rgba(26,24,22,0.7) 34%, rgba(26,24,22,0.96) 100%)",
+              zIndex: 60,
+              pointerEvents: "none",
+            }}
+          >
+            <div style={{ position: "relative", width: "100%", maxWidth: 520, margin: "0 auto", minHeight: 84 }}>
+              {page !== "settings" && (
+                <button
+                  onClick={() => { setSheetOpen(true); setNewLogCat("reading"); }}
+                  style={{
+                    position: "absolute",
+                    right: "calc(4px + var(--safe-area-right))",
+                    bottom: 74,
+                    width: 56,
+                    height: 56,
+                    borderRadius: "50%",
+                    border: "none",
+                    background: COLORS.reading.main,
+                    boxShadow: `0 4px 16px ${COLORS.reading.glow}`,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "transform 0.2s, box-shadow 0.2s",
+                    zIndex: 62,
+                    pointerEvents: "auto",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
+                >
+                  <PlusIcon size={26} color="#fff" />
+                </button>
+              )}
+              <Suspense fallback={null}>
+                <MobileFloatingNav
+                  items={navItems}
+                  activeKey={page}
+                  onChange={setPage}
+                  scrollContainerRef={mainScrollRef}
+                  contained
+                />
+              </Suspense>
+            </div>
+          </div>
+        ) : page !== "settings" ? (
+          <button
+            onClick={() => { setSheetOpen(true); setNewLogCat("reading"); }}
+            style={{
+              position: "fixed",
+              bottom: "calc(28px + var(--viewport-safe-bottom))",
+              right: "calc(28px + var(--safe-area-right))",
+              width: 56, height: 56, borderRadius: "50%", border: "none",
+              background: COLORS.reading.main,
+              boxShadow: `0 4px 16px ${COLORS.reading.glow}`,
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "transform 0.2s, box-shadow 0.2s", zIndex: 60,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
+          >
+            <PlusIcon size={26} color="#fff" />
+          </button>
+        ) : null
       )}
 
       {/* Bottom Sheet for new log */}

@@ -32,6 +32,21 @@
   pointer-events: none;
 }
 
+.mobile-floating-nav-contained {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  width: min(24.5rem, 100%);
+  margin: 0 auto;
+  pointer-events: auto;
+}
+
+.mobile-floating-nav-contained.mobile-floating-nav-hidden {
+  bottom: auto;
+  transform: translateY(1rem);
+}
+
 .mobile-floating-nav::before {
   content: "";
   position: absolute;

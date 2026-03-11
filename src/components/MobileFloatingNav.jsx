@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export default function MobileFloatingNav({ items, activeKey, onChange, scrollContainerRef = null }) {
+export default function MobileFloatingNav({ items, activeKey, onChange, scrollContainerRef = null, contained = false }) {
   const navPadding = 6;
   const [hidden, setHidden] = useState(false);
   const lastScrollY = useRef(0);
@@ -111,7 +111,7 @@ export default function MobileFloatingNav({ items, activeKey, onChange, scrollCo
 
   return (
     <nav
-      className={`mobile-floating-nav${hidden ? " mobile-floating-nav-hidden" : ""}`}
+      className={`mobile-floating-nav${contained ? " mobile-floating-nav-contained" : ""}${hidden ? " mobile-floating-nav-hidden" : ""}`}
       ref={navRef}
       style={{
         "--mobile-nav-accent": activeItem.color || "#f5f0eb",
