@@ -27,6 +27,8 @@ import { NewLogForm, ReadingEditSheet, StudyEditSheet, CultureEditSheet } from "
 import { DashboardPage, RecordsPage, TimelinePage, SettingsPage } from "./features/prismlog/pages";
 
 const MobileFloatingNav = lazy(() => import("./components/MobileFloatingNav"));
+const ViewportHeightSync = lazy(() => import("./components/ViewportHeightSync"));
+const ViewportDebugOverlay = lazy(() => import("./components/ViewportDebugOverlay"));
 
 export default function PrismLog() {
   const [page, setPage] = useState("home");
@@ -40,10 +42,6 @@ export default function PrismLog() {
   const [editingStudy, setEditingStudy] = useState(null);
   const [editingCulture, setEditingCulture] = useState(null);
   const layout = useResponsiveLayout();
-  const viewportSyncFrameRef = useRef(null);
-  const viewportSyncTimersRef = useRef([]);
-  const maxViewportHeightRef = useRef(0);
-  const viewportWidthRef = useRef(0);
   const mainScrollRef = useRef(null);
   const isAnySheetOpen = sheetOpen || Boolean(editingReading) || Boolean(editingStudy) || Boolean(editingCulture);
 
@@ -66,86 +64,6 @@ export default function PrismLog() {
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-
-    const root = document.documentElement;
-    const syncViewportMetrics = () => {
-      const viewport = window.visualViewport;
-      const height = viewport?.height ?? window.innerHeight;
-      const offsetTop = viewport?.offsetTop ?? 0;
-      const width = window.innerWidth;
-
-      if (viewportWidthRef.current === 0) {
-        viewportWidthRef.current = width;
-      }
-      if (Math.abs(width - viewportWidthRef.current) > 120) {
-        maxViewportHeightRef.current = height;
-        viewportWidthRef.current = width;
-      }
-      if (height > maxViewportHeightRef.current) {
-        maxViewportHeightRef.current = height;
-      }
-
-      const keyboardDelta = Math.max(0, maxViewportHeightRef.current - height - offsetTop);
-      const keyboardOpen = keyboardDelta > 120;
-      const keyboardInsetHeight = keyboardOpen ? keyboardDelta : 0;
-      const appHeight = maxViewportHeightRef.current;
-      const offsetBottom = 0;
-
-      root.style.setProperty("--vh", `${height * 0.01}px`);
-      root.style.setProperty("--app-vh", `${Math.round(appHeight)}px`);
-      root.style.setProperty("--viewport-height", `${Math.round(height)}px`);
-      root.style.setProperty("--visual-viewport-height", `${Math.round(height)}px`);
-      root.style.setProperty("--viewport-offset-top", `${Math.round(offsetTop)}px`);
-      root.style.setProperty("--viewport-offset-bottom", `${Math.round(offsetBottom)}px`);
-      root.style.setProperty("--keyboard-inset-height", `${Math.round(keyboardInsetHeight)}px`);
-      root.dataset.keyboardOpen = keyboardOpen ? "true" : "false";
-    };
-
-    const clearScheduledViewportSync = () => {
-      if (viewportSyncFrameRef.current !== null) {
-        window.cancelAnimationFrame(viewportSyncFrameRef.current);
-        viewportSyncFrameRef.current = null;
-      }
-      viewportSyncTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
-      viewportSyncTimersRef.current = [];
-    };
-
-    const scheduleViewportSync = () => {
-      clearScheduledViewportSync();
-      viewportSyncFrameRef.current = window.requestAnimationFrame(() => {
-        syncViewportMetrics();
-        viewportSyncFrameRef.current = null;
-
-        [120, 320, 700].forEach((delay) => {
-          const timerId = window.setTimeout(syncViewportMetrics, delay);
-          viewportSyncTimersRef.current.push(timerId);
-        });
-      });
-    };
-
-    syncViewportMetrics();
-    scheduleViewportSync();
-
-    const viewport = window.visualViewport;
-    window.addEventListener("resize", scheduleViewportSync);
-    window.addEventListener("orientationchange", scheduleViewportSync);
-    window.addEventListener("scroll", scheduleViewportSync, { passive: true });
-    viewport?.addEventListener("resize", scheduleViewportSync);
-    viewport?.addEventListener("scroll", scheduleViewportSync);
-
-    return () => {
-      clearScheduledViewportSync();
-      window.removeEventListener("resize", scheduleViewportSync);
-      window.removeEventListener("orientationchange", scheduleViewportSync);
-      window.removeEventListener("scroll", scheduleViewportSync);
-      viewport?.removeEventListener("resize", scheduleViewportSync);
-      viewport?.removeEventListener("scroll", scheduleViewportSync);
-      delete root.dataset.keyboardOpen;
-    };
-  }, []);
 
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
@@ -439,6 +357,11 @@ export default function PrismLog() {
         }
       `}</style>
 
+      <Suspense fallback={null}>
+        <ViewportHeightSync />
+        <ViewportDebugOverlay />
+      </Suspense>
+
       {/* Glow effect on save (edge glow) */}
       {glowEffect && (
         <div style={{
@@ -570,7 +493,7 @@ export default function PrismLog() {
       </main>
 
       {/* FAB */}
-      {page !== "settings" && (
+      {page !== "settings" && !isAnySheetOpen && (
         <button
           onClick={() => { setSheetOpen(true); setNewLogCat("reading"); }}
           style={{
@@ -591,7 +514,7 @@ export default function PrismLog() {
       )}
 
       {/* Bottom Nav */}
-      {!layout.isTabletUp && (
+      {!layout.isTabletUp && !isAnySheetOpen && (
         <Suspense fallback={null}>
           <MobileFloatingNav items={navItems} activeKey={page} onChange={setPage} scrollContainerRef={mainScrollRef} />
         </Suspense>
