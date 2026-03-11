@@ -61,6 +61,35 @@ export default function PrismLog() {
     fetchLogs();
   }, [fetchLogs]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const root = document.documentElement;
+    const syncViewportMetrics = () => {
+      const viewport = window.visualViewport;
+      const height = viewport?.height ?? window.innerHeight;
+      const offsetTop = viewport?.offsetTop ?? 0;
+
+      root.style.setProperty("--viewport-height", `${Math.round(height)}px`);
+      root.style.setProperty("--viewport-offset-top", `${Math.round(offsetTop)}px`);
+    };
+
+    syncViewportMetrics();
+
+    const viewport = window.visualViewport;
+    window.addEventListener("resize", syncViewportMetrics);
+    window.addEventListener("orientationchange", syncViewportMetrics);
+    viewport?.addEventListener("resize", syncViewportMetrics);
+    viewport?.addEventListener("scroll", syncViewportMetrics);
+
+    return () => {
+      window.removeEventListener("resize", syncViewportMetrics);
+      window.removeEventListener("orientationchange", syncViewportMetrics);
+      viewport?.removeEventListener("resize", syncViewportMetrics);
+      viewport?.removeEventListener("scroll", syncViewportMetrics);
+    };
+  }, []);
+
   const readingLogs = useMemo(
     () => logs.filter((log) => log.category === "reading").map(mapReadingLog),
     [logs]
@@ -344,9 +373,7 @@ export default function PrismLog() {
 
       {/* Header */}
       <header style={{
-        padding: layout.isPhone
-          ? "calc(16px + var(--safe-area-top)) 16px 12px"
-          : "calc(18px + var(--safe-area-top)) 24px 14px",
+        padding: layout.isPhone ? "16px 16px 12px" : "18px 24px 14px",
         display: "flex", justifyContent: "space-between", alignItems: "center",
         position: "sticky", top: 0, zIndex: 50,
         background: "rgba(26,24,22,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
@@ -390,9 +417,7 @@ export default function PrismLog() {
 
       {/* Content */}
       <main style={{
-        padding: layout.isPhone
-          ? "20px 16px calc(132px + var(--safe-area-bottom))"
-          : "28px 24px calc(40px + var(--safe-area-bottom))",
+        padding: layout.isPhone ? "20px 16px 132px" : "28px 24px 40px",
         maxWidth: layout.isTabletUp ? 1360 : 520,
         margin: "0 auto",
         animation: "fadeIn 0.45s ease-out",
