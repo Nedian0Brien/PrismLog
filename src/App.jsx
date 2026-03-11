@@ -11,9 +11,6 @@ import {
   formatRelativeTime,
   formatKoreanDateLabel,
   normalizeCultureType,
-  mapReadingLog,
-  mapStudyLog,
-  mapCultureLog,
   BookIcon,
   PenIcon,
   FilmIcon,
@@ -24,6 +21,7 @@ import {
   ClockIcon,
   SettingsIcon,
 } from "./features/prismlog/core";
+import { mapReadingLog, mapStudyLog, mapCultureLog } from "./features/prismlog/mappers";
 import { GlassCard, BottomSheet, CategorySelector } from "./features/prismlog/ui";
 import { NewLogForm, ReadingEditSheet, StudyEditSheet, CultureEditSheet } from "./features/prismlog/forms";
 import { DashboardPage, RecordsPage, TimelinePage, SettingsPage } from "./features/prismlog/pages";
