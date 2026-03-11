@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { Suspense, lazy, useState, useEffect, useCallback, useMemo } from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -11,6 +11,8 @@ import {
 } from "chart.js";
 import BookAutocompleteField from "./components/BookAutocompleteField";
 import BookSearchResultsPanel from "./components/BookSearchResultsPanel";
+
+const MobileFloatingNav = lazy(() => import("./components/MobileFloatingNav"));
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -3789,10 +3791,10 @@ export default function PrismLog() {
   }, [updateLog]);
 
   const navItems = useMemo(() => [
-    { key: "home", label: "홈", icon: <HomeIcon size={20} /> },
-    { key: "records", label: "기록", icon: <BookIcon size={20} />, color: COLORS.reading.main },
-    { key: "timeline", label: "타임라인", icon: <ClockIcon size={20} />, color: "#ff8a65" },
-    { key: "settings", label: "설정", icon: <SettingsIcon size={20} />, color: "#a09890" },
+    { key: "home", label: "홈", Icon: HomeIcon, color: "#f5f0eb" },
+    { key: "records", label: "기록", Icon: BookIcon, color: COLORS.reading.main },
+    { key: "timeline", label: "타임라인", Icon: ClockIcon, color: "#ff8a65" },
+    { key: "settings", label: "설정", Icon: SettingsIcon, color: "#a09890" },
   ], []);
 
   const renderPage = () => {
@@ -3937,7 +3939,7 @@ export default function PrismLog() {
 
       {/* Content */}
       <main style={{
-        padding: layout.isPhone ? "20px 16px 120px" : "28px 24px 40px",
+        padding: layout.isPhone ? "20px 16px 132px" : "28px 24px 40px",
         maxWidth: layout.isTabletUp ? 1360 : 520,
         margin: "0 auto",
         animation: "fadeIn 0.45s ease-out",
@@ -3950,6 +3952,7 @@ export default function PrismLog() {
                   {navItems.map((item) => {
                     const active = page === item.key;
                     const activeColor = item.color || "#f5f0eb";
+                    const Icon = item.Icon;
                     return (
                       <button
                         key={item.key}
@@ -3975,7 +3978,7 @@ export default function PrismLog() {
                           transition: "all 0.2s",
                         }}
                       >
-                        <span>{item.icon}</span>
+                        <span><Icon size={layout.isDesktop ? 20 : 18} color="currentColor" /></span>
                         <span>{item.label}</span>
                       </button>
                     );
@@ -3997,7 +4000,7 @@ export default function PrismLog() {
         <button
           onClick={() => { setSheetOpen(true); setNewLogCat("reading"); }}
           style={{
-            position: "fixed", bottom: layout.isPhone ? 88 : 28, right: layout.isPhone ? 20 : 28,
+            position: "fixed", bottom: layout.isPhone ? "6.9rem" : 28, right: layout.isPhone ? 20 : 28,
             width: 56, height: 56, borderRadius: "50%", border: "none",
             background: "#2db5a3",
             boxShadow: "0 4px 16px rgba(45,181,163,0.4)",
@@ -4013,41 +4016,9 @@ export default function PrismLog() {
 
       {/* Bottom Nav */}
       {!layout.isTabletUp && (
-        <nav style={{
-          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50,
-          background: "rgba(26,24,22,0.92)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-          borderTop: `1px solid ${COLORS.dark.border}`,
-          padding: "8px 0 env(safe-area-inset-bottom, 8px)",
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-around", maxWidth: 520, margin: "0 auto" }}>
-            {navItems.map(item => {
-              const active = page === item.key;
-              const activeColor = item.color || "#f5f0eb";
-              return (
-                <button key={item.key} onClick={() => setPage(item.key)} style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                  padding: "6px 12px", borderRadius: 12, transition: "all 0.25s",
-                  position: "relative", minWidth: 64, minHeight: 48,
-                }}>
-                  {active && <div style={{
-                    position: "absolute", top: -1, left: "50%", transform: "translateX(-50%)",
-                    width: 20, height: 3, borderRadius: 2, background: activeColor,
-                    boxShadow: `0 0 8px ${activeColor}88`,
-                  }} />}
-                  <span style={{ color: active ? activeColor : COLORS.dark.textMuted, transition: "color 0.2s" }}>
-                    {item.icon}
-                  </span>
-                  <span style={{
-                    fontSize: 10, fontWeight: active ? 700 : 500,
-                    color: active ? activeColor : COLORS.dark.textMuted,
-                    transition: "all 0.2s", fontFamily: "'Pretendard', sans-serif",
-                  }}>{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
+        <Suspense fallback={null}>
+          <MobileFloatingNav items={navItems} activeKey={page} onChange={setPage} />
+        </Suspense>
       )}
 
       {/* Bottom Sheet for new log */}

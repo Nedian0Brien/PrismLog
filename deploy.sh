@@ -19,10 +19,10 @@ TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 
 cd "$PROJECT_DIR"
 
-# 1. 원본 파일 동기화 (prismlog.jsx → src/App.jsx)
+# 1. 작업 파일 동기화 (src/App.jsx → prismlog.jsx)
 echo "📋 1/5 소스 파일 동기화 중..."
-cp prismlog.jsx src/App.jsx
-echo "   ✓ src/App.jsx 업데이트 완료"
+cp src/App.jsx prismlog.jsx
+echo "   ✓ prismlog.jsx 업데이트 완료"
 
 # 2. 의존성 확인
 echo "📦 2/5 의존성 확인 중..."
