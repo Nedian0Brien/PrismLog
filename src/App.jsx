@@ -17,6 +17,23 @@ const MobileFloatingNav = lazy(() => import("./components/MobileFloatingNav"));
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
 /* ──────────── Color Tokens ──────────── */
+const CATEGORY_COLORS = (() => {
+  const reading = { main: "#2db5a3", glow: "rgba(45,181,163,0.35)", light: "#3fd4bf" };
+  const study = { main: "#f0c930", glow: "rgba(240,201,48,0.35)", light: "#f7da5e" };
+  const culture = { main: "#e63946", glow: "rgba(230,57,70,0.35)", light: "#f25d69" };
+  const series = { main: "#ff8a65", glow: "rgba(255,138,101,0.35)", light: "#ffab91" };
+  const game = { main: "#7c9cf5", glow: "rgba(124,156,245,0.35)", light: "#a7bcff" };
+
+  return {
+    reading,
+    study,
+    culture,
+    movie: culture,
+    series,
+    game,
+  };
+})();
+
 const COLORS = {
   dark: {
     bg: "#1a1816",
@@ -28,9 +45,7 @@ const COLORS = {
     border: "rgba(255,255,255,0.07)",
     glassBlur: "blur(18px)",
   },
-  reading: { main: "#2db5a3", glow: "rgba(45,181,163,0.35)", light: "#3fd4bf" },
-  study: { main: "#f0c930", glow: "rgba(240,201,48,0.35)", light: "#f7da5e" },
-  culture: { main: "#e63946", glow: "rgba(230,57,70,0.35)", light: "#f25d69" },
+  ...CATEGORY_COLORS,
 };
 
 const CATEGORY_KEYS = ["reading", "study", "culture"];
@@ -46,6 +61,14 @@ const NAV_TAB_COLORS = {
   timeline: COLORS.culture.main,
   settings: COLORS.dark.text,
 };
+
+const CULTURE_TYPE_COLORS = {
+  영화: COLORS.movie,
+  시리즈: COLORS.series,
+  게임: COLORS.game,
+};
+
+const getCultureTone = (type) => CULTURE_TYPE_COLORS[type] || COLORS.movie;
 
 const BREAKPOINTS = {
   tablet: 768,
@@ -118,7 +141,7 @@ const TagIcon = ({ size = 20, color = "currentColor" }) => (
 const ChevronDown = ({ size = 16, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><polyline points="6 9 12 15 18 9" /></svg>
 );
-const StarIcon = ({ size = 16, filled = false, color = "#f0c930" }) => (
+const StarIcon = ({ size = 16, filled = false, color = COLORS.study.main }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : "none"} stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
   </svg>
@@ -607,11 +630,11 @@ const Badge = ({ text, color }) => (
 
 const StatusBadge = ({ status }) => {
   const map = {
-    "시청 중": { bg: "#2db5a322", color: "#2db5a3", border: "#2db5a333" },
-    "플레이 중": { bg: "#2db5a322", color: "#2db5a3", border: "#2db5a333" },
-    "시청 완료": { bg: "#f0c93022", color: "#f0c930", border: "#f0c93033" },
-    "플레이 완료": { bg: "#f0c93022", color: "#f0c930", border: "#f0c93033" },
-    "기대 중": { bg: "#e6394622", color: "#e63946", border: "#e6394633" },
+    "시청 중": { bg: `${COLORS.reading.main}22`, color: COLORS.reading.main, border: `${COLORS.reading.main}33` },
+    "플레이 중": { bg: `${COLORS.reading.main}22`, color: COLORS.reading.main, border: `${COLORS.reading.main}33` },
+    "시청 완료": { bg: `${COLORS.study.main}22`, color: COLORS.study.main, border: `${COLORS.study.main}33` },
+    "플레이 완료": { bg: `${COLORS.study.main}22`, color: COLORS.study.main, border: `${COLORS.study.main}33` },
+    "기대 중": { bg: `${COLORS.movie.main}22`, color: COLORS.movie.main, border: `${COLORS.movie.main}33` },
     "중도 하차": { bg: "#a0989022", color: "#a09890", border: "#a0989033" },
   };
   const s = map[status] || map["중도 하차"];
@@ -2823,8 +2846,9 @@ const CulturePage = ({ items, loading, onEdit, layout, title = "문화생활", f
           </GlassCard>
         )}
         {filtered.map(c => {
-          const accent = c.type === "게임" ? "#7c9cf5" : c.type === "시리즈" ? "#ff8a65" : COLORS.culture.main;
-          const glow = c.type === "게임" ? "rgba(124,156,245,0.35)" : c.type === "시리즈" ? "rgba(255,138,101,0.35)" : COLORS.culture.glow;
+          const tone = getCultureTone(c.type);
+          const accent = tone.main;
+          const glow = tone.glow;
           return (
           <GlassCard key={c.id} glow={glow} style={{ padding: 0, overflow: "hidden" }}>
             {/* poster placeholder */}
@@ -3133,13 +3157,13 @@ const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReadi
       description: "포스터와 평점",
       count: movieLogs.length,
       unit: "편",
-      accent: COLORS.culture.main,
-      icon: <FilmIcon color={COLORS.culture.main} />,
+      accent: COLORS.movie.main,
+      icon: <FilmIcon color={COLORS.movie.main} />,
       previews: movieLogs.slice(0, 3).map((item) => ({
         id: item.id,
         title: item.title,
         image: item.poster,
-        icon: <FilmIcon color={COLORS.culture.main} />,
+        icon: <FilmIcon color={COLORS.movie.main} />,
       })),
     },
     {
@@ -3148,13 +3172,13 @@ const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReadi
       description: "회차와 상태",
       count: seriesLogs.length,
       unit: "편",
-      accent: "#ff8a65",
-      icon: <FilmIcon color="#ff8a65" />,
+      accent: COLORS.series.main,
+      icon: <FilmIcon color={COLORS.series.main} />,
       previews: seriesLogs.slice(0, 3).map((item) => ({
         id: item.id,
         title: item.title,
         image: item.poster,
-        icon: <FilmIcon color="#ff8a65" />,
+        icon: <FilmIcon color={COLORS.series.main} />,
       })),
     },
     {
@@ -3163,13 +3187,13 @@ const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReadi
       description: "플레이 시간",
       count: gameLogs.length,
       unit: "개",
-      accent: "#7c9cf5",
-      icon: <GamepadIcon color="#7c9cf5" />,
+      accent: COLORS.game.main,
+      icon: <GamepadIcon color={COLORS.game.main} />,
       previews: gameLogs.slice(0, 3).map((item) => ({
         id: item.id,
         title: item.title,
         image: item.poster,
-        icon: <GamepadIcon color="#7c9cf5" />,
+        icon: <GamepadIcon color={COLORS.game.main} />,
       })),
     },
   ]), [gameLogs, movieLogs, seriesLogs, sortedReading, sortedStudy]);
@@ -3305,11 +3329,7 @@ const TimelinePage = ({ logs, loading, layout }) => {
         ? COLORS.reading.main
         : log.category === "study"
           ? COLORS.study.main
-          : type === "게임"
-            ? "#7c9cf5"
-            : type === "시리즈"
-              ? "#ff8a65"
-              : COLORS.culture.main;
+          : getCultureTone(type).main;
       const item = {
         id: log.id,
         title: log.title,
@@ -3558,9 +3578,9 @@ const SettingsPage = ({ readingLogs, studyLogs, cultureLogs, layout }) => {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: COLORS.dark.textMuted }}>독서</span><strong style={{ color: COLORS.reading.main }}>{readingLogs.length}</strong></div>
             <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: COLORS.dark.textMuted }}>공부</span><strong style={{ color: COLORS.study.main }}>{studyLogs.length}</strong></div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: COLORS.dark.textMuted }}>영화</span><strong style={{ color: COLORS.culture.main }}>{cultureBreakdown.movie}</strong></div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: COLORS.dark.textMuted }}>시리즈</span><strong style={{ color: "#ff8a65" }}>{cultureBreakdown.series}</strong></div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: COLORS.dark.textMuted }}>게임</span><strong style={{ color: "#7c9cf5" }}>{cultureBreakdown.game}</strong></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: COLORS.dark.textMuted }}>영화</span><strong style={{ color: COLORS.movie.main }}>{cultureBreakdown.movie}</strong></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: COLORS.dark.textMuted }}>시리즈</span><strong style={{ color: COLORS.series.main }}>{cultureBreakdown.series}</strong></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: COLORS.dark.textMuted }}>게임</span><strong style={{ color: COLORS.game.main }}>{cultureBreakdown.game}</strong></div>
           </div>
         </GlassCard>
 
@@ -3912,7 +3932,7 @@ export default function PrismLog() {
           {/* prism logo */}
           <div style={{
             width: 32, height: 32, borderRadius: 10, position: "relative", overflow: "hidden",
-            background: "linear-gradient(135deg, #2db5a3, #f0c930, #e63946)",
+            background: `linear-gradient(135deg, ${COLORS.reading.main}, ${COLORS.study.main}, ${COLORS.culture.main})`,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <div style={{
@@ -3922,7 +3942,7 @@ export default function PrismLog() {
           </div>
           <span style={{
             fontSize: 18, fontWeight: 800, fontFamily: "'Outfit', sans-serif",
-            background: "linear-gradient(90deg, #2db5a3, #f0c930, #e63946)",
+            background: `linear-gradient(90deg, ${COLORS.reading.main}, ${COLORS.study.main}, ${COLORS.culture.main})`,
             backgroundClip: "text",
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
             animation: "prismShimmer 3s ease-in-out infinite",
@@ -3938,7 +3958,7 @@ export default function PrismLog() {
           {/* avatar */}
           <div style={{
             width: 34, height: 34, borderRadius: "50%",
-            background: "linear-gradient(135deg, #2db5a366, #e6394644)",
+            background: `linear-gradient(135deg, ${COLORS.reading.main}66, ${COLORS.culture.main}44)`,
             border: `1.5px solid ${COLORS.dark.border}`,
           }} />
         </div>
@@ -4009,8 +4029,8 @@ export default function PrismLog() {
           style={{
             position: "fixed", bottom: layout.isPhone ? "6.9rem" : 28, right: layout.isPhone ? 20 : 28,
             width: 56, height: 56, borderRadius: "50%", border: "none",
-            background: "#2db5a3",
-            boxShadow: "0 4px 16px rgba(45,181,163,0.4)",
+            background: COLORS.reading.main,
+            boxShadow: `0 4px 16px ${COLORS.reading.glow}`,
             cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
             transition: "transform 0.2s, box-shadow 0.2s", zIndex: 60,
           }}
