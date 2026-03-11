@@ -75,8 +75,7 @@ sudo cp -r dist/* /var/www/prism.lawdigest.cloud/
 PrismLog/
 ├── src/
 │   ├── main.jsx           # React 진입점
-│   └── App.jsx            # 메인 컴포넌트 (빌드용)
-├── prismlog.jsx           # React 컴포넌트 (원본)
+│   └── App.jsx            # 메인 컴포넌트
 ├── index.html             # HTML 템플릿
 ├── package.json           # 의존성 관리
 ├── vite.config.js         # Vite 빌드 설정
@@ -92,7 +91,7 @@ PrismLog/
 ## 🛠 기술 스택
 
 ### Frontend
-- **React 18**: 최신 UI 라이브러리
+- **React 19**: 최신 UI 라이브러리
 - **Vite 4**: 초고속 번들러
 - **인라인 CSS-in-JS**: 가벼운 스타일링
 

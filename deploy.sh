@@ -19,13 +19,8 @@ TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 
 cd "$PROJECT_DIR"
 
-# 1. 작업 파일 동기화 (src/App.jsx → prismlog.jsx)
-echo "📋 1/5 소스 파일 동기화 중..."
-cp src/App.jsx prismlog.jsx
-echo "   ✓ prismlog.jsx 업데이트 완료"
-
-# 2. 의존성 확인
-echo "📦 2/5 의존성 확인 중..."
+# 1. 의존성 확인
+echo "📦 1/4 의존성 확인 중..."
 if [ ! -d "node_modules" ]; then
   npm install
   echo "   ✓ npm install 완료"
@@ -33,22 +28,22 @@ else
   echo "   ✓ node_modules 존재"
 fi
 
-# 3. 빌드
-echo "🔨 3/5 빌드 중..."
+# 2. 빌드
+echo "🔨 2/4 빌드 중..."
 rm -rf dist/
 npm run build > /dev/null 2>&1
 BUILD_SIZE=$(du -sh dist | cut -f1)
 echo "   ✓ 빌드 완료 (크기: $BUILD_SIZE)"
 
-# 4. 배포
-echo "📤 4/5 배포 중..."
+# 3. 배포
+echo "📤 3/4 배포 중..."
 sudo rm -rf "$DEPLOY_DIR"/*
 sudo cp -r dist/* "$DEPLOY_DIR/"
 sudo chown -R www-data:www-data "$DEPLOY_DIR"
 echo "   ✓ 배포 완료 ($DEPLOY_DIR)"
 
-# 5. 검증
-echo "✅ 5/5 검증 중..."
+# 4. 검증
+echo "✅ 4/4 검증 중..."
 HASH=$(grep -oP "(?<=src=\"/assets/)index-[a-z0-9]+\.js" "$DEPLOY_DIR/index.html" | cut -d'-' -f2 | cut -d'.' -f1)
 LIVE_HASH=$(curl -s https://prism.lawdigest.cloud/ | grep -oP "(?<=src=\"/assets/)index-[a-z0-9]+\.js" | cut -d'-' -f2 | cut -d'.' -f1)
 
