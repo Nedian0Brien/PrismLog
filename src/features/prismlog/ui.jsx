@@ -339,10 +339,10 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
   const isWide = layout?.isTabletUp;
   const sheetMaxHeight = isWide
     ? "min(85vh, calc(var(--viewport-height) - 48px))"
-    : "calc(var(--viewport-height) - var(--safe-area-top) - 8px)";
+    : "calc(var(--viewport-height) - var(--viewport-safe-top) - 8px)";
   const sheetContentMaxHeight = isWide
     ? "calc(min(85vh, calc(var(--viewport-height) - 48px)) - 24px)"
-    : "calc(var(--viewport-height) - var(--safe-area-top) - 48px)";
+    : "calc(var(--viewport-height) - var(--viewport-safe-top) - 48px)";
 
   return (
     <div style={{
@@ -358,7 +358,7 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
       }}>
         {!isWide && <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)", margin: "0 auto 16px" }} />}
         <div style={{
-          padding: isWide ? "12px 28px calc(32px + var(--safe-area-bottom))" : "0 24px calc(32px + var(--safe-area-bottom))",
+          padding: isWide ? "12px 28px calc(32px + var(--viewport-safe-bottom))" : "0 24px calc(32px + var(--viewport-safe-bottom))",
           overflowY: "auto",
           maxHeight: sheetContentMaxHeight,
         }}>
