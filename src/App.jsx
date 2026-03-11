@@ -44,6 +44,7 @@ export default function PrismLog() {
   const viewportSyncTimersRef = useRef([]);
   const maxViewportHeightRef = useRef(0);
   const viewportWidthRef = useRef(0);
+  const mainScrollRef = useRef(null);
   const isAnySheetOpen = sheetOpen || Boolean(editingReading) || Boolean(editingStudy) || Boolean(editingCulture);
 
   const fetchLogs = useCallback(async () => {
@@ -392,7 +393,7 @@ export default function PrismLog() {
   };
 
   return (
-    <div className="app-shell" style={{
+    <div className="app-shell app-shell-immersive" style={{
       background: `radial-gradient(ellipse at top, #252220 0%, ${COLORS.dark.bg} 70%)`,
       fontFamily: "'Pretendard', 'Outfit', -apple-system, sans-serif",
       color: COLORS.dark.text,
@@ -454,7 +455,7 @@ export default function PrismLog() {
           ? "calc(16px + var(--viewport-safe-top)) 16px 12px"
           : "calc(18px + var(--viewport-safe-top)) 24px 14px",
         display: "flex", justifyContent: "space-between", alignItems: "center",
-        position: "sticky", top: 0, zIndex: 50,
+        position: "relative", zIndex: 50, flexShrink: 0,
         background: "rgba(26,24,22,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
         borderBottom: `1px solid ${COLORS.dark.border}`,
       }}>
@@ -495,60 +496,74 @@ export default function PrismLog() {
       </header>
 
       {/* Content */}
-      <main style={{
+      <main
+        ref={mainScrollRef}
+        style={{
+        flex: 1,
+        minHeight: 0,
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+        overscrollBehaviorY: "contain",
         padding: layout.isPhone
           ? "20px 16px calc(132px + var(--viewport-safe-bottom))"
           : "28px 24px calc(40px + var(--viewport-safe-bottom))",
-        maxWidth: layout.isTabletUp ? 1360 : 520,
-        margin: "0 auto",
-        animation: "fadeIn 0.45s ease-out",
-      }}>
-        <div style={{ display: "flex", gap: layout.isDesktop ? 24 : 20, alignItems: "flex-start" }}>
-          {layout.isTabletUp && (
-            <aside style={{ width: layout.isDesktop ? 220 : 92, flexShrink: 0, position: "sticky", top: 104 }}>
-              <GlassCard style={{ padding: layout.isDesktop ? "14px" : "12px" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {navItems.map((item) => {
-                    const active = page === item.key;
-                    const activeColor = item.color || "#f5f0eb";
-                    const Icon = item.Icon;
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => setPage(item.key)}
-                        style={{
-                          width: "100%",
-                          minHeight: 52,
-                          padding: layout.isDesktop ? "12px 14px" : "12px 10px",
-                          borderRadius: 16,
-                          border: `1px solid ${active ? `${activeColor}44` : "transparent"}`,
-                          background: active ? `${activeColor}14` : "transparent",
-                          display: "flex",
-                          flexDirection: layout.isDesktop ? "row" : "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: layout.isDesktop ? 10 : 6,
-                          cursor: "pointer",
-                          color: active ? activeColor : COLORS.dark.textMuted,
-                          fontSize: layout.isDesktop ? 14 : 11,
-                          fontWeight: active ? 700 : 600,
-                          fontFamily: "'Pretendard', sans-serif",
-                          transition: "all 0.2s",
-                        }}
-                      >
-                        <span><Icon size={layout.isDesktop ? 20 : 18} color="currentColor" /></span>
-                        <span>{item.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </GlassCard>
-            </aside>
-          )}
-          <div style={{ flex: 1, minWidth: 0, maxWidth: layout.isDesktop ? "none" : 920 }}>
-            <div key={page} style={{ animation: "tabSwitch 0.3s cubic-bezier(.32,.72,.24,1)" }}>
-              {renderPage()}
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: layout.isTabletUp ? 1360 : 520,
+            margin: "0 auto",
+            animation: "fadeIn 0.45s ease-out",
+          }}
+        >
+          <div style={{ display: "flex", gap: layout.isDesktop ? 24 : 20, alignItems: "flex-start" }}>
+            {layout.isTabletUp && (
+              <aside style={{ width: layout.isDesktop ? 220 : 92, flexShrink: 0, position: "sticky", top: 0 }}>
+                <GlassCard style={{ padding: layout.isDesktop ? "14px" : "12px" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {navItems.map((item) => {
+                      const active = page === item.key;
+                      const activeColor = item.color || "#f5f0eb";
+                      const Icon = item.Icon;
+                      return (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => setPage(item.key)}
+                          style={{
+                            width: "100%",
+                            minHeight: 52,
+                            padding: layout.isDesktop ? "12px 14px" : "12px 10px",
+                            borderRadius: 16,
+                            border: `1px solid ${active ? `${activeColor}44` : "transparent"}`,
+                            background: active ? `${activeColor}14` : "transparent",
+                            display: "flex",
+                            flexDirection: layout.isDesktop ? "row" : "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: layout.isDesktop ? 10 : 6,
+                            cursor: "pointer",
+                            color: active ? activeColor : COLORS.dark.textMuted,
+                            fontSize: layout.isDesktop ? 14 : 11,
+                            fontWeight: active ? 700 : 600,
+                            fontFamily: "'Pretendard', sans-serif",
+                            transition: "all 0.2s",
+                          }}
+                        >
+                          <span><Icon size={layout.isDesktop ? 20 : 18} color="currentColor" /></span>
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </GlassCard>
+              </aside>
+            )}
+            <div style={{ flex: 1, minWidth: 0, maxWidth: layout.isDesktop ? "none" : 920 }}>
+              <div key={page} style={{ animation: "tabSwitch 0.3s cubic-bezier(.32,.72,.24,1)" }}>
+                {renderPage()}
+              </div>
             </div>
           </div>
         </div>
@@ -578,7 +593,7 @@ export default function PrismLog() {
       {/* Bottom Nav */}
       {!layout.isTabletUp && (
         <Suspense fallback={null}>
-          <MobileFloatingNav items={navItems} activeKey={page} onChange={setPage} />
+          <MobileFloatingNav items={navItems} activeKey={page} onChange={setPage} scrollContainerRef={mainScrollRef} />
         </Suspense>
       )}
 

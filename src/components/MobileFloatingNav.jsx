@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export default function MobileFloatingNav({ items, activeKey, onChange }) {
+export default function MobileFloatingNav({ items, activeKey, onChange, scrollContainerRef = null }) {
   const navPadding = 6;
   const [hidden, setHidden] = useState(false);
   const lastScrollY = useRef(0);
@@ -16,8 +16,14 @@ export default function MobileFloatingNav({ items, activeKey, onChange }) {
   );
 
   useEffect(() => {
-    const getScrollY = () =>
-      Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0, document.body.scrollTop || 0);
+    const getScrollContainer = () => scrollContainerRef?.current ?? null;
+    const getScrollY = () => {
+      const scrollContainer = getScrollContainer();
+      if (scrollContainer) {
+        return scrollContainer.scrollTop;
+      }
+      return Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0, document.body.scrollTop || 0);
+    };
 
     const updateHidden = (nextHidden) => {
       if (hiddenRef.current === nextHidden) return;
@@ -49,15 +55,24 @@ export default function MobileFloatingNav({ items, activeKey, onChange }) {
       scrollRafRef.current = window.requestAnimationFrame(updateVisibility);
     };
 
-    window.addEventListener("scroll", onScroll, { passive: true });
+    const scrollContainer = getScrollContainer();
+    if (scrollContainer) {
+      scrollContainer.addEventListener("scroll", onScroll, { passive: true });
+    } else {
+      window.addEventListener("scroll", onScroll, { passive: true });
+    }
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      if (scrollContainer) {
+        scrollContainer.removeEventListener("scroll", onScroll);
+      } else {
+        window.removeEventListener("scroll", onScroll);
+      }
       if (scrollRafRef.current !== null) {
         window.cancelAnimationFrame(scrollRafRef.current);
         scrollRafRef.current = null;
       }
     };
-  }, []);
+  }, [scrollContainerRef]);
 
   const syncIndicator = useCallback(() => {
     const nav = navRef.current;
