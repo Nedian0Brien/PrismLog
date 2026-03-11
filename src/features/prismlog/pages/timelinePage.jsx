@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   COLORS,
+  DAYS_KO,
   formatTimeLabel,
   getDateKey,
   safeNumber,
@@ -9,7 +10,7 @@ import {
   ClockIcon,
   CalendarIcon,
 } from "../core";
-import { GlassCard } from "../ui";
+import { Badge, GlassCard, StatusBadge } from "../ui";
 
 export const TimelinePage = ({ logs, loading, layout }) => {
   const [view, setView] = useState("feed");

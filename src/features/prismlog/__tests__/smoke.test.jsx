@@ -45,14 +45,24 @@ describe("PrismLog feature smoke", () => {
   });
 
   it("renders timeline and settings pages", () => {
+    const timelineLogs = [
+      {
+        id: "timeline-reading-1",
+        category: "reading",
+        title: "테스트 독서 로그",
+        summary: "타임라인 렌더 확인",
+        created_at: "2026-03-12T09:00:00.000Z",
+        payload: { pages_read: 12, pages_total: 120 },
+      },
+    ];
     const timelineHtml = renderToStaticMarkup(
-      <TimelinePage logs={[]} loading={false} layout={phoneLayout} />
+      <TimelinePage logs={timelineLogs} loading={false} layout={phoneLayout} />
     );
     const settingsHtml = renderToStaticMarkup(
       <SettingsPage readingLogs={[]} studyLogs={[]} cultureLogs={[]} layout={phoneLayout} />
     );
 
-    expect(timelineHtml).toContain("Timeline");
+    expect(timelineHtml).toContain("테스트 독서 로그");
     expect(settingsHtml).toContain("설정");
   });
 });
