@@ -42,6 +42,8 @@ export default function PrismLog() {
   const layout = useResponsiveLayout();
   const viewportSyncFrameRef = useRef(null);
   const viewportSyncTimersRef = useRef([]);
+  const maxViewportHeightRef = useRef(0);
+  const viewportWidthRef = useRef(0);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -71,13 +73,32 @@ export default function PrismLog() {
       const viewport = window.visualViewport;
       const height = viewport?.height ?? window.innerHeight;
       const offsetTop = viewport?.offsetTop ?? 0;
-      const offsetBottom = viewport
-        ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
-        : 0;
+      const width = window.innerWidth;
 
+      if (viewportWidthRef.current === 0) {
+        viewportWidthRef.current = width;
+      }
+      if (Math.abs(width - viewportWidthRef.current) > 120) {
+        maxViewportHeightRef.current = height;
+        viewportWidthRef.current = width;
+      }
+      if (height > maxViewportHeightRef.current) {
+        maxViewportHeightRef.current = height;
+      }
+
+      const keyboardInsetHeight = Math.max(0, maxViewportHeightRef.current - height - offsetTop);
+      const keyboardOpen = keyboardInsetHeight > 120;
+      const appHeight = keyboardOpen ? height : maxViewportHeightRef.current;
+      const offsetBottom = Math.max(0, appHeight - height - offsetTop);
+
+      root.style.setProperty("--vh", `${height * 0.01}px`);
+      root.style.setProperty("--app-vh", `${Math.round(appHeight)}px`);
       root.style.setProperty("--viewport-height", `${Math.round(height)}px`);
+      root.style.setProperty("--visual-viewport-height", `${Math.round(height)}px`);
       root.style.setProperty("--viewport-offset-top", `${Math.round(offsetTop)}px`);
       root.style.setProperty("--viewport-offset-bottom", `${Math.round(offsetBottom)}px`);
+      root.style.setProperty("--keyboard-inset-height", `${Math.round(keyboardInsetHeight)}px`);
+      root.dataset.keyboardOpen = keyboardOpen ? "true" : "false";
     };
 
     const clearScheduledViewportSync = () => {
@@ -119,6 +140,7 @@ export default function PrismLog() {
       window.removeEventListener("scroll", scheduleViewportSync);
       viewport?.removeEventListener("resize", scheduleViewportSync);
       viewport?.removeEventListener("scroll", scheduleViewportSync);
+      delete root.dataset.keyboardOpen;
     };
   }, []);
 

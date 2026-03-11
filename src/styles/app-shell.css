@@ -5,9 +5,13 @@
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-max-top: env(safe-area-max-inset-top, 0px);
   --safe-area-max-bottom: env(safe-area-max-inset-bottom, 0px);
+  --vh: 1vh;
+  --app-vh: 100vh;
   --viewport-height: 100vh;
+  --visual-viewport-height: 100vh;
   --viewport-offset-top: 0px;
   --viewport-offset-bottom: 0px;
+  --keyboard-inset-height: 0px;
   --viewport-safe-top: max(var(--safe-area-top), var(--safe-area-max-top), var(--viewport-offset-top));
   --viewport-safe-bottom: max(var(--safe-area-bottom), var(--safe-area-max-bottom), var(--viewport-offset-bottom));
 }
@@ -32,14 +36,15 @@ body,
 body,
 #root {
   min-height: 100vh;
-  min-height: var(--viewport-height);
+  min-height: -webkit-fill-available;
+  min-height: var(--app-vh);
   background: #1a1816;
 }
 
 .app-shell {
   width: 100%;
   min-height: 100vh;
-  min-height: var(--viewport-height);
+  min-height: var(--app-vh);
   padding-left: var(--safe-area-left);
   padding-right: var(--safe-area-right);
 }
