@@ -337,17 +337,31 @@ export const DistributionBarChart = ({ counts, enabled }) => {
 export const BottomSheet = ({ open, onClose, children, title, layout }) => {
   if (!open) return null;
   const isWide = layout?.isTabletUp;
+  const sheetMaxHeight = isWide
+    ? "min(85vh, calc(var(--viewport-height) - 48px))"
+    : "calc(var(--viewport-height) - var(--safe-area-top) - 8px)";
+  const sheetContentMaxHeight = isWide
+    ? "calc(min(85vh, calc(var(--viewport-height) - 48px)) - 24px)"
+    : "calc(var(--viewport-height) - var(--safe-area-top) - 48px)";
+
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: isWide ? "center" : "flex-end", justifyContent: "center", padding: isWide ? 24 : 0 }}>
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: isWide ? "center" : "flex-end", justifyContent: "center",
+      padding: isWide ? "24px" : "0 var(--safe-area-right) 0 var(--safe-area-left)",
+    }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={onClose} />
       <div style={{
-        position: "relative", width: "100%", maxWidth: isWide ? (layout?.isDesktop ? 760 : 680) : 480, maxHeight: "85vh",
+        position: "relative", width: "100%", maxWidth: isWide ? (layout?.isDesktop ? 760 : 680) : 480, maxHeight: sheetMaxHeight,
         background: COLORS.dark.surfaceSolid, borderRadius: isWide ? 24 : "24px 24px 0 0",
         padding: "8px 0 0", overflow: "hidden",
         animation: "slideUp 0.35s cubic-bezier(.32,.72,.24,1)",
       }}>
         {!isWide && <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)", margin: "0 auto 16px" }} />}
-        <div style={{ padding: isWide ? "12px 28px 32px" : "0 24px 32px", overflowY: "auto", maxHeight: isWide ? "calc(85vh - 24px)" : "calc(85vh - 40px)" }}>
+        <div style={{
+          padding: isWide ? "12px 28px calc(32px + var(--safe-area-bottom))" : "0 24px calc(32px + var(--safe-area-bottom))",
+          overflowY: "auto",
+          maxHeight: sheetContentMaxHeight,
+        }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
             <h3 style={{ fontSize: 20, fontWeight: 700, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", margin: 0 }}>{title}</h3>
             <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>

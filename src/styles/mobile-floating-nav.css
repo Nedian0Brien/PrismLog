@@ -1,9 +1,9 @@
 .mobile-floating-nav {
   position: fixed;
   left: 50%;
-  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(1rem + var(--safe-area-bottom));
   transform: translateX(-50%);
-  width: min(24.5rem, calc(100vw - 1.5rem));
+  width: min(24.5rem, calc(100vw - var(--safe-area-left) - var(--safe-area-right) - 1.5rem));
   min-height: 4.25rem;
   padding: 0.3125rem;
   display: flex;
@@ -27,7 +27,7 @@
 }
 
 .mobile-floating-nav-hidden {
-  bottom: calc(-4.75rem - env(safe-area-inset-bottom, 0px));
+  bottom: calc(-4.75rem - var(--safe-area-bottom));
   opacity: 0;
   pointer-events: none;
 }

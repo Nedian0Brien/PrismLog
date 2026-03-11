@@ -289,8 +289,7 @@ export default function PrismLog() {
   };
 
   return (
-    <div style={{
-      width: "100%", minHeight: "100vh",
+    <div className="app-shell" style={{
       background: `radial-gradient(ellipse at top, #252220 0%, ${COLORS.dark.bg} 70%)`,
       fontFamily: "'Pretendard', 'Outfit', -apple-system, sans-serif",
       color: COLORS.dark.text,
@@ -327,7 +326,6 @@ export default function PrismLog() {
         }
 
         * { box-sizing: border-box; }
-        html, body, #root { margin: 0; min-height: 100%; }
         *::-webkit-scrollbar { width: 4px; }
         *::-webkit-scrollbar-track { background: transparent; }
         *::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
@@ -346,7 +344,10 @@ export default function PrismLog() {
 
       {/* Header */}
       <header style={{
-        padding: layout.isPhone ? "16px 16px 12px" : "18px 24px 14px", display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: layout.isPhone
+          ? "calc(16px + var(--safe-area-top)) 16px 12px"
+          : "calc(18px + var(--safe-area-top)) 24px 14px",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
         position: "sticky", top: 0, zIndex: 50,
         background: "rgba(26,24,22,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
         borderBottom: `1px solid ${COLORS.dark.border}`,
@@ -389,7 +390,9 @@ export default function PrismLog() {
 
       {/* Content */}
       <main style={{
-        padding: layout.isPhone ? "20px 16px 132px" : "28px 24px 40px",
+        padding: layout.isPhone
+          ? "20px 16px calc(132px + var(--safe-area-bottom))"
+          : "28px 24px calc(40px + var(--safe-area-bottom))",
         maxWidth: layout.isTabletUp ? 1360 : 520,
         margin: "0 auto",
         animation: "fadeIn 0.45s ease-out",
@@ -450,7 +453,9 @@ export default function PrismLog() {
         <button
           onClick={() => { setSheetOpen(true); setNewLogCat("reading"); }}
           style={{
-            position: "fixed", bottom: layout.isPhone ? "6.9rem" : 28, right: layout.isPhone ? 20 : 28,
+            position: "fixed",
+            bottom: layout.isPhone ? "calc(6.9rem + var(--safe-area-bottom))" : "calc(28px + var(--safe-area-bottom))",
+            right: layout.isPhone ? "calc(20px + var(--safe-area-right))" : "calc(28px + var(--safe-area-right))",
             width: 56, height: 56, borderRadius: "50%", border: "none",
             background: COLORS.reading.main,
             boxShadow: `0 4px 16px ${COLORS.reading.glow}`,
