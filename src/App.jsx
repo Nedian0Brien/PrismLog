@@ -233,24 +233,50 @@ const clearReadingMetadata = (form) => ({
   publishedDate: "",
   description: "",
   cover: "",
+  pages: "",
+  readPages: form.readingStatus === "planned" ? "0" : "",
+  progressValue: form.readingStatus === "finished" ? "100" : "0",
   sourceProvider: "",
   sourceId: "",
 });
 
-const applyBookSelectionToReadingForm = (form, book) => ({
-  ...form,
-  title: book.title || form.title,
-  author: Array.isArray(book.authors) ? book.authors.join(", ") : form.author,
-  publisher: book.publisher || "",
-  isbn: book.isbn13 || book.isbn || "",
-  publishedDate: book.published_date || "",
-  description: book.description || "",
-  cover: book.cover_url || "",
-  pages: book.pages_total ? String(book.pages_total) : form.pages,
-  progressValue: form.progressValue || "0",
-  sourceProvider: book.source_provider || "",
-  sourceId: book.source_id || "",
-});
+const applyBookSelectionToReadingForm = (form, book) => {
+  const nextPages = book.pages_total ? String(book.pages_total) : "";
+  const nextProgressValue = form.readingStatus === "finished" ? "100" : form.readingStatus === "planned" ? "0" : "0";
+  const nextReadPages = form.readingStatus === "finished" ? nextPages : form.readingStatus === "planned" ? "0" : "";
+  return {
+    ...form,
+    title: book.title || form.title,
+    author: Array.isArray(book.authors) ? book.authors.join(", ") : form.author,
+    publisher: book.publisher || "",
+    isbn: book.isbn13 || book.isbn || "",
+    publishedDate: book.published_date || "",
+    description: book.description || "",
+    cover: book.cover_url || "",
+    pages: nextPages,
+    readPages: nextReadPages,
+    progressValue: nextProgressValue,
+    sourceProvider: book.source_provider || "",
+    sourceId: book.source_id || "",
+  };
+};
+
+const applyPageEnrichmentToReadingForm = (form, pages) => {
+  const nextPages = String(pages);
+  if (form.readingStatus === "finished") {
+    return { ...form, pages: nextPages, readPages: nextPages, progressValue: "100" };
+  }
+  if (form.readingStatus === "planned") {
+    return { ...form, pages: nextPages, readPages: "0", progressValue: "0" };
+  }
+  const hasReadPages = String(form.readPages ?? "").trim() !== "";
+  const nextReadPages = hasReadPages ? String(Math.min(safeNumber(form.readPages), pages)) : "";
+  return {
+    ...form,
+    pages: nextPages,
+    readPages: nextReadPages,
+  };
+};
 
 const buildReadingPayload = (form) => {
   const pages = safeNumber(form.pages);
@@ -848,6 +874,7 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
   const [readingEnrichingPages, setReadingEnrichingPages] = useState(false);
   const [readingSearchComposing, setReadingSearchComposing] = useState(false);
   const [readingDescriptionExpanded, setReadingDescriptionExpanded] = useState(false);
+  const [readingPageMessage, setReadingPageMessage] = useState("");
   const [studyForm, setStudyForm] = useState({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "" });
   const [cultureForm, setCultureForm] = useState({ title: "", type: "영화", status: "시청 중", rating: 0, playtime: "", tags: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -879,6 +906,7 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
     setReadingEnrichingPages(false);
     setReadingSearchComposing(false);
     setReadingDescriptionExpanded(false);
+    setReadingPageMessage("");
     setStudyForm({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "" });
     setCultureForm({ title: "", type: "영화", status: "시청 중", rating: 0, playtime: "", tags: "" });
     setSubmitMessage("");
@@ -927,12 +955,14 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
               value={readingForm.title}
               onChange={(event) => {
                 const nextValue = event.target.value;
+                setReadingPageMessage("");
                 setReadingForm((prev) => ({ ...clearReadingMetadata(prev), title: nextValue }));
               }}
               onCompositionStart={() => setReadingSearchComposing(true)}
               onCompositionEnd={(event) => {
                 setReadingSearchComposing(false);
                 const nextValue = event.currentTarget.value;
+                setReadingPageMessage("");
                 setReadingForm((prev) => ({ ...clearReadingMetadata(prev), title: nextValue }));
               }}
               style={{ ...inputStyle, padding: "15px 18px", fontSize: 15 }}
@@ -947,21 +977,30 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
             suspend={readingSearchComposing}
             onSelect={async (book) => {
                 const selectedSourceId = book.source_id;
+                setReadingPageMessage("");
                 setReadingForm((prev) => applyBookSelectionToReadingForm(prev, book));
                 setReadingStep("details");
                 const isbn = book.isbn13 || book.isbn;
-                if (!isbn) return;
+                if (!isbn) {
+                  setReadingPageMessage("자동 입력 실패: ISBN이 없어 페이지 정보를 찾을 수 없습니다.");
+                  return;
+                }
                 setReadingEnrichingPages(true);
                 try {
                   const pages = await fetchReadingPageCount(apiBaseUrl, isbn);
-                  if (!pages) return;
+                  if (!pages) {
+                    setReadingPageMessage("자동 입력 실패: 해당 ISBN으로 페이지 정보를 찾지 못했습니다.");
+                    return;
+                  }
                   setReadingForm((prev) => (
                     prev.sourceId === selectedSourceId
-                      ? { ...prev, pages: prev.pages || String(pages) }
+                      ? applyPageEnrichmentToReadingForm(prev, pages)
                       : prev
                   ));
+                  setReadingPageMessage(`전체 페이지를 자동으로 불러왔습니다. (${pages}p)`);
                 } catch (error) {
                   console.error("page enrichment failed", error);
+                  setReadingPageMessage("자동 입력 실패: 페이지 정보를 불러오는 중 오류가 발생했습니다.");
                 } finally {
                   setReadingEnrichingPages(false);
                 }
@@ -1050,6 +1089,34 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
         }
         return { ...prev, readingStatus: status };
       });
+    };
+    const handleReadingPageAutofill = async () => {
+      const isbn = readingForm.isbn;
+      if (!isbn) {
+        setReadingPageMessage("자동 입력 실패: ISBN을 먼저 입력해 주세요.");
+        return;
+      }
+      const activeSourceId = readingForm.sourceId || "";
+      setReadingPageMessage("");
+      setReadingEnrichingPages(true);
+      try {
+        const pages = await fetchReadingPageCount(apiBaseUrl, isbn);
+        if (!pages) {
+          setReadingPageMessage("자동 입력 실패: 해당 ISBN으로 페이지 정보를 찾지 못했습니다.");
+          return;
+        }
+        setReadingForm((prev) => (
+          prev.sourceId === activeSourceId
+            ? applyPageEnrichmentToReadingForm(prev, pages)
+            : prev
+        ));
+        setReadingPageMessage(`전체 페이지를 자동으로 불러왔습니다. (${pages}p)`);
+      } catch (error) {
+        console.error("manual page enrichment failed", error);
+        setReadingPageMessage("자동 입력 실패: 페이지 정보를 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setReadingEnrichingPages(false);
+      }
     };
 
     return (
@@ -1374,23 +1441,81 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
               })}
             </div>
           </div>
-          <div>
-            <label style={labelStyle}>전체 페이지</label>
-            <input
-              value={readingForm.pages}
-              onChange={(e) => {
-                const nextValue = e.target.value;
-                setReadingForm((prev) => ({
-                  ...prev,
-                  pages: nextValue,
-                  readPages: prev.readingStatus === "finished" ? nextValue : prev.readPages,
-                }));
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+            <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
+              ISBN이 있으면 버튼으로 전체 페이지를 다시 불러올 수 있습니다.
+            </p>
+            <button
+              type="button"
+              disabled={!readingForm.isbn || readingEnrichingPages}
+              onClick={handleReadingPageAutofill}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: `1px solid ${readingForm.isbn ? `${accent}55` : COLORS.dark.border}`,
+                background: readingForm.isbn ? `${accent}16` : "rgba(255,255,255,0.03)",
+                color: readingForm.isbn ? accent : COLORS.dark.textMuted,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: !readingForm.isbn || readingEnrichingPages ? "not-allowed" : "pointer",
+                fontFamily: "'Pretendard', sans-serif",
+                opacity: readingEnrichingPages ? 0.72 : 1,
               }}
-              style={inputStyle}
-              type="number"
-              placeholder="0"
-            />
+            >
+              {readingEnrichingPages ? "자동 입력 중..." : "전체 페이지 자동 입력"}
+            </button>
           </div>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: layout?.isTabletUp ? "repeat(2, minmax(0, 1fr))" : "1fr",
+            gap: 12,
+          }}>
+            <div>
+              <label style={labelStyle}>{isPercentMode ? "현재 진행률" : "현재 페이지"}</label>
+              <input
+                value={currentValue}
+                onChange={(e) => setReadingForm((prev) => (
+                  isPercentMode
+                    ? { ...prev, progressValue: e.target.value }
+                    : { ...prev, readPages: e.target.value }
+                ))}
+                style={inputStyle}
+                type="number"
+                min="0"
+                max={isPercentMode ? 100 : undefined}
+                placeholder={isPercentMode ? "0~100" : "현재 페이지"}
+                disabled={readingForm.readingStatus !== "reading"}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>전체 페이지</label>
+              <input
+                value={readingForm.pages}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setReadingPageMessage("");
+                  setReadingForm((prev) => ({
+                    ...prev,
+                    pages: nextValue,
+                    readPages: prev.readingStatus === "finished" ? nextValue : prev.readPages,
+                  }));
+                }}
+                style={inputStyle}
+                type="number"
+                placeholder="0"
+              />
+            </div>
+          </div>
+          {readingPageMessage && (
+            <p style={{
+              margin: "10px 0 0",
+              fontSize: 12,
+              lineHeight: 1.6,
+              color: readingPageMessage.startsWith("자동 입력 실패") ? "#f8b4bb" : COLORS.reading.light,
+            }}>
+              {readingPageMessage}
+            </p>
+          )}
 
           {readingForm.readingStatus === "reading" && (
             <div style={{
@@ -1419,20 +1544,6 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
                   </span>
                 </div>
               </div>
-
-              <input
-                value={currentValue}
-                onChange={(e) => setReadingForm((prev) => (
-                  isPercentMode
-                    ? { ...prev, progressValue: e.target.value }
-                    : { ...prev, readPages: e.target.value }
-                ))}
-                style={inputStyle}
-                type="number"
-                min="0"
-                max={isPercentMode ? 100 : undefined}
-                placeholder={isPercentMode ? "0~100" : "현재 페이지"}
-              />
 
               <input
                 type="range"
@@ -1748,7 +1859,7 @@ const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layout, api
                 if (!pages) return;
                 setForm((prev) => (
                   prev.sourceId === selectedSourceId
-                    ? { ...prev, pages: prev.pages || String(pages) }
+                    ? applyPageEnrichmentToReadingForm(prev, pages)
                     : prev
                 ));
               } catch (error) {
