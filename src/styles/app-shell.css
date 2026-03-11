@@ -12,8 +12,10 @@
   --viewport-offset-top: 0px;
   --viewport-offset-bottom: 0px;
   --keyboard-inset-height: 0px;
+  --safe-area-bottom-base: max(var(--safe-area-bottom), var(--safe-area-max-bottom));
+  --safe-area-bottom-effective: max(0px, calc(var(--safe-area-bottom-base) - var(--keyboard-inset-height)));
   --viewport-safe-top: max(var(--safe-area-top), var(--safe-area-max-top), var(--viewport-offset-top));
-  --viewport-safe-bottom: max(var(--safe-area-bottom), var(--safe-area-max-bottom), var(--viewport-offset-bottom));
+  --viewport-safe-bottom: var(--safe-area-bottom-effective);
 }
 
 @supports (height: 100dvh) {
