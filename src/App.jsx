@@ -2862,6 +2862,14 @@ const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
   const footerHeight = isSingleColumn ? 122 : layout.isPhone ? 84 : 92;
   const latestTitles = section.previews.slice(0, 3).map((preview) => preview.title);
   const remainingCount = section.count - latestTitles.length;
+  const previewDisplayOrder = section.previews.length >= 3
+    ? [1, 0, 2]
+    : section.previews.length === 2
+      ? [1, 0]
+      : [0];
+  const arrangedPreviews = previewDisplayOrder
+    .map((previewIndex) => section.previews[previewIndex])
+    .filter(Boolean);
   const previewRotations = [-7, 0, 7];
   const previewBottomOffsets = isSingleColumn ? [-26, -20, -26] : [-18, -12, -18];
   const previewZIndexes = [2, 3, 1];
@@ -2952,7 +2960,7 @@ const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
       </div>
 
       <div style={{ position: "relative", height: footerHeight }}>
-        {section.previews.map((preview, index) => (
+        {arrangedPreviews.map((preview, index) => (
           <div
             key={`${section.key}-${preview.id}`}
             style={{
