@@ -7,6 +7,7 @@ import {
   safeNumber,
   BookIcon,
   PenIcon,
+  PlusIcon,
   FilmIcon,
   ListIcon,
   GridIcon,
@@ -1078,4 +1079,3 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
     </div>
   );
 };
-

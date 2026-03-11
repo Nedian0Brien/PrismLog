@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NewLogForm } from "../forms";
-import { DashboardPage, SettingsPage, TimelinePage } from "../pages";
+import { DashboardPage, ReadingGridCard, SettingsPage, TimelinePage } from "../pages";
 
 const phoneLayout = {
   width: 390,
@@ -42,6 +42,30 @@ describe("PrismLog feature smoke", () => {
     );
 
     expect(html).toContain("기록 저장하기");
+  });
+
+  it("renders reading grid card", () => {
+    const html = renderToStaticMarkup(
+      <ReadingGridCard
+        book={{
+          id: "reading-grid-1",
+          title: "그리드 카드 테스트",
+          author: "테스트 저자",
+          progress: 42,
+          readPages: 84,
+          pages: 200,
+          rating: 4,
+          review: "좋은 책",
+          tags: ["테스트"],
+          cover: "",
+        }}
+        onEdit={() => {}}
+        onAdd={() => {}}
+        layout={phoneLayout}
+      />
+    );
+
+    expect(html).toContain("그리드 카드 테스트");
   });
 
   it("renders timeline and settings pages", () => {
