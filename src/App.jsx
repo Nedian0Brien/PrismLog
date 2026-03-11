@@ -311,11 +311,12 @@ export default function PrismLog() {
   };
 
   return (
-    <div className="app-shell app-shell-immersive" style={{
+    <div className={layout.isTabletUp ? "app-shell app-shell-immersive" : "app-shell"} style={{
       background: `radial-gradient(ellipse at top, #252220 0%, ${COLORS.dark.bg} 70%)`,
       fontFamily: "'Pretendard', 'Outfit', -apple-system, sans-serif",
       color: COLORS.dark.text,
-      position: "relative", overflow: "hidden",
+      position: "relative",
+      overflow: layout.isTabletUp ? "hidden" : "visible",
     }}>
       {/* Google Fonts */}
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -376,14 +377,14 @@ export default function PrismLog() {
       <main
         ref={mainScrollRef}
         style={{
-        flex: 1,
-        minHeight: 0,
-        overflowY: "auto",
-        WebkitOverflowScrolling: "touch",
-        overscrollBehaviorY: "contain",
-        padding: layout.isPhone
-          ? "20px 16px calc(132px + var(--viewport-safe-bottom))"
-          : "28px 24px calc(40px + var(--viewport-safe-bottom))",
+          flex: layout.isTabletUp ? 1 : "none",
+          minHeight: layout.isTabletUp ? 0 : "auto",
+          overflowY: layout.isTabletUp ? "auto" : "visible",
+          WebkitOverflowScrolling: layout.isTabletUp ? "touch" : "auto",
+          overscrollBehaviorY: layout.isTabletUp ? "contain" : "auto",
+          padding: layout.isPhone
+            ? "20px 16px calc(132px + var(--viewport-safe-bottom))"
+            : "28px 24px calc(40px + var(--viewport-safe-bottom))",
         }}
       >
         <header style={{
@@ -534,7 +535,7 @@ export default function PrismLog() {
       {/* Bottom Nav */}
       {!layout.isTabletUp && !isAnySheetOpen && (
         <Suspense fallback={null}>
-          <MobileFloatingNav items={navItems} activeKey={page} onChange={setPage} scrollContainerRef={mainScrollRef} />
+          <MobileFloatingNav items={navItems} activeKey={page} onChange={setPage} />
         </Suspense>
       )}
 
