@@ -176,6 +176,13 @@ const API_BASE_URL = (
 const DEMO_USER_ID = import.meta.env.VITE_DEMO_USER_ID || "demo-user";
 const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 const CULTURE_TYPES = ["영화", "시리즈", "게임"];
+const EBOOK_SERVICES = [
+  { key: "ridi", label: "리디북스" },
+  { key: "millie", label: "밀리의서재" },
+  { key: "kyobo", label: "교보 eBook" },
+  { key: "aladin", label: "알라딘" },
+  { key: "yes24", label: "yes24" },
+];
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const safeNumber = (value, fallback = 0) => {
@@ -192,6 +199,7 @@ const createReadingFormState = () => ({
   description: "",
   cover: "",
   medium: "paper",
+  ebookService: "",
   ebookProgressMode: "page",
   readingStatus: "reading",
   readPages: "",
@@ -263,6 +271,7 @@ const buildReadingPayload = (form) => {
     description: form.description.trim() || null,
     cover: form.cover.trim() || null,
     medium: form.medium || "paper",
+    ebook_service: form.medium === "ebook" ? form.ebookService || null : null,
     progress_mode: form.medium === "ebook" ? form.ebookProgressMode || "page" : "page",
     reading_status: form.readingStatus || "reading",
     progress_value: isPercentMode ? progressValue : null,
@@ -352,6 +361,7 @@ const mapReadingLog = (log) => {
     description: payload.description || "",
     cover: payload.cover || null,
     medium: payload.medium || "paper",
+    ebookService: payload.ebook_service || "",
     ebookProgressMode: payload.progress_mode || "page",
     readingStatus: payload.reading_status || "reading",
     progressValue: safeNumber(payload.progress_value, progress),
@@ -1000,9 +1010,9 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
       { key: "rental", label: "대여", Icon: TagIcon },
     ];
     const statusOptions = [
-      { key: "reading", label: "읽는 중" },
-      { key: "planned", label: "읽을 예정" },
-      { key: "finished", label: "완독" },
+      { key: "reading", label: "읽는 중", Icon: BookIcon, color: accent, description: "현재 읽은 지점을 바로 기록" },
+      { key: "planned", label: "읽을 예정", Icon: ClockIcon, color: "#f0c75e", description: "시작 전 상태로 보관" },
+      { key: "finished", label: "완독", Icon: CheckIcon, color: "#63d2a4", description: "진행률 100%로 저장" },
     ];
     const sectionCardStyle = {
       padding: layout?.isPhone ? "16px" : "18px",
@@ -1117,6 +1127,52 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
             <p style={{ margin: 0, fontSize: 14, color: COLORS.dark.textMuted }}>
               {readingForm.author || "작가 정보 없음"}
             </p>
+            {readingForm.description && (
+              <div style={{
+                marginTop: 4,
+                padding: "12px 14px",
+                borderRadius: 16,
+                background: `${accent}10`,
+                border: `1px solid ${accent}20`,
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                  <p style={{ margin: 0, fontSize: 11, letterSpacing: 0.8, textTransform: "uppercase", color: accent, fontFamily: "'Outfit', sans-serif" }}>
+                    책 소개
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setReadingDescriptionExpanded((prev) => !prev)}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      border: `1px solid ${accent}44`,
+                      background: "rgba(255,255,255,0.03)",
+                      color: accent,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontFamily: "'Pretendard', sans-serif",
+                    }}
+                  >
+                    {readingDescriptionExpanded ? "접기" : "펼쳐보기"}
+                  </button>
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    lineHeight: 1.7,
+                    color: COLORS.dark.textMuted,
+                    display: readingDescriptionExpanded ? "block" : "-webkit-box",
+                    WebkitLineClamp: readingDescriptionExpanded ? "unset" : 5,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
+                  {readingForm.description}
+                </p>
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
               {readingForm.publisher && <Badge text={readingForm.publisher} color={accent} />}
               {readingForm.publishedDate && <Badge text={readingForm.publishedDate} color={accent} />}
@@ -1135,6 +1191,7 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
                 onClick={() => setReadingForm((prev) => ({
                   ...prev,
                   medium: option.key,
+                  ebookService: option.key === "ebook" ? prev.ebookService : "",
                   ebookProgressMode: option.key === "ebook" ? prev.ebookProgressMode : "page",
                 }))}
                 style={{
@@ -1170,29 +1227,75 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
               </button>
             ))}
           </div>
-        </div>
-
-        <div style={sectionCardStyle}>
-          <label style={labelStyle}>읽기 상태</label>
-          <div style={{ display: "grid", gridTemplateColumns: layout?.isPhone ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-            {statusOptions.map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => handleReadingStatusChange(option.key)}
-                style={chipButtonStyle(readingForm.readingStatus === option.key)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <p style={{ margin: "10px 0 0", fontSize: 12, lineHeight: 1.6, color: COLORS.dark.textMuted }}>
-            {readingForm.readingStatus === "reading"
-              ? "페이지 정보 섹션에서 현재 읽은 위치를 바로 조정할 수 있습니다."
-              : readingForm.readingStatus === "planned"
-                ? "읽기 시작 전 상태로 저장됩니다."
-                : "완독 상태로 저장되며 전체 페이지가 있으면 진행률은 100%로 맞춰집니다."}
-          </p>
+          {readingForm.medium === "ebook" && (
+            <div style={{
+              marginTop: 14,
+              padding: layout?.isPhone ? 14 : 16,
+              borderRadius: 18,
+              border: `1px solid ${accent}24`,
+              background: `linear-gradient(180deg, ${accent}12, rgba(255,255,255,0.02))`,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+            }}>
+              <div>
+                <label style={{ ...labelStyle, marginBottom: 4 }}>전자책 서비스</label>
+                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: COLORS.dark.textMuted }}>
+                  로고는 추후 수집해 붙일 예정입니다. 지금은 서비스 종류만 먼저 선택할 수 있게 둡니다.
+                </p>
+              </div>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: layout?.isDesktop ? "repeat(5, minmax(0, 1fr))" : layout?.isTabletUp ? "repeat(3, minmax(0, 1fr))" : "repeat(2, minmax(0, 1fr))",
+                gap: 10,
+              }}>
+                {EBOOK_SERVICES.map((service) => {
+                  const active = readingForm.ebookService === service.key;
+                  return (
+                    <button
+                      key={service.key}
+                      type="button"
+                      onClick={() => setReadingForm((prev) => ({ ...prev, ebookService: service.key }))}
+                      style={{
+                        minHeight: 74,
+                        padding: "12px 10px",
+                        borderRadius: 16,
+                        border: `1px solid ${active ? `${accent}88` : COLORS.dark.border}`,
+                        background: active ? `linear-gradient(135deg, ${accent}20, ${accent}10)` : "rgba(255,255,255,0.03)",
+                        color: active ? COLORS.dark.text : COLORS.dark.textMuted,
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        textAlign: "left",
+                        fontFamily: "'Pretendard', sans-serif",
+                      }}
+                    >
+                      <span style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 999,
+                        background: active ? `${accent}20` : "rgba(255,255,255,0.06)",
+                        border: `1px solid ${active ? `${accent}44` : COLORS.dark.border}`,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 11,
+                        fontWeight: 800,
+                        color: active ? accent : COLORS.dark.textMuted,
+                        fontFamily: "'Outfit', sans-serif",
+                      }}>
+                        {service.label.slice(0, 1)}
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.4 }}>{service.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={sectionCardStyle}>
@@ -1221,6 +1324,56 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
               </div>
             )}
           </div>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ ...labelStyle, marginBottom: 10 }}>읽기 상태</label>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+              {statusOptions.map((option) => {
+                const active = readingForm.readingStatus === option.key;
+                return (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => handleReadingStatusChange(option.key)}
+                    style={{
+                      minHeight: 92,
+                      padding: layout?.isPhone ? "14px 12px" : "16px 14px",
+                      borderRadius: 16,
+                      border: `1px solid ${active ? `${option.color}88` : COLORS.dark.border}`,
+                      background: active ? `linear-gradient(135deg, ${option.color}24, ${option.color}12)` : "rgba(255,255,255,0.03)",
+                      color: active ? COLORS.dark.text : COLORS.dark.textMuted,
+                      cursor: "pointer",
+                      position: "relative",
+                      overflow: "hidden",
+                      display: "flex",
+                      alignItems: "flex-end",
+                      justifyContent: "flex-start",
+                      textAlign: "left",
+                      fontFamily: "'Pretendard', sans-serif",
+                    }}
+                  >
+                    <span style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 6,
+                      opacity: active ? 0.26 : 0.14,
+                      pointerEvents: "none",
+                      transform: "scale(1.15)",
+                    }}>
+                      <option.Icon size={layout?.isPhone ? 40 : 48} color="rgba(255,255,255,0.96)" />
+                    </span>
+                    <span style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                      <strong style={{ fontSize: layout?.isPhone ? 13 : 14, fontWeight: 800, color: active ? COLORS.dark.text : COLORS.dark.textMuted }}>
+                        {option.label}
+                      </strong>
+                      <span style={{ fontSize: 11, lineHeight: 1.5, color: active ? COLORS.dark.textMuted : "rgba(244,239,235,0.62)" }}>
+                        {option.description}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div>
             <label style={labelStyle}>전체 페이지</label>
             <input
@@ -1248,62 +1401,66 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
               border: `1px solid ${accent}22`,
               display: "flex",
               flexDirection: "column",
-              gap: 12,
+              gap: 14,
             }}>
-              <div style={{ display: "grid", gridTemplateColumns: layout?.isPhone ? "1fr" : "minmax(0, 1.2fr) minmax(0, 1fr)", gap: 12, alignItems: "stretch" }}>
-                <div style={{ padding: "12px 14px", borderRadius: 16, background: "rgba(255,255,255,0.05)", border: `1px solid ${COLORS.dark.border}` }}>
-                  <label style={{ ...labelStyle, marginBottom: 8 }}>{isPercentMode ? "현재 진행률" : "현재 페이지"}</label>
-                  <input
-                    value={currentValue}
-                    onChange={(e) => setReadingForm((prev) => (
-                      isPercentMode
-                        ? { ...prev, progressValue: e.target.value }
-                        : { ...prev, readPages: e.target.value }
-                    ))}
-                    style={{ ...inputStyle, padding: "12px 14px", fontSize: 22, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}
-                    type="number"
-                    min="0"
-                    max={isPercentMode ? 100 : undefined}
-                    placeholder={isPercentMode ? "0~100" : "현재 페이지"}
-                  />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.dark.textMuted }}>
+                    {isPercentMode ? "현재 진행률" : "현재 페이지"}
+                  </p>
+                  <span style={{ fontSize: 28, fontWeight: 800, color: accent, fontFamily: "'Outfit', sans-serif" }}>
+                    {isPercentMode ? `${currentValue}%` : `${currentValue}p`}
+                  </span>
                 </div>
-                <div style={{ padding: "12px 14px", borderRadius: 16, background: `${accent}12`, border: `1px solid ${accent}26`, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 10 }}>
-                  <div>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>전체 페이지</p>
-                    <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{totalPages > 0 ? `${totalPages}p` : "미입력"}</strong>
-                  </div>
-                  <div>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>진행률</p>
-                    <strong style={{ fontSize: layout?.isPhone ? 28 : 32, lineHeight: 1, color: accent, fontFamily: "'Outfit', sans-serif" }}>
-                      {derivedProgress}%
-                    </strong>
-                  </div>
-                  {!isPercentMode && totalPages > 0 && (
-                    <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted }}>
-                      {derivedReadPages} / {totalPages}p
-                    </p>
-                  )}
+                <div style={{ textAlign: layout?.isPhone ? "left" : "right" }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.dark.textMuted }}>진행률</p>
+                  <span style={{ fontSize: 34, fontWeight: 800, lineHeight: 1, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                    {derivedProgress}%
+                  </span>
                 </div>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, fontSize: 11, color: COLORS.dark.textMuted }}>
-                  <span>{isPercentMode ? "0%" : "0p"}</span>
-                  <span>{isPercentMode ? "100%" : totalPages > 0 ? `${totalPages}p` : "끝"}</span>
+              <input
+                value={currentValue}
+                onChange={(e) => setReadingForm((prev) => (
+                  isPercentMode
+                    ? { ...prev, progressValue: e.target.value }
+                    : { ...prev, readPages: e.target.value }
+                ))}
+                style={inputStyle}
+                type="number"
+                min="0"
+                max={isPercentMode ? 100 : undefined}
+                placeholder={isPercentMode ? "0~100" : "현재 페이지"}
+              />
+
+              <input
+                type="range"
+                min="0"
+                max={isPercentMode ? 100 : Math.max(totalPages, 1)}
+                step="1"
+                value={currentValue}
+                onChange={(e) => setReadingForm((prev) => (
+                  isPercentMode
+                    ? { ...prev, progressValue: e.target.value }
+                    : { ...prev, readPages: e.target.value }
+                ))}
+                style={{ width: "100%", accentColor: accent }}
+              />
+
+              <div style={{ display: "grid", gridTemplateColumns: layout?.isPhone ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+                <div style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: `1px solid ${COLORS.dark.border}` }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>{isPercentMode ? "현재 진행률" : "현재 페이지"}</p>
+                  <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{isPercentMode ? `${currentValue}%` : `${derivedReadPages}p`}</strong>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max={isPercentMode ? 100 : Math.max(totalPages, 1)}
-                  step="1"
-                  value={currentValue}
-                  onChange={(e) => setReadingForm((prev) => (
-                    isPercentMode
-                      ? { ...prev, progressValue: e.target.value }
-                      : { ...prev, readPages: e.target.value }
-                  ))}
-                  style={{ width: "100%", accentColor: accent }}
-                />
+                <div style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: `1px solid ${COLORS.dark.border}` }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>전체 페이지</p>
+                  <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{totalPages > 0 ? `${totalPages}p` : "미입력"}</strong>
+                </div>
+                <div style={{ padding: "12px 14px", borderRadius: 14, background: `${accent}18`, border: `1px solid ${accent}30` }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>진행률</p>
+                  <strong style={{ fontSize: 18, color: accent, fontFamily: "'Outfit', sans-serif" }}>{derivedProgress}%</strong>
+                </div>
               </div>
             </div>
           )}
@@ -1329,56 +1486,12 @@ const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
         <div style={sectionCardStyle}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
             <div>
-              <label style={{ ...labelStyle, marginBottom: 4 }}>책 소개 및 메타데이터</label>
+              <label style={{ ...labelStyle, marginBottom: 4 }}>기타 메타데이터</label>
               <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
-                책 소개는 5줄까지만 접어서 보여주고, 필요하면 펼칠 수 있습니다.
+                출간일, 출판사, ISBN, 표지 URL 등 필요한 메타데이터를 수정할 수 있습니다.
               </p>
             </div>
-            {readingForm.description && (
-              <button
-                type="button"
-                onClick={() => setReadingDescriptionExpanded((prev) => !prev)}
-                style={{
-                  padding: "8px 12px",
-                  borderRadius: 12,
-                  border: `1px solid ${accent}44`,
-                  background: "rgba(255,255,255,0.03)",
-                  color: accent,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontFamily: "'Pretendard', sans-serif",
-                }}
-              >
-                {readingDescriptionExpanded ? "접기" : "펼쳐보기"}
-              </button>
-            )}
           </div>
-
-          {readingForm.description && (
-            <div style={{
-              padding: 14,
-              borderRadius: 16,
-              background: `${accent}10`,
-              border: `1px solid ${accent}20`,
-              marginBottom: 14,
-            }}>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 13,
-                  lineHeight: 1.7,
-                  color: COLORS.dark.textMuted,
-                  display: readingDescriptionExpanded ? "block" : "-webkit-box",
-                  WebkitLineClamp: readingDescriptionExpanded ? "unset" : 5,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                }}
-              >
-                {readingForm.description}
-              </p>
-            </div>
-          )}
 
           <div style={splitFieldStyle}>
             <div><label style={labelStyle}>작가</label><input value={readingForm.author} onChange={(e) => setReadingForm((prev) => ({ ...prev, author: e.target.value }))} style={inputStyle} placeholder="저자명" /></div>
@@ -1541,6 +1654,7 @@ const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layout, api
       description: record.description || "",
       cover: record.cover || "",
       medium: record.medium || "paper",
+      ebookService: record.ebookService || "",
       ebookProgressMode: record.ebookProgressMode || "page",
       readingStatus: record.readingStatus || "reading",
       readPages: String(record.readPages || 0),
