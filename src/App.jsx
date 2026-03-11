@@ -372,52 +372,6 @@ export default function PrismLog() {
         }} />
       )}
 
-      {/* Header */}
-      <header style={{
-        padding: layout.isPhone
-          ? "calc(16px + var(--viewport-safe-top)) 16px 12px"
-          : "calc(18px + var(--viewport-safe-top)) 24px 14px",
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        position: "relative", zIndex: 50, flexShrink: 0,
-        background: "rgba(26,24,22,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        borderBottom: `1px solid ${COLORS.dark.border}`,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {/* prism logo */}
-          <div style={{
-            width: 32, height: 32, borderRadius: 10, position: "relative", overflow: "hidden",
-            background: `linear-gradient(135deg, ${COLORS.reading.main}, ${COLORS.study.main}, ${COLORS.culture.main})`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <div style={{
-              width: 18, height: 18, background: COLORS.dark.bg, borderRadius: 4,
-              clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)",
-            }} />
-          </div>
-          <span style={{
-            fontSize: 18, fontWeight: 800, fontFamily: "'Outfit', sans-serif",
-            background: `linear-gradient(90deg, ${COLORS.reading.main}, ${COLORS.study.main}, ${COLORS.culture.main})`,
-            backgroundClip: "text",
-            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            animation: "prismShimmer 3s ease-in-out infinite",
-          }}>PrismLog</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: layout.isPhone ? 8 : 12 }}>
-          <button type="button" style={iconButtonStyle}>
-            <CalendarIcon size={20} color={COLORS.dark.textMuted} />
-          </button>
-          <button type="button" style={iconButtonStyle}>
-            <TagIcon size={20} color={COLORS.dark.textMuted} />
-          </button>
-          {/* avatar */}
-          <div style={{
-            width: 34, height: 34, borderRadius: "50%",
-            background: `linear-gradient(135deg, ${COLORS.reading.main}66, ${COLORS.culture.main}44)`,
-            border: `1.5px solid ${COLORS.dark.border}`,
-          }} />
-        </div>
-      </header>
-
       {/* Content */}
       <main
         ref={mainScrollRef}
@@ -432,6 +386,50 @@ export default function PrismLog() {
           : "28px 24px calc(40px + var(--viewport-safe-bottom))",
         }}
       >
+        <header style={{
+          padding: layout.isPhone
+            ? "calc(16px + var(--viewport-safe-top)) 16px 12px"
+            : "calc(18px + var(--viewport-safe-top)) 24px 14px",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          position: "relative", zIndex: 50,
+          background: "rgba(26,24,22,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          borderBottom: `1px solid ${COLORS.dark.border}`,
+          margin: layout.isPhone ? "-20px -16px 20px" : "-28px -24px 28px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 10, position: "relative", overflow: "hidden",
+              background: `linear-gradient(135deg, ${COLORS.reading.main}, ${COLORS.study.main}, ${COLORS.culture.main})`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <div style={{
+                width: 18, height: 18, background: COLORS.dark.bg, borderRadius: 4,
+                clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)",
+              }} />
+            </div>
+            <span style={{
+              fontSize: 18, fontWeight: 800, fontFamily: "'Outfit', sans-serif",
+              background: `linear-gradient(90deg, ${COLORS.reading.main}, ${COLORS.study.main}, ${COLORS.culture.main})`,
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              animation: "prismShimmer 3s ease-in-out infinite",
+            }}>PrismLog</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: layout.isPhone ? 8 : 12 }}>
+            <button type="button" style={iconButtonStyle}>
+              <CalendarIcon size={20} color={COLORS.dark.textMuted} />
+            </button>
+            <button type="button" style={iconButtonStyle}>
+              <TagIcon size={20} color={COLORS.dark.textMuted} />
+            </button>
+            <div style={{
+              width: 34, height: 34, borderRadius: "50%",
+              background: `linear-gradient(135deg, ${COLORS.reading.main}66, ${COLORS.culture.main}44)`,
+              border: `1.5px solid ${COLORS.dark.border}`,
+            }} />
+          </div>
+        </header>
+
         <div
           style={{
             width: "100%",
@@ -492,61 +490,27 @@ export default function PrismLog() {
         </div>
       </main>
 
-      {/* FAB / Bottom Dock */}
-      {!isAnySheetOpen && (
+      {/* FAB */}
+      {!isAnySheetOpen && page !== "settings" && (
         layout.isPhone ? (
-          <div
+          <button
+            onClick={() => { setSheetOpen(true); setNewLogCat("reading"); }}
             style={{
               position: "fixed",
-              left: 0,
-              right: 0,
-              bottom: 0,
-              padding: "0 16px calc(12px + var(--viewport-safe-bottom))",
-              background: "linear-gradient(180deg, rgba(26,24,22,0) 0%, rgba(26,24,22,0.7) 34%, rgba(26,24,22,0.96) 100%)",
-              zIndex: 60,
-              pointerEvents: "none",
+              bottom: "calc(6.9rem + var(--viewport-safe-bottom))",
+              right: "calc(20px + var(--safe-area-right))",
+              width: 56, height: 56, borderRadius: "50%", border: "none",
+              background: COLORS.reading.main,
+              boxShadow: `0 4px 16px ${COLORS.reading.glow}`,
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "transform 0.2s, box-shadow 0.2s", zIndex: 60,
             }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
           >
-            <div style={{ position: "relative", width: "100%", maxWidth: 520, margin: "0 auto", minHeight: 84 }}>
-              {page !== "settings" && (
-                <button
-                  onClick={() => { setSheetOpen(true); setNewLogCat("reading"); }}
-                  style={{
-                    position: "absolute",
-                    right: "calc(4px + var(--safe-area-right))",
-                    bottom: 74,
-                    width: 56,
-                    height: 56,
-                    borderRadius: "50%",
-                    border: "none",
-                    background: COLORS.reading.main,
-                    boxShadow: `0 4px 16px ${COLORS.reading.glow}`,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "transform 0.2s, box-shadow 0.2s",
-                    zIndex: 62,
-                    pointerEvents: "auto",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
-                >
-                  <PlusIcon size={26} color="#fff" />
-                </button>
-              )}
-              <Suspense fallback={null}>
-                <MobileFloatingNav
-                  items={navItems}
-                  activeKey={page}
-                  onChange={setPage}
-                  scrollContainerRef={mainScrollRef}
-                  contained
-                />
-              </Suspense>
-            </div>
-          </div>
-        ) : page !== "settings" ? (
+            <PlusIcon size={26} color="#fff" />
+          </button>
+        ) : (
           <button
             onClick={() => { setSheetOpen(true); setNewLogCat("reading"); }}
             style={{
@@ -564,7 +528,14 @@ export default function PrismLog() {
           >
             <PlusIcon size={26} color="#fff" />
           </button>
-        ) : null
+        )
+      )}
+
+      {/* Bottom Nav */}
+      {!layout.isTabletUp && !isAnySheetOpen && (
+        <Suspense fallback={null}>
+          <MobileFloatingNav items={navItems} activeKey={page} onChange={setPage} scrollContainerRef={mainScrollRef} />
+        </Suspense>
       )}
 
       {/* Bottom Sheet for new log */}
