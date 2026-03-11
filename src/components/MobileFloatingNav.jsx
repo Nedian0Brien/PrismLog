@@ -98,9 +98,28 @@ export default function MobileFloatingNav({ items, activeKey, onChange }) {
     <nav
       className={`mobile-floating-nav${hidden ? " mobile-floating-nav-hidden" : ""}`}
       ref={navRef}
-      style={{ "--mobile-nav-accent": activeItem.color || "#f5f0eb" }}
+      style={{
+        "--mobile-nav-accent": activeItem.color || "#f5f0eb",
+        "--mobile-nav-glow-x": indicatorStyle.ready
+          ? `${indicatorStyle.x + navPadding + indicatorStyle.width / 2}px`
+          : "50%",
+      }}
       aria-label="모바일 하단 내비게이션"
     >
+      <span
+        className="mobile-floating-nav__light-pool"
+        aria-hidden="true"
+        style={{
+          width: `${Math.max(indicatorStyle.width + 28, 92)}px`,
+          transform: `translateX(${Math.max(indicatorStyle.x - 14, -6)}px)`,
+          opacity: indicatorStyle.ready ? 1 : 0,
+        }}
+      />
+      <span
+        className="mobile-floating-nav__border-glow"
+        aria-hidden="true"
+        style={{ opacity: indicatorStyle.ready ? 1 : 0 }}
+      />
       <span
         className="mobile-floating-nav__indicator"
         aria-hidden="true"

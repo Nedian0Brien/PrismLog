@@ -40,6 +40,13 @@ const CATEGORY_META = {
   culture: { label: "문화", color: COLORS.culture.main },
 };
 
+const NAV_TAB_COLORS = {
+  home: COLORS.reading.main,
+  records: COLORS.study.main,
+  timeline: COLORS.culture.main,
+  settings: COLORS.dark.text,
+};
+
 const BREAKPOINTS = {
   tablet: 768,
   desktop: 1024,
@@ -3791,10 +3798,10 @@ export default function PrismLog() {
   }, [updateLog]);
 
   const navItems = useMemo(() => [
-    { key: "home", label: "홈", Icon: HomeIcon, color: "#f5f0eb" },
-    { key: "records", label: "기록", Icon: BookIcon, color: COLORS.reading.main },
-    { key: "timeline", label: "타임라인", Icon: ClockIcon, color: "#ff8a65" },
-    { key: "settings", label: "설정", Icon: SettingsIcon, color: "#a09890" },
+    { key: "home", label: "홈", Icon: HomeIcon, color: NAV_TAB_COLORS.home },
+    { key: "records", label: "기록", Icon: BookIcon, color: NAV_TAB_COLORS.records },
+    { key: "timeline", label: "타임라인", Icon: ClockIcon, color: NAV_TAB_COLORS.timeline },
+    { key: "settings", label: "설정", Icon: SettingsIcon, color: NAV_TAB_COLORS.settings },
   ], []);
 
   const renderPage = () => {
