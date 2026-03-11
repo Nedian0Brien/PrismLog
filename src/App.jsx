@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState, useEffect, useCallback, useMemo } from "react";
+import { Suspense, lazy, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   API_BASE_URL,
   DEMO_USER_ID,
@@ -40,6 +40,8 @@ export default function PrismLog() {
   const [editingStudy, setEditingStudy] = useState(null);
   const [editingCulture, setEditingCulture] = useState(null);
   const layout = useResponsiveLayout();
+  const viewportSyncFrameRef = useRef(null);
+  const viewportSyncTimersRef = useRef([]);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -78,19 +80,45 @@ export default function PrismLog() {
       root.style.setProperty("--viewport-offset-bottom", `${Math.round(offsetBottom)}px`);
     };
 
+    const clearScheduledViewportSync = () => {
+      if (viewportSyncFrameRef.current !== null) {
+        window.cancelAnimationFrame(viewportSyncFrameRef.current);
+        viewportSyncFrameRef.current = null;
+      }
+      viewportSyncTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+      viewportSyncTimersRef.current = [];
+    };
+
+    const scheduleViewportSync = () => {
+      clearScheduledViewportSync();
+      viewportSyncFrameRef.current = window.requestAnimationFrame(() => {
+        syncViewportMetrics();
+        viewportSyncFrameRef.current = null;
+
+        [120, 320, 700].forEach((delay) => {
+          const timerId = window.setTimeout(syncViewportMetrics, delay);
+          viewportSyncTimersRef.current.push(timerId);
+        });
+      });
+    };
+
     syncViewportMetrics();
+    scheduleViewportSync();
 
     const viewport = window.visualViewport;
-    window.addEventListener("resize", syncViewportMetrics);
-    window.addEventListener("orientationchange", syncViewportMetrics);
-    viewport?.addEventListener("resize", syncViewportMetrics);
-    viewport?.addEventListener("scroll", syncViewportMetrics);
+    window.addEventListener("resize", scheduleViewportSync);
+    window.addEventListener("orientationchange", scheduleViewportSync);
+    window.addEventListener("scroll", scheduleViewportSync, { passive: true });
+    viewport?.addEventListener("resize", scheduleViewportSync);
+    viewport?.addEventListener("scroll", scheduleViewportSync);
 
     return () => {
-      window.removeEventListener("resize", syncViewportMetrics);
-      window.removeEventListener("orientationchange", syncViewportMetrics);
-      viewport?.removeEventListener("resize", syncViewportMetrics);
-      viewport?.removeEventListener("scroll", syncViewportMetrics);
+      clearScheduledViewportSync();
+      window.removeEventListener("resize", scheduleViewportSync);
+      window.removeEventListener("orientationchange", scheduleViewportSync);
+      window.removeEventListener("scroll", scheduleViewportSync);
+      viewport?.removeEventListener("resize", scheduleViewportSync);
+      viewport?.removeEventListener("scroll", scheduleViewportSync);
     };
   }, []);
 
