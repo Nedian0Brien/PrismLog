@@ -44,7 +44,6 @@ export default function PrismLog() {
   const viewportSyncTimersRef = useRef([]);
   const maxViewportHeightRef = useRef(0);
   const viewportWidthRef = useRef(0);
-  const isAnySheetOpen = sheetOpen || Boolean(editingReading) || Boolean(editingStudy) || Boolean(editingCulture);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -87,11 +86,10 @@ export default function PrismLog() {
         maxViewportHeightRef.current = height;
       }
 
-      const keyboardDelta = Math.max(0, maxViewportHeightRef.current - height - offsetTop);
-      const keyboardOpen = keyboardDelta > 120;
-      const keyboardInsetHeight = keyboardOpen ? keyboardDelta : 0;
-      const appHeight = maxViewportHeightRef.current;
-      const offsetBottom = 0;
+      const keyboardInsetHeight = Math.max(0, maxViewportHeightRef.current - height - offsetTop);
+      const keyboardOpen = keyboardInsetHeight > 120;
+      const appHeight = keyboardOpen ? height : maxViewportHeightRef.current;
+      const offsetBottom = Math.max(0, appHeight - height - offsetTop);
 
       root.style.setProperty("--vh", `${height * 0.01}px`);
       root.style.setProperty("--app-vh", `${Math.round(appHeight)}px`);
@@ -145,24 +143,6 @@ export default function PrismLog() {
       delete root.dataset.keyboardOpen;
     };
   }, []);
-
-  useEffect(() => {
-    if (typeof document === "undefined") return undefined;
-
-    const { body } = document;
-    const prevOverflow = body.style.overflow;
-    const prevOverscrollBehavior = body.style.overscrollBehavior;
-
-    if (isAnySheetOpen) {
-      body.style.overflow = "hidden";
-      body.style.overscrollBehavior = "none";
-    }
-
-    return () => {
-      body.style.overflow = prevOverflow;
-      body.style.overscrollBehavior = prevOverscrollBehavior;
-    };
-  }, [isAnySheetOpen]);
 
   const readingLogs = useMemo(
     () => logs.filter((log) => log.category === "reading").map(mapReadingLog),
@@ -433,9 +413,6 @@ export default function PrismLog() {
         *::-webkit-scrollbar-track { background: transparent; }
         *::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
         input:focus, textarea:focus { border-color: rgba(255,255,255,0.2) !important; }
-        @media (max-width: 767px) {
-          input, textarea, select { font-size: 16px !important; }
-        }
       `}</style>
 
       {/* Glow effect on save (edge glow) */}

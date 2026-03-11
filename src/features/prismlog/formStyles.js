@@ -12,7 +12,7 @@ export const getFormInputStyle = () => ({
   width: "100%",
   padding: "12px 16px",
   borderRadius: 12,
-  fontSize: 16,
+  fontSize: 14,
   background: "rgba(255,255,255,0.05)",
   border: `1px solid ${COLORS.dark.border}`,
   color: COLORS.dark.text,
