@@ -2,7 +2,7 @@
   --mobile-nav-gap: 0.125rem;
   --mobile-nav-shell-padding: 0.25rem;
   --mobile-nav-indicator-width: calc((100% - (var(--mobile-nav-shell-padding) * 2) - (var(--mobile-nav-gap) * (var(--mobile-nav-count) - 1))) / var(--mobile-nav-count));
-  --mobile-nav-indicator-offset: calc(var(--mobile-nav-index) * (var(--mobile-nav-indicator-width) + var(--mobile-nav-gap)));
+  --mobile-nav-indicator-left: calc(var(--mobile-nav-shell-padding) + (var(--mobile-nav-index) * (var(--mobile-nav-indicator-width) + var(--mobile-nav-gap))));
   position: fixed;
   left: 50%;
   bottom: calc(1rem + var(--viewport-safe-bottom));
@@ -79,7 +79,7 @@
 .mobile-floating-nav__light-pool {
   position: absolute;
   top: var(--mobile-nav-shell-padding);
-  left: var(--mobile-nav-shell-padding);
+  left: var(--mobile-nav-indicator-left);
   width: var(--mobile-nav-indicator-width);
   height: calc(100% - (var(--mobile-nav-shell-padding) * 2));
   border-radius: 999px;
@@ -87,9 +87,8 @@
   filter: blur(16px);
   pointer-events: none;
   transition:
-    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    left 0.32s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.2s ease;
-  transform: translateX(var(--mobile-nav-indicator-offset));
   z-index: 0;
 }
 
@@ -104,7 +103,7 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: radial-gradient(10rem circle at calc(var(--mobile-nav-shell-padding) + var(--mobile-nav-indicator-offset) + (var(--mobile-nav-indicator-width) / 2)) 50%, color-mix(in srgb, var(--mobile-nav-accent) 72%, rgba(255, 255, 255, 0.08)) 0%, color-mix(in srgb, var(--mobile-nav-accent) 42%, transparent) 37%, transparent 80%);
+    background: radial-gradient(10rem circle at calc(var(--mobile-nav-indicator-left) + (var(--mobile-nav-indicator-width) / 2)) 50%, color-mix(in srgb, var(--mobile-nav-accent) 72%, rgba(255, 255, 255, 0.08)) 0%, color-mix(in srgb, var(--mobile-nav-accent) 42%, transparent) 37%, transparent 80%);
     pointer-events: none;
     transition: opacity 0.2s ease;
     z-index: 1;
@@ -124,7 +123,7 @@
 .mobile-floating-nav__indicator {
   position: absolute;
   top: var(--mobile-nav-shell-padding);
-  left: var(--mobile-nav-shell-padding);
+  left: var(--mobile-nav-indicator-left);
   width: var(--mobile-nav-indicator-width);
   height: calc(100% - (var(--mobile-nav-shell-padding) * 2));
   border-radius: 999px;
@@ -137,9 +136,8 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
   pointer-events: none;
   transition:
-    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    left 0.32s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.2s ease;
-  transform: translateX(var(--mobile-nav-indicator-offset));
   z-index: 1;
 }
 
