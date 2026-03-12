@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 export default function MobileFloatingNav({ items, activeKey, onChange, contained = false }) {
-  const navPadding = 4;
   const navRef = useRef(null);
   const tabRefs = useRef({});
   const [indicatorStyle, setIndicatorStyle] = useState({ width: 0, x: 0, ready: false });
@@ -9,6 +8,7 @@ export default function MobileFloatingNav({ items, activeKey, onChange, containe
   const lastScrollYRef = useRef(0);
   const compactRef = useRef(false);
   const scrollRafRef = useRef(null);
+  const navPadding = compact ? 2 : 4;
 
   const activeItem = useMemo(
     () => items.find((item) => item.key === activeKey) || items[0] || null,
@@ -73,30 +73,49 @@ export default function MobileFloatingNav({ items, activeKey, onChange, containe
       if (prev.ready && prev.width === width && prev.x === x) return prev;
       return { width, x, ready: true };
     });
-  }, [activeKey]);
+  }, [activeKey, navPadding]);
 
-  useEffect(() => {
-    const raf = window.requestAnimationFrame(() => {
-      syncIndicator();
-      window.requestAnimationFrame(syncIndicator);
-    });
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const activeButton = tabRefs.current[activeKey];
+    if (!nav || !activeButton) return undefined;
+
+    let frameId = null;
+    const scheduleSync = () => {
+      if (frameId !== null) return;
+      frameId = window.requestAnimationFrame(() => {
+        frameId = null;
+        syncIndicator();
+      });
+    };
+
+    scheduleSync();
 
     const handleViewportChange = () => {
-      window.requestAnimationFrame(() => {
-        syncIndicator();
-        window.requestAnimationFrame(syncIndicator);
-      });
+      scheduleSync();
     };
 
     window.addEventListener("resize", handleViewportChange);
     window.addEventListener("orientationchange", handleViewportChange);
 
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        scheduleSync();
+      });
+      resizeObserver.observe(nav);
+      resizeObserver.observe(activeButton);
+    }
+
     return () => {
-      window.cancelAnimationFrame(raf);
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
       window.removeEventListener("resize", handleViewportChange);
       window.removeEventListener("orientationchange", handleViewportChange);
+      resizeObserver?.disconnect();
     };
-  }, [compact, syncIndicator]);
+  }, [activeKey, compact, syncIndicator]);
 
   if (!activeItem) return null;
 
@@ -116,8 +135,8 @@ export default function MobileFloatingNav({ items, activeKey, onChange, containe
         className="mobile-floating-nav__light-pool"
         aria-hidden="true"
         style={{
-          width: `${Math.max(indicatorStyle.width + 22, 80)}px`,
-          transform: `translateX(${Math.max(indicatorStyle.x - 11, -4)}px)`,
+          width: `${Math.max(indicatorStyle.width + (compact ? 14 : 22), compact ? 58 : 80)}px`,
+          transform: `translateX(${Math.max(indicatorStyle.x - (compact ? 7 : 11), compact ? -2 : -4)}px)`,
           opacity: indicatorStyle.ready ? 1 : 0,
         }}
       />
