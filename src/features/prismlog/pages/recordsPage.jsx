@@ -54,7 +54,7 @@ export const StudyAccordion = ({ study }) => {
               background: "rgba(255,255,255,0.03)", border: `1px solid ${COLORS.dark.border}`,
               fontSize: 13, color: COLORS.dark.textMuted, lineHeight: 1.6,
             }}>
-              {study.completed[i] ? "✓ 이 챕터의 학습을 완료했습니다." : "아직 학습하지 않은 챕터입니다. 시작해볼까요?"}
+              {study.completed[i] ? <div style={{ display: "flex", alignItems: "center", gap: 6 }}><CheckIcon size={14} color={COLORS.dark.textMuted} /> 이 챕터의 학습을 완료했습니다.</div> : "아직 학습하지 않은 챕터입니다. 시작해볼까요?"}
             </div>
           )}
         </div>
@@ -375,7 +375,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
       {/* header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h3 style={{ fontSize: 20, fontWeight: 800, color: COLORS.dark.text, margin: 0, fontFamily: "'Outfit', sans-serif" }}>
-          <span style={{ color: COLORS.reading.main }}>📚</span> 독서 기록
+          <BookIcon size={20} color={COLORS.reading.main} /> 독서 기록
         </h3>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 13, color: COLORS.dark.textMuted }}>{books.length}권</span>
@@ -526,7 +526,7 @@ export const StudyPage = ({ studies, loading, onEdit, layout }) => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <h3 style={{ fontSize: 20, fontWeight: 800, color: COLORS.dark.text, margin: 0, fontFamily: "'Outfit', sans-serif" }}>
-        <span style={{ color: COLORS.study.main }}>📝</span> 공부 기록
+        <PenIcon size={20} color={COLORS.study.main} /> 공부 기록
       </h3>
       {!loading && studies.length === 0 && (
         <GlassCard>
@@ -589,7 +589,7 @@ export const CulturePage = ({ items, loading, onEdit, layout, title = "문화생
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <h3 style={{ fontSize: 20, fontWeight: 800, color: COLORS.dark.text, margin: 0, fontFamily: "'Outfit', sans-serif" }}>
-        <span style={{ color: COLORS.culture.main }}>🎬</span> {title}
+        <FilmIcon size={20} color={COLORS.culture.main} /> {title}
       </h3>
       {!fixedType && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
