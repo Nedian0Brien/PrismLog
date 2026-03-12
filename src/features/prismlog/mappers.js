@@ -1,4 +1,4 @@
-import { clamp, normalizeCultureType, safeNumber } from "./core";
+import { clamp, normalizeCultureType, normalizeMetadataObject, safeNumber } from "./core";
 
 export const mapReadingLog = (log) => {
   const payload = log.payload || {};
@@ -23,6 +23,8 @@ export const mapReadingLog = (log) => {
     progressValue: safeNumber(payload.progress_value, progress),
     sourceProvider: payload.source_provider || "",
     sourceId: payload.source_id || "",
+    enrichmentProvider: payload.enrichment_provider || "",
+    sourceMetadata: normalizeMetadataObject(payload.source_metadata),
     progress,
     pages,
     readPages,

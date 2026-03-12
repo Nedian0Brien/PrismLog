@@ -8,6 +8,7 @@ import {
   safeNumber,
   clamp,
   extractIsbn13,
+  normalizeMetadataObject,
   formatRelativeTime,
   formatKoreanDateLabel,
   normalizeCultureType,
@@ -219,6 +220,10 @@ export default function PrismLog() {
           cover: book.cover || null,
           source_provider: book.sourceProvider || null,
           source_id: book.sourceId || null,
+          enrichment_provider: book.enrichmentProvider || null,
+          source_metadata: Object.keys(normalizeMetadataObject(book.sourceMetadata)).length > 0
+            ? normalizeMetadataObject(book.sourceMetadata)
+            : null,
           pages_read: boundedRead,
           pages_total: nextTotal,
           progress: nextProgress,

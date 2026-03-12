@@ -339,6 +339,42 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
   const contentRef = useRef(null);
 
   useEffect(() => {
+    if (!open || typeof window === "undefined") return undefined;
+
+    const scrollY = window.scrollY;
+    const bodyStyle = document.body.style;
+    const htmlStyle = document.documentElement.style;
+    const previousBody = {
+      overflow: bodyStyle.overflow,
+      position: bodyStyle.position,
+      top: bodyStyle.top,
+      left: bodyStyle.left,
+      right: bodyStyle.right,
+      width: bodyStyle.width,
+    };
+    const previousHtmlOverflow = htmlStyle.overflow;
+
+    htmlStyle.overflow = "hidden";
+    bodyStyle.overflow = "hidden";
+    bodyStyle.position = "fixed";
+    bodyStyle.top = `-${scrollY}px`;
+    bodyStyle.left = "0";
+    bodyStyle.right = "0";
+    bodyStyle.width = "100%";
+
+    return () => {
+      htmlStyle.overflow = previousHtmlOverflow;
+      bodyStyle.overflow = previousBody.overflow;
+      bodyStyle.position = previousBody.position;
+      bodyStyle.top = previousBody.top;
+      bodyStyle.left = previousBody.left;
+      bodyStyle.right = previousBody.right;
+      bodyStyle.width = previousBody.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
+
+  useEffect(() => {
     if (!open || layout?.isTabletUp || !contentRef.current || typeof window === "undefined") return undefined;
 
     const scrollFocusedFieldIntoView = (event) => {
@@ -351,7 +387,24 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
 
       window.requestAnimationFrame(() => {
         window.setTimeout(() => {
-          target.scrollIntoView({ block: "center", behavior: "smooth" });
+          const container = contentRef.current;
+          if (!container) return;
+
+          const targetRect = target.getBoundingClientRect();
+          const containerRect = container.getBoundingClientRect();
+          const keyboardInset = Number.parseFloat(
+            getComputedStyle(document.documentElement).getPropertyValue("--keyboard-inset-height")
+          ) || 0;
+          const visibleTop = containerRect.top + 12;
+          const visibleBottom = containerRect.bottom - Math.max(20, keyboardInset * 0.35);
+
+          if (targetRect.bottom > visibleBottom) {
+            container.scrollBy({ top: targetRect.bottom - visibleBottom, behavior: "smooth" });
+            return;
+          }
+          if (targetRect.top < visibleTop) {
+            container.scrollBy({ top: targetRect.top - visibleTop, behavior: "smooth" });
+          }
         }, 180);
       });
     };
@@ -392,6 +445,8 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
           padding: isWide ? "12px 28px calc(32px + var(--viewport-safe-bottom))" : "0 24px calc(32px + var(--viewport-safe-bottom))",
           overflowY: "auto",
           maxHeight: sheetContentMaxHeight,
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "contain",
           scrollPaddingBottom: "calc(24px + var(--keyboard-inset-height))",
           }}
         >

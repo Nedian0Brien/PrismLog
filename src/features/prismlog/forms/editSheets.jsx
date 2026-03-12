@@ -4,9 +4,13 @@ import {
   COLORS,
   CULTURE_TYPES,
   createReadingFormState,
+  clearReadingMetadata,
   applyBookSelectionToReadingForm,
-  applyPageEnrichmentToReadingForm,
-  fetchReadingPageCount,
+  applyBookEnrichmentToReadingForm,
+  buildReadingPayload,
+  fetchReadingEnrichment,
+  formatReadingSourceSummary,
+  normalizeMetadataObject,
   getCultureStatusOptions,
   safeNumber,
   clamp,
@@ -53,6 +57,8 @@ export const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layo
       tags: (record.tags || []).map((tag) => `#${tag}`).join(" "),
       sourceProvider: record.sourceProvider || "",
       sourceId: record.sourceId || "",
+      enrichmentProvider: record.enrichmentProvider || "",
+      sourceMetadata: normalizeMetadataObject(record.sourceMetadata),
     });
     setPageEnriching(false);
     setMessage("");
@@ -121,11 +127,11 @@ export const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layo
               if (!isbn) return;
               setPageEnriching(true);
               try {
-                const pages = await fetchReadingPageCount(apiBaseUrl, isbn);
-                if (!pages) return;
+                const enrichment = await fetchReadingEnrichment(apiBaseUrl, isbn);
+                if (!enrichment) return;
                 setForm((prev) => (
                   prev.sourceId === selectedSourceId
-                    ? applyPageEnrichmentToReadingForm(prev, pages)
+                    ? applyBookEnrichmentToReadingForm(prev, enrichment)
                     : prev
                 ));
               } catch (error) {
@@ -148,7 +154,7 @@ export const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layo
           <div><label style={labelStyle}>출간일</label><input value={form.publishedDate} onChange={(e) => setForm((prev) => ({ ...prev, publishedDate: e.target.value }))} style={inputStyle} placeholder="YYYY-MM-DD" /></div>
         </div>
         <div><label style={labelStyle}>표지 이미지 URL</label><input value={form.cover} onChange={(e) => setForm((prev) => ({ ...prev, cover: e.target.value }))} style={inputStyle} placeholder="https://.../cover.jpg" /></div>
-        {(form.cover || form.sourceProvider || form.description) && (
+        {(form.cover || form.sourceProvider || form.enrichmentProvider || form.description || Object.keys(normalizeMetadataObject(form.sourceMetadata)).length > 0) && (
           <div style={{
             display: "flex",
             gap: 12,
@@ -177,7 +183,7 @@ export const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layo
             </div>
             <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: COLORS.reading.main }}>
-                {form.sourceProvider ? `${form.sourceProvider.toUpperCase()} 자동 입력` : "수동 입력"}
+                {formatReadingSourceSummary(form.sourceProvider, form.enrichmentProvider)}
               </span>
               <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>
                 {[form.author, form.publisher, form.publishedDate].filter(Boolean).join(" · ") || "메타데이터를 직접 수정할 수 있습니다."}
@@ -189,7 +195,7 @@ export const ReadingEditSheet = ({ open, record, onClose, onSave, onDelete, layo
               )}
               {pageEnriching && (
                 <p style={{ margin: 0, fontSize: 11, color: COLORS.reading.main }}>
-                  Google Books에서 페이지 정보를 보강하는 중...
+                  페이지와 메타데이터를 보강하는 중...
                 </p>
               )}
             </div>

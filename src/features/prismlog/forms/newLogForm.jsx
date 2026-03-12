@@ -7,9 +7,10 @@ import {
   createReadingFormState,
   clearReadingMetadata,
   applyBookSelectionToReadingForm,
-  applyPageEnrichmentToReadingForm,
+  applyBookEnrichmentToReadingForm,
   buildReadingPayload,
-  fetchReadingPageCount,
+  fetchReadingEnrichment,
+  getReadingEnrichmentMessage,
   getCultureStatusOptions,
   safeNumber,
   clamp,
@@ -139,17 +140,14 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                 }
                 setReadingEnrichingPages(true);
                 try {
-                  const pages = await fetchReadingPageCount(apiBaseUrl, isbn);
-                  if (!pages) {
-                    setReadingPageMessage("자동 입력 실패: 해당 ISBN으로 페이지 정보를 찾지 못했습니다.");
-                    return;
-                  }
+                  const enrichment = await fetchReadingEnrichment(apiBaseUrl, isbn);
+                  if (!enrichment) return;
                   setReadingForm((prev) => (
                     prev.sourceId === selectedSourceId
-                      ? applyPageEnrichmentToReadingForm(prev, pages)
+                      ? applyBookEnrichmentToReadingForm(prev, enrichment)
                       : prev
                   ));
-                  setReadingPageMessage(`전체 페이지를 자동으로 불러왔습니다. (${pages}p)`);
+                  setReadingPageMessage(getReadingEnrichmentMessage(enrichment));
                 } catch (error) {
                   console.error("page enrichment failed", error);
                   setReadingPageMessage("자동 입력 실패: 페이지 정보를 불러오는 중 오류가 발생했습니다.");
@@ -252,17 +250,14 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
       setReadingPageMessage("");
       setReadingEnrichingPages(true);
       try {
-        const pages = await fetchReadingPageCount(apiBaseUrl, isbn);
-        if (!pages) {
-          setReadingPageMessage("자동 입력 실패: 해당 ISBN으로 페이지 정보를 찾지 못했습니다.");
-          return;
-        }
+        const enrichment = await fetchReadingEnrichment(apiBaseUrl, isbn);
+        if (!enrichment) return;
         setReadingForm((prev) => (
           prev.sourceId === activeSourceId
-            ? applyPageEnrichmentToReadingForm(prev, pages)
+            ? applyBookEnrichmentToReadingForm(prev, enrichment)
             : prev
         ));
-        setReadingPageMessage(`전체 페이지를 자동으로 불러왔습니다. (${pages}p)`);
+        setReadingPageMessage(getReadingEnrichmentMessage(enrichment));
       } catch (error) {
         console.error("manual page enrichment failed", error);
         setReadingPageMessage("자동 입력 실패: 페이지 정보를 불러오는 중 오류가 발생했습니다.");
@@ -595,7 +590,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
             <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
-              ISBN이 있으면 버튼으로 전체 페이지를 다시 불러올 수 있습니다.
+              ISBN이 있으면 전체 페이지와 추가 메타데이터를 다시 보강할 수 있습니다.
             </p>
             <button
               type="button"

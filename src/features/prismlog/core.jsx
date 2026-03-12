@@ -205,6 +205,13 @@ export const safeNumber = (value, fallback = 0) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
 };
+export const normalizeMetadataObject = (value) => (
+  value && typeof value === "object" && !Array.isArray(value) ? value : {}
+);
+export const ENRICHMENT_PROVIDER_LABELS = {
+  google_books: "Google Books",
+  nl_isbn: "국립중앙도서관",
+};
 
 export const createReadingFormState = () => ({
   title: "",
@@ -227,6 +234,8 @@ export const createReadingFormState = () => ({
   tags: "",
   sourceProvider: "",
   sourceId: "",
+  enrichmentProvider: "",
+  sourceMetadata: {},
 });
 
 export const extractIsbn13 = (value) => {
@@ -254,6 +263,8 @@ export const clearReadingMetadata = (form) => ({
   progressValue: form.readingStatus === "finished" ? "100" : "0",
   sourceProvider: "",
   sourceId: "",
+  enrichmentProvider: "",
+  sourceMetadata: {},
 });
 
 export const applyBookSelectionToReadingForm = (form, book) => {
@@ -274,6 +285,8 @@ export const applyBookSelectionToReadingForm = (form, book) => {
     progressValue: nextProgressValue,
     sourceProvider: book.source_provider || "",
     sourceId: book.source_id || "",
+    enrichmentProvider: "",
+    sourceMetadata: {},
   };
 };
 
@@ -292,6 +305,58 @@ export const applyPageEnrichmentToReadingForm = (form, pages) => {
     pages: nextPages,
     readPages: nextReadPages,
   };
+};
+
+export const applyBookEnrichmentToReadingForm = (form, enrichment) => {
+  const metadata = normalizeMetadataObject(enrichment?.source_metadata);
+  const nextForm = {
+    ...form,
+    title: enrichment?.title || form.title,
+    author: Array.isArray(enrichment?.authors) && enrichment.authors.length > 0
+      ? enrichment.authors.join(", ")
+      : form.author,
+    publisher: enrichment?.publisher || form.publisher,
+    isbn: form.isbn || enrichment?.isbn || "",
+    publishedDate: enrichment?.published_date || form.publishedDate,
+    description: enrichment?.description || form.description,
+    cover: enrichment?.cover_url || form.cover,
+    enrichmentProvider: enrichment?.source_provider || form.enrichmentProvider,
+    sourceMetadata: Object.keys(metadata).length > 0
+      ? { ...normalizeMetadataObject(form.sourceMetadata), ...metadata }
+      : normalizeMetadataObject(form.sourceMetadata),
+  };
+  const pages = safeNumber(enrichment?.pages_total);
+  return pages > 0 ? applyPageEnrichmentToReadingForm(nextForm, pages) : nextForm;
+};
+
+export const hasReadingEnrichmentMetadata = (enrichment) => {
+  const metadata = normalizeMetadataObject(enrichment?.source_metadata);
+  return Boolean(
+    enrichment?.title
+      || enrichment?.publisher
+      || enrichment?.published_date
+      || enrichment?.description
+      || enrichment?.cover_url
+      || (Array.isArray(enrichment?.authors) && enrichment.authors.length > 0)
+      || Object.keys(metadata).length > 0
+  );
+};
+
+export const getReadingEnrichmentMessage = (enrichment) => {
+  const pages = safeNumber(enrichment?.pages_total);
+  if (pages > 0) {
+    return `전체 페이지를 자동으로 불러왔습니다. (${pages}p)`;
+  }
+  if (hasReadingEnrichmentMetadata(enrichment)) {
+    return "페이지 수는 찾지 못했지만 메타데이터를 보강했습니다.";
+  }
+  return "자동 입력 실패: 해당 ISBN으로 페이지 정보를 찾지 못했습니다.";
+};
+
+export const formatReadingSourceSummary = (sourceProvider, enrichmentProvider) => {
+  const searchLabel = sourceProvider ? `${sourceProvider.toUpperCase()} 검색` : "";
+  const enrichLabel = enrichmentProvider ? `${ENRICHMENT_PROVIDER_LABELS[enrichmentProvider] || enrichmentProvider} 보강` : "";
+  return [searchLabel, enrichLabel].filter(Boolean).join(" · ") || "수동 입력";
 };
 
 export const buildReadingPayload = (form) => {
@@ -319,6 +384,10 @@ export const buildReadingPayload = (form) => {
     progress_value: isPercentMode ? progressValue : null,
     source_provider: form.sourceProvider || null,
     source_id: form.sourceId || null,
+    enrichment_provider: form.enrichmentProvider || null,
+    source_metadata: Object.keys(normalizeMetadataObject(form.sourceMetadata)).length > 0
+      ? normalizeMetadataObject(form.sourceMetadata)
+      : null,
     pages_read: readPages,
     pages_total: pages,
     progress,
@@ -327,7 +396,7 @@ export const buildReadingPayload = (form) => {
   };
 };
 
-export const fetchReadingPageCount = async (apiBaseUrl, isbn) => {
+export const fetchReadingEnrichment = async (apiBaseUrl, isbn) => {
   const normalized = String(isbn || "").replace(/[^\dXx]/g, "");
   if (!normalized) return null;
   const response = await fetch(
@@ -335,8 +404,13 @@ export const fetchReadingPageCount = async (apiBaseUrl, isbn) => {
   );
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const payload = await response.json();
-  const pages = Number(payload.pages_total);
-  return Number.isFinite(pages) && pages > 0 ? pages : null;
+  const pages = Number(payload?.pages_total);
+  return {
+    ...payload,
+    pages_total: Number.isFinite(pages) && pages > 0 ? pages : null,
+    authors: Array.isArray(payload?.authors) ? payload.authors.filter(Boolean) : [],
+    source_metadata: normalizeMetadataObject(payload?.source_metadata),
+  };
 };
 
 export const normalizeCultureType = (value) => {
