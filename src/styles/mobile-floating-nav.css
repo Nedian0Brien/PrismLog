@@ -1,14 +1,18 @@
 .mobile-floating-nav {
+  --mobile-nav-gap: 0.125rem;
+  --mobile-nav-shell-padding: 0.25rem;
+  --mobile-nav-indicator-width: calc((100% - (var(--mobile-nav-shell-padding) * 2) - (var(--mobile-nav-gap) * (var(--mobile-nav-count) - 1))) / var(--mobile-nav-count));
+  --mobile-nav-indicator-offset: calc(var(--mobile-nav-index) * (var(--mobile-nav-indicator-width) + var(--mobile-nav-gap)));
   position: fixed;
   left: 50%;
   bottom: calc(1rem + var(--viewport-safe-bottom));
   transform: translateX(-50%);
   width: min(23rem, calc(100vw - var(--safe-area-left) - var(--safe-area-right) - 1.25rem));
   min-height: 3.875rem;
-  padding: 0.25rem;
+  padding: var(--mobile-nav-shell-padding);
   display: flex;
   align-items: stretch;
-  gap: 0.125rem;
+  gap: var(--mobile-nav-gap);
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background:
@@ -43,18 +47,10 @@
 }
 
 .mobile-floating-nav-compact {
+  --mobile-nav-gap: 0.0625rem;
+  --mobile-nav-shell-padding: 0.125rem;
   width: min(16.5rem, calc(100vw - var(--safe-area-left) - var(--safe-area-right) - 3.5rem));
   min-height: 3.125rem;
-  padding: 0.125rem;
-  gap: 0.0625rem;
-}
-
-.mobile-floating-nav-morphing .mobile-floating-nav__light-pool,
-.mobile-floating-nav-morphing .mobile-floating-nav__indicator {
-  transition:
-    transform 0.08s linear,
-    width 0.08s linear,
-    opacity 0.12s ease;
 }
 
 .mobile-floating-nav::before {
@@ -82,17 +78,18 @@
 
 .mobile-floating-nav__light-pool {
   position: absolute;
-  top: 0.25rem;
-  left: 0.25rem;
-  height: calc(100% - 0.5rem);
+  top: var(--mobile-nav-shell-padding);
+  left: var(--mobile-nav-shell-padding);
+  width: var(--mobile-nav-indicator-width);
+  height: calc(100% - (var(--mobile-nav-shell-padding) * 2));
   border-radius: 999px;
   background: radial-gradient(circle at 50% 48%, color-mix(in srgb, var(--mobile-nav-accent) 26%, rgba(255, 255, 255, 0.08)) 0%, color-mix(in srgb, var(--mobile-nav-accent) 14%, transparent) 42%, transparent 72%);
   filter: blur(16px);
   pointer-events: none;
   transition:
-    transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15),
-    width 0.3s ease,
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.2s ease;
+  transform: translateX(var(--mobile-nav-indicator-offset));
   z-index: 0;
 }
 
@@ -107,7 +104,7 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: radial-gradient(10rem circle at var(--mobile-nav-glow-x) 50%, color-mix(in srgb, var(--mobile-nav-accent) 72%, rgba(255, 255, 255, 0.08)) 0%, color-mix(in srgb, var(--mobile-nav-accent) 42%, transparent) 37%, transparent 80%);
+    background: radial-gradient(10rem circle at calc(var(--mobile-nav-shell-padding) + var(--mobile-nav-indicator-offset) + (var(--mobile-nav-indicator-width) / 2)) 50%, color-mix(in srgb, var(--mobile-nav-accent) 72%, rgba(255, 255, 255, 0.08)) 0%, color-mix(in srgb, var(--mobile-nav-accent) 42%, transparent) 37%, transparent 80%);
     pointer-events: none;
     transition: opacity 0.2s ease;
     z-index: 1;
@@ -126,9 +123,10 @@
 
 .mobile-floating-nav__indicator {
   position: absolute;
-  top: 0.25rem;
-  left: 0.25rem;
-  height: calc(100% - 0.5rem);
+  top: var(--mobile-nav-shell-padding);
+  left: var(--mobile-nav-shell-padding);
+  width: var(--mobile-nav-indicator-width);
+  height: calc(100% - (var(--mobile-nav-shell-padding) * 2));
   border-radius: 999px;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--mobile-nav-accent) 52%, rgba(255, 255, 255, 0.34)), rgba(255, 255, 255, 0.04)),
@@ -139,9 +137,9 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
   pointer-events: none;
   transition:
-    transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15),
-    width 0.3s ease,
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.2s ease;
+  transform: translateX(var(--mobile-nav-indicator-offset));
   z-index: 1;
 }
 
