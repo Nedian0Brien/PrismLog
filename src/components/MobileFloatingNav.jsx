@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export default function MobileFloatingNav({ items, activeKey, onChange, contained = false }) {
-  const navPadding = 6;
+  const navPadding = 4;
   const navRef = useRef(null);
   const tabRefs = useRef({});
   const [indicatorStyle, setIndicatorStyle] = useState({ width: 0, x: 0, ready: false });
@@ -62,8 +62,8 @@ export default function MobileFloatingNav({ items, activeKey, onChange, containe
         className="mobile-floating-nav__light-pool"
         aria-hidden="true"
         style={{
-          width: `${Math.max(indicatorStyle.width + 28, 92)}px`,
-          transform: `translateX(${Math.max(indicatorStyle.x - 14, -6)}px)`,
+          width: `${Math.max(indicatorStyle.width + 22, 80)}px`,
+          transform: `translateX(${Math.max(indicatorStyle.x - 11, -4)}px)`,
           opacity: indicatorStyle.ready ? 1 : 0,
         }}
       />
