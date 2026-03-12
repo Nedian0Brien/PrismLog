@@ -444,6 +444,82 @@ const formatRelativeTime = (isoLike) => {
   return `${diff}일 전`;
 };
 
+const getBottomSheetViewportMetrics = () => {
+  if (typeof window === "undefined") {
+    return { viewportHeight: 820, viewportOffsetTop: 0, keyboardInset: 0 };
+  }
+  const viewport = window.visualViewport;
+  const layoutHeight = window.innerHeight;
+  if (!viewport) {
+    return { viewportHeight: layoutHeight, viewportOffsetTop: 0, keyboardInset: 0 };
+  }
+  const viewportHeight = Math.max(320, Math.round(viewport.height));
+  const viewportOffsetTop = Math.max(0, Math.round(viewport.offsetTop));
+  const keyboardInset = Math.max(0, Math.round(layoutHeight - (viewport.height + viewport.offsetTop)));
+  return { viewportHeight, viewportOffsetTop, keyboardInset };
+};
+
+const useBottomSheetViewport = (active) => {
+  const [metrics, setMetrics] = useState(getBottomSheetViewportMetrics);
+
+  useEffect(() => {
+    if (!active || typeof window === "undefined") return undefined;
+    const updateMetrics = () => setMetrics(getBottomSheetViewportMetrics());
+    const viewport = window.visualViewport;
+
+    updateMetrics();
+    window.addEventListener("resize", updateMetrics);
+    viewport?.addEventListener("resize", updateMetrics);
+    viewport?.addEventListener("scroll", updateMetrics);
+
+    return () => {
+      window.removeEventListener("resize", updateMetrics);
+      viewport?.removeEventListener("resize", updateMetrics);
+      viewport?.removeEventListener("scroll", updateMetrics);
+    };
+  }, [active]);
+
+  return metrics;
+};
+
+const useBodyScrollLock = (active) => {
+  useEffect(() => {
+    if (!active || typeof window === "undefined") return undefined;
+
+    const scrollY = window.scrollY;
+    const bodyStyle = document.body.style;
+    const htmlStyle = document.documentElement.style;
+    const previousBody = {
+      overflow: bodyStyle.overflow,
+      position: bodyStyle.position,
+      top: bodyStyle.top,
+      left: bodyStyle.left,
+      right: bodyStyle.right,
+      width: bodyStyle.width,
+    };
+    const previousHtmlOverflow = htmlStyle.overflow;
+
+    htmlStyle.overflow = "hidden";
+    bodyStyle.overflow = "hidden";
+    bodyStyle.position = "fixed";
+    bodyStyle.top = `-${scrollY}px`;
+    bodyStyle.left = "0";
+    bodyStyle.right = "0";
+    bodyStyle.width = "100%";
+
+    return () => {
+      htmlStyle.overflow = previousHtmlOverflow;
+      bodyStyle.overflow = previousBody.overflow;
+      bodyStyle.position = previousBody.position;
+      bodyStyle.top = previousBody.top;
+      bodyStyle.left = previousBody.left;
+      bodyStyle.right = previousBody.right;
+      bodyStyle.width = previousBody.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, [active]);
+};
+
 const mapReadingLog = (log) => {
   const payload = log.payload || {};
   const pages = safeNumber(payload.pages_total || payload.pages);
@@ -888,19 +964,44 @@ const DistributionBarChart = ({ counts, enabled }) => {
 
 /* ──────────── Bottom Sheet ──────────── */
 const BottomSheet = ({ open, onClose, children, title, layout }) => {
-  if (!open) return null;
   const isWide = layout?.isTabletUp;
+  useBodyScrollLock(open);
+  const { viewportHeight, viewportOffsetTop, keyboardInset } = useBottomSheetViewport(open);
+  if (!open) return null;
+
+  const wrapperPadding = isWide ? 24 : 0;
+  const sheetMaxHeight = Math.max(320, viewportHeight - (isWide ? 48 : 12));
+  const contentMaxHeight = Math.max(220, sheetMaxHeight - (isWide ? 24 : 40));
+
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: isWide ? "center" : "flex-end", justifyContent: "center", padding: isWide ? 24 : 0 }}>
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 100,
+      display: "flex",
+      alignItems: isWide ? "center" : "flex-end",
+      justifyContent: "center",
+      paddingTop: wrapperPadding + viewportOffsetTop,
+      paddingRight: wrapperPadding,
+      paddingLeft: wrapperPadding,
+      paddingBottom: wrapperPadding + keyboardInset,
+      boxSizing: "border-box",
+    }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={onClose} />
       <div style={{
-        position: "relative", width: "100%", maxWidth: isWide ? (layout?.isDesktop ? 760 : 680) : 480, maxHeight: "85vh",
+        position: "relative", width: "100%", maxWidth: isWide ? (layout?.isDesktop ? 760 : 680) : 480, maxHeight: sheetMaxHeight,
         background: COLORS.dark.surfaceSolid, borderRadius: isWide ? 24 : "24px 24px 0 0",
         padding: "8px 0 0", overflow: "hidden",
         animation: "slideUp 0.35s cubic-bezier(.32,.72,.24,1)",
       }}>
         {!isWide && <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)", margin: "0 auto 16px" }} />}
-        <div style={{ padding: isWide ? "12px 28px 32px" : "0 24px 32px", overflowY: "auto", maxHeight: isWide ? "calc(85vh - 24px)" : "calc(85vh - 40px)" }}>
+        <div style={{
+          padding: isWide ? "12px 28px 32px" : "0 24px 32px",
+          overflowY: "auto",
+          maxHeight: contentMaxHeight,
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "contain",
+        }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
             <h3 style={{ fontSize: 20, fontWeight: 700, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", margin: 0 }}>{title}</h3>
             <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
