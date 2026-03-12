@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import BookSearchResultsPanel from "../../../components/BookSearchResultsPanel";
+import MediaAutocompleteField from "../../../components/MediaAutocompleteField";
 import {
   COLORS,
   CULTURE_TYPES,
@@ -11,6 +12,9 @@ import {
   buildReadingPayload,
   fetchReadingEnrichment,
   getReadingEnrichmentMessage,
+  createCultureFormState,
+  applyCultureSelectionToForm,
+  clearCultureMetadata,
   getCultureStatusOptions,
   safeNumber,
   clamp,
@@ -39,7 +43,9 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
   const [readingDescriptionExpanded, setReadingDescriptionExpanded] = useState(false);
   const [readingPageMessage, setReadingPageMessage] = useState("");
   const [studyForm, setStudyForm] = useState({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "" });
-  const [cultureForm, setCultureForm] = useState({ title: "", type: "영화", status: "시청 중", rating: 0, playtime: "", tags: "" });
+  const [cultureForm, setCultureForm] = useState(createCultureFormState);
+  const [cultureStep, setCultureStep] = useState("search");
+  const [cultureSearchComposing, setCultureSearchComposing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
 
@@ -61,7 +67,9 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     setReadingDescriptionExpanded(false);
     setReadingPageMessage("");
     setStudyForm({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "" });
-    setCultureForm({ title: "", type: "영화", status: "시청 중", rating: 0, playtime: "", tags: "" });
+    setCultureForm(createCultureFormState());
+    setCultureStep("search");
+    setCultureSearchComposing(false);
     setSubmitMessage("");
     setSubmitting(false);
   }, [isOpen]);
@@ -839,10 +847,137 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
       </div>
     );
   }
-  // culture
+  // culture — step: search
+  const isGameType = cultureForm.type === "게임";
+  if (cultureStep === "search" && !isGameType) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{
+          padding: layout?.isPhone ? "18px 16px" : "22px 20px",
+          borderRadius: 18,
+          border: `1px solid ${accent}22`,
+          background: `linear-gradient(180deg, ${accent}18, rgba(255,255,255,0.03))`,
+          boxShadow: `0 18px 40px ${accent}14`,
+        }}>
+          <p style={{ margin: "0 0 8px", fontSize: 12, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+            Content Search
+          </p>
+          <h3 style={{ margin: "0 0 8px", fontSize: layout?.isPhone ? 22 : 24, lineHeight: 1.2, fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: COLORS.dark.text }}>
+            추가할 콘텐츠를 찾으세요
+          </h3>
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: COLORS.dark.textMuted }}>
+            제목을 입력하면 포스터·개봉일·줄거리가 자동으로 채워집니다.
+          </p>
+        </div>
+
+        <div>
+          <label style={labelStyle}>유형</label>
+          <div style={{ display: "flex", gap: 8 }}>
+            {CULTURE_TYPES.map(t => (
+              <button key={t} onClick={() => setCultureForm((prev) => ({ ...prev, type: t, status: getCultureStatusOptions(t)[0] }))} style={{
+                padding: "8px 16px", borderRadius: 10, border: `1px solid ${cultureForm.type === t ? accent : COLORS.dark.border}`,
+                background: cultureForm.type === t ? `${accent}18` : "rgba(255,255,255,0.04)", color: cultureForm.type === t ? accent : COLORS.dark.textMuted, fontSize: 13,
+                fontWeight: 600, cursor: "pointer", fontFamily: "'Pretendard', sans-serif",
+              }}>{t}</button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label style={labelStyle}>콘텐츠 검색</label>
+          <MediaAutocompleteField
+            value={cultureForm.title}
+            mediaType={cultureForm.type}
+            onChange={(nextValue) => {
+              setCultureForm((prev) => ({ ...clearCultureMetadata(prev), title: nextValue }));
+            }}
+            onCompositionStart={() => setCultureSearchComposing(true)}
+            onCompositionEnd={() => setCultureSearchComposing(false)}
+            onSelect={(media) => {
+              setCultureForm((prev) => applyCultureSelectionToForm(prev, media));
+              setCultureStep("details");
+            }}
+            apiBaseUrl={apiBaseUrl}
+            inputStyle={{ ...inputStyle, padding: "15px 18px", fontSize: 16 }}
+            accentColor={accent}
+            placeholder={cultureForm.type === "시리즈" ? "시리즈 제목으로 검색..." : "영화 제목으로 검색..."}
+            disabled={cultureSearchComposing}
+          />
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+          <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
+            검색 결과가 없으면 직접 입력으로 계속할 수 있습니다.
+          </p>
+          <button
+            type="button"
+            onClick={() => setCultureStep("details")}
+            style={{
+              padding: "10px 14px", borderRadius: 12, border: `1px solid ${accent}55`,
+              background: `${accent}16`, color: accent, fontSize: 12, fontWeight: 700,
+              cursor: "pointer", fontFamily: "'Pretendard', sans-serif",
+            }}
+          >
+            직접 입력하기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // culture — step: details (또는 게임)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div><label style={labelStyle}>콘텐츠 검색</label><input value={cultureForm.title} onChange={(e) => setCultureForm((prev) => ({ ...prev, title: e.target.value }))} style={inputStyle} placeholder="영화, 시리즈, 게임 제목 검색..." /></div>
+      {!isGameType && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: "0 0 2px", fontSize: 12, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+              {cultureForm.sourceId ? "Metadata Ready" : "Manual Input"}
+            </p>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: COLORS.dark.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {cultureForm.title || "제목 없음"}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCultureStep("search")}
+            style={{
+              padding: "10px 14px", borderRadius: 12, border: `1px solid ${accent}55`,
+              background: "rgba(255,255,255,0.04)", color: accent, fontSize: 12, fontWeight: 700,
+              cursor: "pointer", fontFamily: "'Pretendard', sans-serif", flexShrink: 0,
+            }}
+          >
+            다시 검색
+          </button>
+        </div>
+      )}
+
+      {!isGameType && cultureForm.poster && (
+        <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+          <img
+            src={cultureForm.poster}
+            alt="포스터"
+            style={{ width: 72, height: 104, borderRadius: 8, objectFit: "cover", flexShrink: 0, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
+          />
+          <div style={{ minWidth: 0 }}>
+            {cultureForm.releaseDate && (
+              <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.dark.textMuted }}>
+                {cultureForm.releaseDate?.slice(0, 4)}년 개봉
+              </p>
+            )}
+            {cultureForm.overview && (
+              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {cultureForm.overview}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div><label style={labelStyle}>{isGameType ? "게임 제목" : "제목"}</label>
+        <input value={cultureForm.title} onChange={(e) => setCultureForm((prev) => ({ ...prev, title: e.target.value }))} style={inputStyle} placeholder={isGameType ? "게임 제목을 입력하세요" : "영화 또는 시리즈 제목"} />
+      </div>
+
       <div><label style={labelStyle}>유형</label>
         <div style={{ display: "flex", gap: 8 }}>
           {CULTURE_TYPES.map(t => (
@@ -854,6 +989,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
           ))}
         </div>
       </div>
+
       <div><label style={labelStyle}>상태</label>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {getCultureStatusOptions(cultureForm.type).map(s => (
@@ -865,26 +1001,44 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
           ))}
         </div>
       </div>
-      <div><label style={labelStyle}>플레이타임 / 회차</label><input value={cultureForm.playtime} onChange={(e) => setCultureForm((prev) => ({ ...prev, playtime: e.target.value }))} style={inputStyle} placeholder="예: 8화 / 10화, 42시간" /></div>
-      <div><label style={labelStyle}>평점</label><input value={cultureForm.rating} onChange={(e) => setCultureForm((prev) => ({ ...prev, rating: safeNumber(e.target.value) }))} style={inputStyle} type="number" min="0" max="5" /></div>
-      <div><label style={labelStyle}>태그</label><input value={cultureForm.tags} onChange={(e) => setCultureForm((prev) => ({ ...prev, tags: e.target.value }))} style={inputStyle} placeholder="#SF #드라마 ..." /></div>
+
+      <div><label style={labelStyle}>{isGameType ? "플레이타임" : "시청 회차"}</label>
+        <input value={cultureForm.playtime} onChange={(e) => setCultureForm((prev) => ({ ...prev, playtime: e.target.value }))} style={inputStyle} placeholder={isGameType ? "예: 42시간" : "예: 8화 / 10화"} />
+      </div>
+
+      <div><label style={labelStyle}>평점</label>
+        <input value={cultureForm.rating} onChange={(e) => setCultureForm((prev) => ({ ...prev, rating: safeNumber(e.target.value) }))} style={inputStyle} type="number" min="0" max="5" />
+      </div>
+
+      <div><label style={labelStyle}>태그</label>
+        <input value={cultureForm.tags} onChange={(e) => setCultureForm((prev) => ({ ...prev, tags: e.target.value }))} style={inputStyle} placeholder="#SF #드라마 ..." />
+      </div>
+
       {submitMessage && <p style={{ margin: 0, fontSize: 12, color: submitMessage.startsWith("저장 실패") ? "#f8b4bb" : COLORS.culture.light }}>{submitMessage}</p>}
+
       <button
         disabled={submitting}
         onClick={() => handleSave(
           {
             category: "culture",
             title: cultureForm.title.trim(),
-            summary: "",
+            summary: cultureForm.overview.trim(),
             tags: parseTags(cultureForm.tags),
             payload: {
               type: cultureForm.type,
               status: cultureForm.status,
               playtime: cultureForm.playtime.trim() || null,
               rating: clamp(safeNumber(cultureForm.rating), 0, 5),
+              poster: cultureForm.poster || null,
+              release_date: cultureForm.releaseDate || null,
+              source_provider: cultureForm.sourceProvider || null,
+              source_id: cultureForm.sourceId || null,
             },
           },
-          () => setCultureForm({ title: "", type: "영화", status: "시청 중", rating: 0, playtime: "", tags: "" })
+          () => {
+            setCultureForm(createCultureFormState());
+            setCultureStep("search");
+          }
         )}
         style={actionButtonStyle}
       >

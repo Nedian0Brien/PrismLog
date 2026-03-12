@@ -1,0 +1,26 @@
+services:
+  prismlog-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prismlog-backend
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    environment:
+      APP_NAME: "PrismLog API"
+      APP_ENV: development
+      API_V1_PREFIX: /api/v1
+      DATABASE_URL: postgresql+psycopg://prismlog:prismlog_change_me@prismlog-postgres:5432/prismlog
+      CORS_ORIGINS: "http://localhost:5173"
+      NAVER_CLIENT_ID: "${NAVER_CLIENT_ID}"
+      NAVER_CLIENT_SECRET: "${NAVER_CLIENT_SECRET}"
+      GOOGLE_BOOKS_API_KEY: "${GOOGLE_BOOKS_API_KEY}"
+      NL_ISBN_API_CERT_KEY: "${NL_ISBN_API_CERT_KEY}"
+      TMDB_API_KEY: "${TMDB_API_KEY}"
+    networks:
+      - prismlog-net
+
+networks:
+  prismlog-net:
+    external: true

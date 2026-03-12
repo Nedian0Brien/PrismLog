@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.db import Base, engine
-from app.routers import books, dev, health, logs
+from app.routers import books, dev, health, logs, media
 
 
 settings = get_settings()
@@ -32,3 +32,4 @@ app.include_router(health.router)
 app.include_router(logs.router, prefix=settings.api_v1_prefix)
 app.include_router(dev.router, prefix=settings.api_v1_prefix)
 app.include_router(books.router, prefix=settings.api_v1_prefix)
+app.include_router(media.router, prefix=settings.api_v1_prefix)

@@ -413,6 +413,39 @@ export const fetchReadingEnrichment = async (apiBaseUrl, isbn) => {
   };
 };
 
+export const createCultureFormState = () => ({
+  title: "",
+  type: "영화",
+  status: "시청 중",
+  rating: 0,
+  playtime: "",
+  tags: "",
+  poster: "",
+  releaseDate: "",
+  overview: "",
+  sourceProvider: "",
+  sourceId: "",
+});
+
+export const applyCultureSelectionToForm = (form, media) => ({
+  ...form,
+  title: media.title || form.title,
+  poster: media.poster_url || "",
+  releaseDate: media.release_date || "",
+  overview: media.overview || "",
+  sourceProvider: media.source_provider || "",
+  sourceId: media.source_id || "",
+});
+
+export const clearCultureMetadata = (form) => ({
+  ...form,
+  poster: "",
+  releaseDate: "",
+  overview: "",
+  sourceProvider: "",
+  sourceId: "",
+});
+
 export const normalizeCultureType = (value) => {
   if (!value) return "영화";
   if (value === "TV" || value === "드라마" || value === "시리즈") return "시리즈";

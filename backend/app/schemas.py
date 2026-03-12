@@ -60,6 +60,27 @@ class BookSearchResponse(BaseModel):
     items: list[BookSearchItem] = Field(default_factory=list)
 
 
+MediaType = Literal["movie", "series"]
+
+
+class MediaSearchItem(BaseModel):
+    source_provider: Literal["tmdb"]
+    source_id: str
+    tmdb_id: int
+    type: MediaType
+    title: str
+    original_title: str | None = None
+    poster_url: str | None = None
+    release_date: str | None = None
+    overview: str | None = None
+    episode_count: int | None = None
+    season_count: int | None = None
+
+
+class MediaSearchResponse(BaseModel):
+    items: list[MediaSearchItem] = Field(default_factory=list)
+
+
 class BookEnrichmentResponse(BaseModel):
     source_provider: Literal["google_books", "nl_isbn"]
     isbn: str
