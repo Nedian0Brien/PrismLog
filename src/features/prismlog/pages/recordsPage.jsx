@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   COLORS,
+  CULTURE_TYPES,
   getResponsiveColumns,
   getCultureTone,
   formatMonthDayLabel,
