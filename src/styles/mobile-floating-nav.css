@@ -22,14 +22,8 @@
     inset 0 -1px 0 rgba(255, 255, 255, 0.04);
   z-index: 70;
   overflow: hidden;
-  transition: transform 0.28s ease, opacity 0.2s ease, bottom 0.28s ease;
-  will-change: transform, opacity, bottom;
-}
-
-.mobile-floating-nav-hidden {
-  bottom: calc(-4.75rem - var(--viewport-safe-bottom));
-  opacity: 0;
-  pointer-events: none;
+  transition: transform 0.28s ease, bottom 0.28s ease;
+  will-change: transform, bottom;
 }
 
 .mobile-floating-nav-contained {
@@ -40,11 +34,6 @@
   width: min(24.5rem, 100%);
   margin: 0 auto;
   pointer-events: auto;
-}
-
-.mobile-floating-nav-contained.mobile-floating-nav-hidden {
-  bottom: auto;
-  transform: translateY(1rem);
 }
 
 .mobile-floating-nav::before {

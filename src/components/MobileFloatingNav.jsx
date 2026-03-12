@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export default function MobileFloatingNav({ items, activeKey, onChange, scrollContainerRef = null, contained = false }) {
+export default function MobileFloatingNav({ items, activeKey, onChange, contained = false }) {
   const navPadding = 6;
-  const [hidden, setHidden] = useState(false);
-  const lastScrollY = useRef(0);
-  const hiddenRef = useRef(false);
-  const scrollRafRef = useRef(null);
   const navRef = useRef(null);
   const tabRefs = useRef({});
   const [indicatorStyle, setIndicatorStyle] = useState({ width: 0, x: 0, ready: false });
@@ -14,65 +10,6 @@ export default function MobileFloatingNav({ items, activeKey, onChange, scrollCo
     () => items.find((item) => item.key === activeKey) || items[0] || null,
     [activeKey, items]
   );
-
-  useEffect(() => {
-    const getScrollContainer = () => scrollContainerRef?.current ?? null;
-    const getScrollY = () => {
-      const scrollContainer = getScrollContainer();
-      if (scrollContainer) {
-        return scrollContainer.scrollTop;
-      }
-      return Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0, document.body.scrollTop || 0);
-    };
-
-    const updateHidden = (nextHidden) => {
-      if (hiddenRef.current === nextHidden) return;
-      hiddenRef.current = nextHidden;
-      setHidden(nextHidden);
-    };
-
-    lastScrollY.current = getScrollY();
-
-    const updateVisibility = () => {
-      const currentY = getScrollY();
-      const delta = currentY - lastScrollY.current;
-      const movementThreshold = 8;
-
-      if (currentY < 32) {
-        updateHidden(false);
-      } else if (delta > movementThreshold && currentY > 72) {
-        updateHidden(true);
-      } else if (delta < -movementThreshold) {
-        updateHidden(false);
-      }
-
-      lastScrollY.current = currentY;
-      scrollRafRef.current = null;
-    };
-
-    const onScroll = () => {
-      if (scrollRafRef.current !== null) return;
-      scrollRafRef.current = window.requestAnimationFrame(updateVisibility);
-    };
-
-    const scrollContainer = getScrollContainer();
-    if (scrollContainer) {
-      scrollContainer.addEventListener("scroll", onScroll, { passive: true });
-    } else {
-      window.addEventListener("scroll", onScroll, { passive: true });
-    }
-    return () => {
-      if (scrollContainer) {
-        scrollContainer.removeEventListener("scroll", onScroll);
-      } else {
-        window.removeEventListener("scroll", onScroll);
-      }
-      if (scrollRafRef.current !== null) {
-        window.cancelAnimationFrame(scrollRafRef.current);
-        scrollRafRef.current = null;
-      }
-    };
-  }, [scrollContainerRef]);
 
   const syncIndicator = useCallback(() => {
     const nav = navRef.current;
@@ -111,7 +48,7 @@ export default function MobileFloatingNav({ items, activeKey, onChange, scrollCo
 
   return (
     <nav
-      className={`mobile-floating-nav${contained ? " mobile-floating-nav-contained" : ""}${hidden ? " mobile-floating-nav-hidden" : ""}`}
+      className={`mobile-floating-nav${contained ? " mobile-floating-nav-contained" : ""}`}
       ref={navRef}
       style={{
         "--mobile-nav-accent": activeItem.color || "#f5f0eb",
