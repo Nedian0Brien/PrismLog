@@ -5,11 +5,59 @@ export default function MobileFloatingNav({ items, activeKey, onChange, containe
   const navRef = useRef(null);
   const tabRefs = useRef({});
   const [indicatorStyle, setIndicatorStyle] = useState({ width: 0, x: 0, ready: false });
+  const [compact, setCompact] = useState(false);
+  const lastScrollYRef = useRef(0);
+  const compactRef = useRef(false);
+  const scrollRafRef = useRef(null);
 
   const activeItem = useMemo(
     () => items.find((item) => item.key === activeKey) || items[0] || null,
     [activeKey, items]
   );
+
+  useEffect(() => {
+    const readScrollY = () => Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0, document.body.scrollTop || 0);
+
+    const updateCompact = (nextCompact) => {
+      if (compactRef.current === nextCompact) return;
+      compactRef.current = nextCompact;
+      setCompact(nextCompact);
+    };
+
+    lastScrollYRef.current = readScrollY();
+
+    const flushScrollState = () => {
+      const currentY = readScrollY();
+      const delta = currentY - lastScrollYRef.current;
+      const movementThreshold = 8;
+
+      if (currentY < 32) {
+        updateCompact(false);
+      } else if (delta > movementThreshold && currentY > 72) {
+        updateCompact(true);
+      } else if (delta < -movementThreshold) {
+        updateCompact(false);
+      }
+
+      lastScrollYRef.current = currentY;
+      scrollRafRef.current = null;
+    };
+
+    const onScroll = () => {
+      if (scrollRafRef.current !== null) return;
+      scrollRafRef.current = window.requestAnimationFrame(flushScrollState);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (scrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = null;
+      }
+    };
+  }, []);
 
   const syncIndicator = useCallback(() => {
     const nav = navRef.current;
@@ -28,10 +76,16 @@ export default function MobileFloatingNav({ items, activeKey, onChange, containe
   }, [activeKey]);
 
   useEffect(() => {
-    const raf = window.requestAnimationFrame(syncIndicator);
+    const raf = window.requestAnimationFrame(() => {
+      syncIndicator();
+      window.requestAnimationFrame(syncIndicator);
+    });
 
     const handleViewportChange = () => {
-      window.requestAnimationFrame(syncIndicator);
+      window.requestAnimationFrame(() => {
+        syncIndicator();
+        window.requestAnimationFrame(syncIndicator);
+      });
     };
 
     window.addEventListener("resize", handleViewportChange);
@@ -42,13 +96,13 @@ export default function MobileFloatingNav({ items, activeKey, onChange, containe
       window.removeEventListener("resize", handleViewportChange);
       window.removeEventListener("orientationchange", handleViewportChange);
     };
-  }, [syncIndicator]);
+  }, [compact, syncIndicator]);
 
   if (!activeItem) return null;
 
   return (
     <nav
-      className={`mobile-floating-nav${contained ? " mobile-floating-nav-contained" : ""}`}
+      className={`mobile-floating-nav${contained ? " mobile-floating-nav-contained" : ""}${compact ? " mobile-floating-nav-compact" : ""}`}
       ref={navRef}
       style={{
         "--mobile-nav-accent": activeItem.color || "#f5f0eb",
