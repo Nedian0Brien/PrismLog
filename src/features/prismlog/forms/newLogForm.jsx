@@ -15,6 +15,7 @@ import {
   createCultureFormState,
   applyCultureSelectionToForm,
   clearCultureMetadata,
+  fetchMediaEnrichment,
   getCultureStatusOptions,
   safeNumber,
   clamp,
@@ -46,6 +47,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
   const [cultureForm, setCultureForm] = useState(createCultureFormState);
   const [cultureStep, setCultureStep] = useState("search");
   const [cultureSearchComposing, setCultureSearchComposing] = useState(false);
+  const [cultureEnriching, setCultureEnriching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
 
@@ -849,7 +851,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
   }
   // culture — step: search
   const isGameType = cultureForm.type === "게임";
-  if (cultureStep === "search" && !isGameType) {
+  if (cultureStep === "search") {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{
@@ -863,10 +865,10 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
             Content Search
           </p>
           <h3 style={{ margin: "0 0 8px", fontSize: layout?.isPhone ? 22 : 24, lineHeight: 1.2, fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: COLORS.dark.text }}>
-            추가할 콘텐츠를 찾으세요
+            {isGameType ? "추가할 게임을 찾으세요" : "추가할 콘텐츠를 찾으세요"}
           </h3>
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: COLORS.dark.textMuted }}>
-            제목을 입력하면 포스터·개봉일·줄거리가 자동으로 채워집니다.
+            {isGameType ? "게임 제목을 입력하면 커버 이미지와 출시일이 자동으로 채워집니다." : "제목을 입력하면 포스터·개봉일·줄거리가 자동으로 채워집니다."}
           </p>
         </div>
 
@@ -893,9 +895,34 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
             }}
             onCompositionStart={() => setCultureSearchComposing(true)}
             onCompositionEnd={() => setCultureSearchComposing(false)}
-            onSelect={(media) => {
+            onSelect={async (media) => {
+              const selectedSourceId = media.source_id;
               setCultureForm((prev) => applyCultureSelectionToForm(prev, media));
               setCultureStep("details");
+              const tmdbId = media.tmdb_id;
+              const type = media.type;
+              if (!tmdbId || !["movie", "series"].includes(type)) return;
+              setCultureEnriching(true);
+              try {
+                const enrich = await fetchMediaEnrichment(apiBaseUrl, tmdbId, type);
+                if (!enrich) return;
+                setCultureForm((prev) => {
+                  if (prev.sourceId !== selectedSourceId) return prev;
+                  const updates = {
+                    episodeCount: enrich.episode_count ?? null,
+                    seasonCount: enrich.season_count ?? null,
+                    runtime: enrich.runtime ?? null,
+                  };
+                  if (type === "series" && enrich.episode_count && !prev.playtime) {
+                    updates.playtime = `0 / ${enrich.episode_count}화`;
+                  }
+                  return { ...prev, ...updates };
+                });
+              } catch (err) {
+                console.error("media enrich failed", err);
+              } finally {
+                setCultureEnriching(false);
+              }
             }}
             apiBaseUrl={apiBaseUrl}
             inputStyle={{ ...inputStyle, padding: "15px 18px", fontSize: 16 }}
@@ -928,7 +955,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
   // culture — step: details (또는 게임)
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {!isGameType && (
+      {(
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div style={{ minWidth: 0 }}>
             <p style={{ margin: "0 0 2px", fontSize: 12, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
@@ -952,7 +979,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
         </div>
       )}
 
-      {!isGameType && cultureForm.poster && (
+      {cultureForm.poster && (
         <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
           <img
             src={cultureForm.poster}
@@ -960,9 +987,14 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
             style={{ width: 72, height: 104, borderRadius: 8, objectFit: "cover", flexShrink: 0, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
           />
           <div style={{ minWidth: 0 }}>
-            {cultureForm.releaseDate && (
+            {(cultureForm.releaseDate || cultureForm.episodeCount || cultureForm.runtime || cultureEnriching) && (
               <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.dark.textMuted }}>
-                {cultureForm.releaseDate?.slice(0, 4)}년 개봉
+                {[
+                  cultureForm.releaseDate && `${cultureForm.releaseDate.slice(0, 4)}년`,
+                  cultureEnriching ? "정보 불러오는 중..." :
+                    cultureForm.episodeCount ? `총 ${cultureForm.episodeCount}화${cultureForm.seasonCount > 1 ? ` · ${cultureForm.seasonCount}시즌` : ""}` :
+                    cultureForm.runtime ? `${cultureForm.runtime}분` : null,
+                ].filter(Boolean).join(" · ")}
               </p>
             )}
             {cultureForm.overview && (
@@ -1031,6 +1063,9 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
               rating: clamp(safeNumber(cultureForm.rating), 0, 5),
               poster: cultureForm.poster || null,
               release_date: cultureForm.releaseDate || null,
+              episode_count: cultureForm.episodeCount ?? null,
+              season_count: cultureForm.seasonCount ?? null,
+              runtime: cultureForm.runtime ?? null,
               source_provider: cultureForm.sourceProvider || null,
               source_id: cultureForm.sourceId || null,
             },

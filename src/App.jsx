@@ -576,6 +576,7 @@ export default function PrismLog() {
         onSave={saveCultureEdit}
         onDelete={deleteFromEdit}
         layout={layout}
+        apiBaseUrl={API_BASE_URL}
       />
     </div>
   );

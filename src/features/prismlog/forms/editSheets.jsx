@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import BookAutocompleteField from "../../../components/BookAutocompleteField";
+import MediaAutocompleteField from "../../../components/MediaAutocompleteField";
 import {
   COLORS,
   CULTURE_TYPES,
@@ -11,6 +12,9 @@ import {
   fetchReadingEnrichment,
   formatReadingSourceSummary,
   normalizeMetadataObject,
+  applyCultureSelectionToForm,
+  clearCultureMetadata,
+  fetchMediaEnrichment,
   getCultureStatusOptions,
   safeNumber,
   clamp,
@@ -345,31 +349,38 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
   );
 };
 
-export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layout }) => {
+export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layout, apiBaseUrl }) => {
   const [form, setForm] = useState({
-    title: "",
-    summary: "",
-    type: "영화",
-    status: "시청 중",
-    playtime: "",
-    rating: 0,
-    tags: "",
+    title: "", summary: "", type: "영화", status: "시청 중",
+    playtime: "", rating: 0, tags: "",
+    poster: "", releaseDate: "", sourceProvider: "", sourceId: "",
+    episodeCount: null, seasonCount: null, runtime: null,
   });
+  const [enriching, setEnriching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!record) return;
+    const type = normalizeCultureType(record.type);
     setForm({
       title: record.title || "",
       summary: record.summary || "",
-      type: normalizeCultureType(record.type),
-      status: record.status || (normalizeCultureType(record.type) === "게임" ? "플레이 중" : "시청 중"),
+      type,
+      status: record.status || (type === "게임" ? "플레이 중" : "시청 중"),
       playtime: record.playtime || "",
       rating: safeNumber(record.rating),
       tags: (record.tags || []).map((tag) => `#${tag}`).join(" "),
+      poster: record.poster || "",
+      releaseDate: record.releaseDate || "",
+      sourceProvider: record.sourceProvider || "",
+      sourceId: record.sourceId || "",
+      episodeCount: null,
+      seasonCount: null,
+      runtime: null,
     });
+    setEnriching(false);
     setMessage("");
   }, [record]);
 
@@ -378,13 +389,10 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
   const inputStyle = getFormInputStyle();
   const labelStyle = FORM_LABEL_STYLE;
   const splitFieldStyle = getSplitFieldStyle(layout);
+  const accent = COLORS.culture.main;
 
   const save = async () => {
-    if (!form.title.trim()) {
-      setMessage("제목을 입력해 주세요.");
-      return;
-    }
-
+    if (!form.title.trim()) { setMessage("제목을 입력해 주세요."); return; }
     setSaving(true);
     setMessage("");
     try {
@@ -397,6 +405,13 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
           status: form.status,
           playtime: form.playtime.trim() || null,
           rating: clamp(safeNumber(form.rating), 0, 5),
+          poster: form.poster || null,
+          release_date: form.releaseDate || null,
+          episode_count: form.episodeCount ?? null,
+          season_count: form.seasonCount ?? null,
+          runtime: form.runtime ?? null,
+          source_provider: form.sourceProvider || null,
+          source_id: form.sourceId || null,
         },
       });
       setMessage("저장 완료");
@@ -421,33 +436,90 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
     }
   };
 
+  const isGame = form.type === "게임";
+
   return (
     <BottomSheet open={open} onClose={onClose} title="문화 기록 수정" layout={layout}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div><label style={labelStyle}>콘텐츠 제목</label><input value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} style={inputStyle} /></div>
+
+        {/* 포스터 미리보기 */}
+        {form.poster && (
+          <div style={{ display: "flex", gap: 12, padding: 12, borderRadius: 14, border: `1px solid ${accent}22`, background: `${accent}12`, alignItems: "flex-start" }}>
+            <img src={form.poster} alt="포스터" style={{ width: 52, height: 76, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+            <div style={{ minWidth: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: accent }}>TMDB</span>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: COLORS.dark.textMuted }}>
+                {[
+                  form.releaseDate && `${form.releaseDate.slice(0, 4)}년`,
+                  form.episodeCount ? `총 ${form.episodeCount}화` : form.runtime ? `${form.runtime}분` : null,
+                ].filter(Boolean).join(" · ") || "메타데이터 불러옴"}
+              </p>
+              {enriching && <p style={{ margin: "2px 0 0", fontSize: 11, color: accent }}>정보 불러오는 중...</p>}
+            </div>
+          </div>
+        )}
+
+        {/* 제목 + 재검색 (게임이 아닐 때) */}
+        {!isGame ? (
+          <div>
+            <label style={labelStyle}>콘텐츠 검색 / 제목 수정</label>
+            <MediaAutocompleteField
+              value={form.title}
+              mediaType={form.type}
+              onChange={(nextValue) => setForm((prev) => ({
+                ...clearCultureMetadata(prev),
+                title: nextValue,
+              }))}
+              onSelect={async (media) => {
+                const selectedSourceId = media.source_id;
+                setForm((prev) => applyCultureSelectionToForm(prev, media));
+                const tmdbId = media.tmdb_id;
+                const type = media.type;
+                if (!tmdbId || !["movie", "series"].includes(type) || !apiBaseUrl) return;
+                setEnriching(true);
+                try {
+                  const enrich = await fetchMediaEnrichment(apiBaseUrl, tmdbId, type);
+                  if (!enrich) return;
+                  setForm((prev) => {
+                    if (prev.sourceId !== selectedSourceId) return prev;
+                    return {
+                      ...prev,
+                      episodeCount: enrich.episode_count ?? null,
+                      seasonCount: enrich.season_count ?? null,
+                      runtime: enrich.runtime ?? null,
+                    };
+                  });
+                } catch (err) {
+                  console.error("media enrich failed", err);
+                } finally {
+                  setEnriching(false);
+                }
+              }}
+              apiBaseUrl={apiBaseUrl}
+              inputStyle={inputStyle}
+              accentColor={accent}
+              placeholder="제목으로 재검색..."
+            />
+          </div>
+        ) : (
+          <div><label style={labelStyle}>게임 제목</label><input value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} style={inputStyle} /></div>
+        )}
+
         <div><label style={labelStyle}>메모</label><textarea value={form.summary} onChange={(e) => setForm((prev) => ({ ...prev, summary: e.target.value }))} style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} /></div>
         <div style={splitFieldStyle}>
           <div><label style={labelStyle}>유형</label><select value={form.type} onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value, status: getCultureStatusOptions(e.target.value)[0] }))} style={inputStyle}>{CULTURE_TYPES.map((type) => <option key={type}>{type}</option>)}</select></div>
           <div><label style={labelStyle}>상태</label><select value={form.status} onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))} style={inputStyle}>{getCultureStatusOptions(form.type).map((status) => <option key={status}>{status}</option>)}</select></div>
         </div>
         <div style={splitFieldStyle}>
-          <div><label style={labelStyle}>플레이타임 / 회차</label><input value={form.playtime} onChange={(e) => setForm((prev) => ({ ...prev, playtime: e.target.value }))} style={inputStyle} /></div>
+          <div><label style={labelStyle}>{isGame ? "플레이타임" : "시청 회차"}</label><input value={form.playtime} onChange={(e) => setForm((prev) => ({ ...prev, playtime: e.target.value }))} style={inputStyle} /></div>
           <div><label style={labelStyle}>평점</label><input value={form.rating} onChange={(e) => setForm((prev) => ({ ...prev, rating: safeNumber(e.target.value) }))} style={inputStyle} type="number" min="0" max="5" /></div>
         </div>
         <div><label style={labelStyle}>태그</label><input value={form.tags} onChange={(e) => setForm((prev) => ({ ...prev, tags: e.target.value }))} style={inputStyle} placeholder="#SF #드라마" /></div>
         {message && <p style={{ margin: 0, fontSize: 12, color: message.startsWith("저장 실패") ? "#f8b4bb" : COLORS.culture.light }}>{message}</p>}
-        <button
-          onClick={save}
-          disabled={saving || deleting}
-          style={getPrimaryActionStyle({ accent: COLORS.culture.main, disabled: saving || deleting })}
-        >
+        <button onClick={save} disabled={saving || deleting} style={getPrimaryActionStyle({ accent: COLORS.culture.main, disabled: saving || deleting })}>
           {saving ? "저장 중..." : "수정 내용 저장"}
         </button>
-        <button
-          onClick={remove}
-          disabled={saving || deleting}
-          style={getDangerActionStyle(saving || deleting)}
-        >
+        <button onClick={remove} disabled={saving || deleting} style={getDangerActionStyle(saving || deleting)}>
           {deleting ? "삭제 중..." : "기록 삭제"}
         </button>
       </div>

@@ -39,6 +39,7 @@ export const TimelinePage = ({ logs, loading, layout }) => {
             ? `${Array.isArray(payload.chapters) ? payload.chapters.length : 0}개 챕터`
             : payload.playtime || payload.status || ""),
         status: log.category === "culture" ? (payload.status || (type === "게임" ? "플레이 중" : "시청 중")) : "",
+        poster: log.category === "culture" ? (payload.poster || null) : null,
       };
       const existing = acc.find((group) => group.key === key);
       if (existing) {
@@ -199,8 +200,24 @@ export const TimelinePage = ({ logs, loading, layout }) => {
                           </div>
                           <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{item.time}</span>
                         </div>
-                        <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
-                        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.summary || "기록 메모 없음"}</p>
+                        {item.poster ? (
+                          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                            <img
+                              src={item.poster}
+                              alt=""
+                              style={{ width: 42, height: 60, borderRadius: 6, objectFit: "cover", flexShrink: 0, boxShadow: "0 4px 12px rgba(0,0,0,0.35)" }}
+                            />
+                            <div style={{ minWidth: 0 }}>
+                              <h3 style={{ margin: "0 0 6px", fontSize: 18, lineHeight: 1.3, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
+                              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.summary || "기록 메모 없음"}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
+                            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.summary || "기록 메모 없음"}</p>
+                          </>
+                        )}
                       </div>
                     ))}
                   </div>

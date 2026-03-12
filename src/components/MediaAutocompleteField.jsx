@@ -42,7 +42,7 @@ export default function MediaAutocompleteField({
       setLoading(true);
       setError("");
       try {
-        const type = mediaType === "게임" ? "all" : mediaType === "시리즈" ? "series" : "movie";
+        const type = mediaType === "게임" ? "game" : mediaType === "시리즈" ? "series" : "movie";
         const response = await fetch(
           `${apiBaseUrl}/api/v1/media/search?q=${encodeURIComponent(query)}&type=${type}&limit=6`,
           { signal: controller.signal }

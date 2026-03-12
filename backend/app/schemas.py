@@ -60,13 +60,14 @@ class BookSearchResponse(BaseModel):
     items: list[BookSearchItem] = Field(default_factory=list)
 
 
-MediaType = Literal["movie", "series"]
+MediaType = Literal["movie", "series", "game"]
 
 
 class MediaSearchItem(BaseModel):
-    source_provider: Literal["tmdb"]
+    source_provider: Literal["tmdb", "igdb"]
     source_id: str
-    tmdb_id: int
+    tmdb_id: int | None = None
+    igdb_id: int | None = None
     type: MediaType
     title: str
     original_title: str | None = None
@@ -79,6 +80,15 @@ class MediaSearchItem(BaseModel):
 
 class MediaSearchResponse(BaseModel):
     items: list[MediaSearchItem] = Field(default_factory=list)
+
+
+class MediaEnrichResponse(BaseModel):
+    source_provider: Literal["tmdb"]
+    type: MediaType
+    tmdb_id: int
+    episode_count: int | None = None
+    season_count: int | None = None
+    runtime: int | None = None
 
 
 class BookEnrichmentResponse(BaseModel):

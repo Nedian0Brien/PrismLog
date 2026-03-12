@@ -425,6 +425,11 @@ export const createCultureFormState = () => ({
   overview: "",
   sourceProvider: "",
   sourceId: "",
+  tmdbId: null,
+  igdbId: null,
+  episodeCount: null,
+  seasonCount: null,
+  runtime: null,
 });
 
 export const applyCultureSelectionToForm = (form, media) => ({
@@ -435,7 +440,18 @@ export const applyCultureSelectionToForm = (form, media) => ({
   overview: media.overview || "",
   sourceProvider: media.source_provider || "",
   sourceId: media.source_id || "",
+  tmdbId: media.tmdb_id || null,
+  igdbId: media.igdb_id || null,
 });
+
+export const fetchMediaEnrichment = async (apiBaseUrl, tmdbId, type) => {
+  if (!tmdbId || !["movie", "series"].includes(type)) return null;
+  const response = await fetch(
+    `${apiBaseUrl}/api/v1/media/enrich?tmdb_id=${encodeURIComponent(tmdbId)}&type=${encodeURIComponent(type)}`
+  );
+  if (!response.ok) return null;
+  return response.json();
+};
 
 export const clearCultureMetadata = (form) => ({
   ...form,
