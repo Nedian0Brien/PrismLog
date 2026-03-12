@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -335,6 +336,32 @@ export const DistributionBarChart = ({ counts, enabled }) => {
 
 /* ──────────── Bottom Sheet ──────────── */
 export const BottomSheet = ({ open, onClose, children, title, layout }) => {
+  const contentRef = useRef(null);
+
+  useEffect(() => {
+    if (!open || layout?.isTabletUp || !contentRef.current || typeof window === "undefined") return undefined;
+
+    const scrollFocusedFieldIntoView = (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (!contentRef.current?.contains(target)) return;
+
+      const isFormField = target.matches("input, textarea, select");
+      if (!isFormField) return;
+
+      window.requestAnimationFrame(() => {
+        window.setTimeout(() => {
+          target.scrollIntoView({ block: "center", behavior: "smooth" });
+        }, 180);
+      });
+    };
+
+    document.addEventListener("focusin", scrollFocusedFieldIntoView);
+    return () => {
+      document.removeEventListener("focusin", scrollFocusedFieldIntoView);
+    };
+  }, [layout?.isTabletUp, open]);
+
   if (!open) return null;
   const isWide = layout?.isTabletUp;
   const sheetMaxHeight = isWide
@@ -347,7 +374,9 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: isWide ? "center" : "flex-end", justifyContent: "center",
-      padding: isWide ? "24px" : "0 var(--safe-area-right) 0 var(--safe-area-left)",
+      padding: isWide
+        ? "24px"
+        : "0 var(--safe-area-right) var(--keyboard-inset-height) var(--safe-area-left)",
     }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={onClose} />
       <div style={{
@@ -357,11 +386,15 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
         animation: "slideUp 0.35s cubic-bezier(.32,.72,.24,1)",
       }}>
         {!isWide && <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)", margin: "0 auto 16px" }} />}
-        <div style={{
+        <div
+          ref={contentRef}
+          style={{
           padding: isWide ? "12px 28px calc(32px + var(--viewport-safe-bottom))" : "0 24px calc(32px + var(--viewport-safe-bottom))",
           overflowY: "auto",
           maxHeight: sheetContentMaxHeight,
-        }}>
+          scrollPaddingBottom: "calc(24px + var(--keyboard-inset-height))",
+          }}
+        >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
             <h3 style={{ fontSize: 20, fontWeight: 700, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", margin: 0 }}>{title}</h3>
             <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>

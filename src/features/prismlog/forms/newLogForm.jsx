@@ -117,7 +117,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                 setReadingPageMessage("");
                 setReadingForm((prev) => ({ ...clearReadingMetadata(prev), title: nextValue }));
               }}
-              style={{ ...inputStyle, padding: "15px 18px", fontSize: 15 }}
+              style={{ ...inputStyle, padding: "15px 18px", fontSize: 16 }}
               placeholder="제목 또는 ISBN으로 검색..."
             />
           </div>
