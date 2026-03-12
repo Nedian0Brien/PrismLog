@@ -5,9 +5,12 @@ export default function MobileFloatingNav({ items, activeKey, onChange, containe
   const tabRefs = useRef({});
   const [indicatorStyle, setIndicatorStyle] = useState({ width: 0, x: 0, ready: false });
   const [compact, setCompact] = useState(false);
+  const [isMorphing, setIsMorphing] = useState(false);
   const lastScrollYRef = useRef(0);
   const compactRef = useRef(false);
   const scrollRafRef = useRef(null);
+  const compactTransitionTimeoutRef = useRef(null);
+  const hasMountedCompactRef = useRef(false);
   const navPadding = compact ? 2 : 4;
 
   const activeItem = useMemo(
@@ -58,6 +61,29 @@ export default function MobileFloatingNav({ items, activeKey, onChange, containe
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!hasMountedCompactRef.current) {
+      hasMountedCompactRef.current = true;
+      return undefined;
+    }
+
+    setIsMorphing(true);
+    if (compactTransitionTimeoutRef.current !== null) {
+      window.clearTimeout(compactTransitionTimeoutRef.current);
+    }
+    compactTransitionTimeoutRef.current = window.setTimeout(() => {
+      setIsMorphing(false);
+      compactTransitionTimeoutRef.current = null;
+    }, 220);
+
+    return () => {
+      if (compactTransitionTimeoutRef.current !== null) {
+        window.clearTimeout(compactTransitionTimeoutRef.current);
+        compactTransitionTimeoutRef.current = null;
+      }
+    };
+  }, [compact]);
 
   const syncIndicator = useCallback(() => {
     const nav = navRef.current;
@@ -121,7 +147,7 @@ export default function MobileFloatingNav({ items, activeKey, onChange, containe
 
   return (
     <nav
-      className={`mobile-floating-nav${contained ? " mobile-floating-nav-contained" : ""}${compact ? " mobile-floating-nav-compact" : ""}`}
+      className={`mobile-floating-nav${contained ? " mobile-floating-nav-contained" : ""}${compact ? " mobile-floating-nav-compact" : ""}${isMorphing ? " mobile-floating-nav-morphing" : ""}`}
       ref={navRef}
       style={{
         "--mobile-nav-accent": activeItem.color || "#f5f0eb",

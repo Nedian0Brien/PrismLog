@@ -49,6 +49,14 @@
   gap: 0.0625rem;
 }
 
+.mobile-floating-nav-morphing .mobile-floating-nav__light-pool,
+.mobile-floating-nav-morphing .mobile-floating-nav__indicator {
+  transition:
+    transform 0.08s linear,
+    width 0.08s linear,
+    opacity 0.12s ease;
+}
+
 .mobile-floating-nav::before {
   content: "";
   position: absolute;
