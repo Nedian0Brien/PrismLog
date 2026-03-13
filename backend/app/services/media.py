@@ -186,10 +186,16 @@ def _get_igdb_token(settings: Settings) -> str:
         if entry.get("token") and float(entry.get("expires_at", 0)) > time.time() + 60:
             return str(entry["token"])
 
-    # Request new token
+    # Request new token — Twitch requires form-encoded POST body
+    body = urlencode({
+        "client_id": settings.igdb_client_id,
+        "client_secret": settings.igdb_client_secret,
+        "grant_type": "client_credentials",
+    }).encode("utf-8")
     request = Request(
-        f"{TWITCH_TOKEN_URL}?client_id={settings.igdb_client_id}&client_secret={settings.igdb_client_secret}&grant_type=client_credentials",
-        method="POST",
+        TWITCH_TOKEN_URL,
+        data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     try:
         with urlopen(request, timeout=settings.media_search_timeout_seconds) as resp:
