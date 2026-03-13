@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import BookSearchResultsPanel from "../../../components/BookSearchResultsPanel";
-import MediaAutocompleteField from "../../../components/MediaAutocompleteField";
+import MediaSearchResultsPanel from "../../../components/MediaSearchResultsPanel";
 import {
   COLORS,
   CULTURE_TYPES,
@@ -887,50 +887,56 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
 
         <div>
           <label style={labelStyle}>콘텐츠 검색</label>
-          <MediaAutocompleteField
+          <input
             value={cultureForm.title}
-            mediaType={cultureForm.type}
-            onChange={(nextValue) => {
+            onChange={(e) => {
+              const nextValue = e.target.value;
               setCultureForm((prev) => ({ ...clearCultureMetadata(prev), title: nextValue }));
             }}
             onCompositionStart={() => setCultureSearchComposing(true)}
             onCompositionEnd={() => setCultureSearchComposing(false)}
-            onSelect={async (media) => {
-              const selectedSourceId = media.source_id;
-              setCultureForm((prev) => applyCultureSelectionToForm(prev, media));
-              setCultureStep("details");
-              const tmdbId = media.tmdb_id;
-              const type = media.type;
-              if (!tmdbId || !["movie", "series"].includes(type)) return;
-              setCultureEnriching(true);
-              try {
-                const enrich = await fetchMediaEnrichment(apiBaseUrl, tmdbId, type);
-                if (!enrich) return;
-                setCultureForm((prev) => {
-                  if (prev.sourceId !== selectedSourceId) return prev;
-                  const updates = {
-                    episodeCount: enrich.episode_count ?? null,
-                    seasonCount: enrich.season_count ?? null,
-                    runtime: enrich.runtime ?? null,
-                  };
-                  if (type === "series" && enrich.episode_count && !prev.playtime) {
-                    updates.playtime = `0 / ${enrich.episode_count}화`;
-                  }
-                  return { ...prev, ...updates };
-                });
-              } catch (err) {
-                console.error("media enrich failed", err);
-              } finally {
-                setCultureEnriching(false);
-              }
-            }}
-            apiBaseUrl={apiBaseUrl}
-            inputStyle={{ ...inputStyle, padding: "15px 18px", fontSize: 16 }}
-            accentColor={accent}
-            placeholder={cultureForm.type === "시리즈" ? "시리즈 제목으로 검색..." : "영화 제목으로 검색..."}
+            style={{ ...inputStyle, padding: "15px 18px", fontSize: 16 }}
+            placeholder={cultureForm.type === "게임" ? "게임 제목으로 검색..." : cultureForm.type === "시리즈" ? "시리즈 제목으로 검색..." : "영화 제목으로 검색..."}
             disabled={cultureSearchComposing}
           />
         </div>
+
+        <MediaSearchResultsPanel
+          query={cultureForm.title}
+          mediaType={cultureForm.type}
+          apiBaseUrl={apiBaseUrl}
+          accentColor={accent}
+          suspend={cultureSearchComposing}
+          onSelect={async (media) => {
+            const selectedSourceId = media.source_id;
+            setCultureForm((prev) => applyCultureSelectionToForm(prev, media));
+            setCultureStep("details");
+            const tmdbId = media.tmdb_id;
+            const type = media.type;
+            if (!tmdbId || !["movie", "series"].includes(type)) return;
+            setCultureEnriching(true);
+            try {
+              const enrich = await fetchMediaEnrichment(apiBaseUrl, tmdbId, type);
+              if (!enrich) return;
+              setCultureForm((prev) => {
+                if (prev.sourceId !== selectedSourceId) return prev;
+                const updates = {
+                  episodeCount: enrich.episode_count ?? null,
+                  seasonCount: enrich.season_count ?? null,
+                  runtime: enrich.runtime ?? null,
+                };
+                if (type === "series" && enrich.episode_count && !prev.playtime) {
+                  updates.playtime = `0 / ${enrich.episode_count}화`;
+                }
+                return { ...prev, ...updates };
+              });
+            } catch (err) {
+              console.error("media enrich failed", err);
+            } finally {
+              setCultureEnriching(false);
+            }
+          }}
+        />
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
           <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
