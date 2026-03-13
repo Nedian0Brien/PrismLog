@@ -66,23 +66,6 @@ export default function PrismLog() {
     fetchLogs();
   }, [fetchLogs]);
 
-  useEffect(() => {
-    if (typeof document === "undefined") return undefined;
-
-    const { body } = document;
-    const prevOverflow = body.style.overflow;
-    const prevOverscrollBehavior = body.style.overscrollBehavior;
-
-    if (isAnySheetOpen) {
-      body.style.overflow = "hidden";
-      body.style.overscrollBehavior = "none";
-    }
-
-    return () => {
-      body.style.overflow = prevOverflow;
-      body.style.overscrollBehavior = prevOverscrollBehavior;
-    };
-  }, [isAnySheetOpen]);
 
   const readingLogs = useMemo(
     () => logs.filter((log) => log.category === "reading").map(mapReadingLog),
