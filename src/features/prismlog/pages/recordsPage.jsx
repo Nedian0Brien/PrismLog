@@ -364,8 +364,6 @@ const FloatingSeriesProgressToast = ({ toast, visible, animatedProgress }) => {
 const SeriesProgressTrendChart = ({ points }) => {
   const hasPoints = points.length > 0;
   const [activePointIndex, setActivePointIndex] = useState(points.length - 1);
-  const [previewDrawProgress, setPreviewDrawProgress] = useState(1);
-  const [mainDrawProgress, setMainDrawProgress] = useState(1);
   const [displayedProgress, setDisplayedProgress] = useState(points[points.length - 1]?.progress ?? 0);
   const displayedProgressRef = useRef(points[points.length - 1]?.progress ?? 0);
 
@@ -379,7 +377,7 @@ const SeriesProgressTrendChart = ({ points }) => {
   const maxIndex = Math.max(sourcePoints.length - 1, 1);
 
   const coordinates = sourcePoints.map((point, index) => {
-    const x = paddingX + (innerWidth * (points.length === 1 ? 0.5 : index / maxIndex));
+    const x = paddingX + (innerWidth * (sourcePoints.length === 1 ? 0.5 : index / maxIndex));
     const y = paddingY + innerHeight - ((point.progress / 100) * innerHeight);
     return { ...point, x, y };
   });
@@ -387,11 +385,6 @@ const SeriesProgressTrendChart = ({ points }) => {
   const activePoint = coordinates[safePointIndex];
   const tooltipX = Math.max(46, Math.min(width - 46, activePoint.x));
   const tooltipY = Math.max(22, activePoint.y - 20);
-  const lineLength = Math.max(coordinates.slice(1).reduce(
-    (total, point, index) => total + Math.hypot(point.x - coordinates[index].x, point.y - coordinates[index].y),
-    0
-  ), 1);
-  const pointsSignature = points.map((point) => `${point.dateKey}:${point.progress}`).join("|");
   const animatedProgressLabel = `${Math.round(displayedProgress)}%`;
 
   const linePath = coordinates.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
@@ -404,39 +397,6 @@ const SeriesProgressTrendChart = ({ points }) => {
   useEffect(() => {
     displayedProgressRef.current = displayedProgress;
   }, [displayedProgress]);
-
-  useEffect(() => {
-    if (!hasPoints || lineLength <= 1) {
-      setPreviewDrawProgress(1);
-      setMainDrawProgress(1);
-      return undefined;
-    }
-
-    const previewDuration = 420;
-    const mainDelay = 130;
-    const mainDuration = 640;
-    let rafId = 0;
-
-    setPreviewDrawProgress(0);
-    setMainDrawProgress(0);
-
-    const animationStart = window.performance.now();
-    const step = (frameTime) => {
-      const elapsed = frameTime - animationStart;
-      const previewElapsed = Math.min(elapsed / previewDuration, 1);
-      const mainElapsed = Math.min(Math.max((elapsed - mainDelay) / mainDuration, 0), 1);
-      const easedPreview = 1 - ((1 - previewElapsed) ** 3);
-      const easedMain = 1 - ((1 - mainElapsed) ** 3);
-      setPreviewDrawProgress(easedPreview);
-      setMainDrawProgress(easedMain);
-      if (previewElapsed < 1 || mainElapsed < 1) {
-        rafId = window.requestAnimationFrame(step);
-      }
-    };
-
-    rafId = window.requestAnimationFrame(step);
-    return () => window.cancelAnimationFrame(rafId);
-  }, [hasPoints, lineLength, pointsSignature, points.length]);
 
   useEffect(() => {
     if (!hasPoints) {
@@ -518,26 +478,7 @@ const SeriesProgressTrendChart = ({ points }) => {
           );
         })}
         <path d={areaPath} fill="url(#seriesTrendFill)" />
-        <path
-          d={linePath}
-          fill="none"
-          stroke="rgba(255,181,159,0.68)"
-          strokeWidth="5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeDasharray={lineLength}
-          strokeDashoffset={lineLength * (1 - previewDrawProgress)}
-        />
-        <path
-          d={linePath}
-          fill="none"
-          stroke={COLORS.series.main}
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeDasharray={lineLength}
-          strokeDashoffset={lineLength * (1 - mainDrawProgress)}
-        />
+        <path d={linePath} fill="none" stroke={COLORS.series.main} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
         <g style={{ pointerEvents: "none" }}>
           <path
             d={`M ${tooltipX} ${tooltipY} L ${tooltipX - 7} ${tooltipY - 10} H ${tooltipX - 40} Q ${tooltipX - 46} ${tooltipY - 10} ${tooltipX - 46} ${tooltipY - 16} V ${tooltipY - 34} Q ${tooltipX - 46} ${tooltipY - 40} ${tooltipX - 40} ${tooltipY - 40} H ${tooltipX + 40} Q ${tooltipX + 46} ${tooltipY - 40} ${tooltipX + 46} ${tooltipY - 34} V ${tooltipY - 16} Q ${tooltipX + 46} ${tooltipY - 10} ${tooltipX + 40} ${tooltipY - 10} H ${tooltipX + 7} Z`}
