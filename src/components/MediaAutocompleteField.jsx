@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const TYPE_LABELS = { movie: "영화", series: "시리즈" };
+const TYPE_LABELS = { movie: "영화", series: "시리즈", game: "게임" };
 
 export default function MediaAutocompleteField({
   value,

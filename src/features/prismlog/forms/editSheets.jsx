@@ -447,7 +447,9 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
           <div style={{ display: "flex", gap: 12, padding: 12, borderRadius: 14, border: `1px solid ${accent}22`, background: `${accent}12`, alignItems: "flex-start" }}>
             <img src={form.poster} alt="포스터" style={{ width: 52, height: 76, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: accent }}>TMDB</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: accent }}>
+                {(form.sourceProvider || "manual").toUpperCase()}
+              </span>
               <p style={{ margin: "2px 0 0", fontSize: 12, color: COLORS.dark.textMuted }}>
                 {[
                   form.releaseDate && `${form.releaseDate.slice(0, 4)}년`,
@@ -459,51 +461,55 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
           </div>
         )}
 
-        {/* 제목 + 재검색 (게임이 아닐 때) */}
-        {!isGame ? (
-          <div>
-            <label style={labelStyle}>콘텐츠 검색 / 제목 수정</label>
-            <MediaAutocompleteField
-              value={form.title}
-              mediaType={form.type}
-              onChange={(nextValue) => setForm((prev) => ({
-                ...clearCultureMetadata(prev),
-                title: nextValue,
-              }))}
-              onSelect={async (media) => {
-                const selectedSourceId = media.source_id;
-                setForm((prev) => applyCultureSelectionToForm(prev, media));
-                const tmdbId = media.tmdb_id;
-                const type = media.type;
-                if (!tmdbId || !["movie", "series"].includes(type) || !apiBaseUrl) return;
-                setEnriching(true);
-                try {
-                  const enrich = await fetchMediaEnrichment(apiBaseUrl, tmdbId, type);
-                  if (!enrich) return;
-                  setForm((prev) => {
-                    if (prev.sourceId !== selectedSourceId) return prev;
-                    return {
-                      ...prev,
-                      episodeCount: enrich.episode_count ?? null,
-                      seasonCount: enrich.season_count ?? null,
-                      runtime: enrich.runtime ?? null,
-                    };
-                  });
-                } catch (err) {
-                  console.error("media enrich failed", err);
-                } finally {
-                  setEnriching(false);
-                }
-              }}
-              apiBaseUrl={apiBaseUrl}
-              inputStyle={inputStyle}
-              accentColor={accent}
-              placeholder="제목으로 재검색..."
-            />
-          </div>
-        ) : (
-          <div><label style={labelStyle}>게임 제목</label><input value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} style={inputStyle} /></div>
-        )}
+        <div>
+          <label style={labelStyle}>콘텐츠 검색 / 제목 수정</label>
+          <MediaAutocompleteField
+            value={form.title}
+            mediaType={form.type}
+            onChange={(nextValue) => setForm((prev) => ({
+              ...clearCultureMetadata(prev),
+              title: nextValue,
+            }))}
+            onSelect={async (media) => {
+              const selectedSourceId = media.source_id;
+              setForm((prev) => applyCultureSelectionToForm(prev, media));
+              const tmdbId = media.tmdb_id;
+              const rawgId = media.rawg_id;
+              const type = media.type;
+              if (
+                !apiBaseUrl
+                || ((type !== "game") && (!tmdbId || !["movie", "series"].includes(type)))
+                || (type === "game" && !rawgId)
+              ) return;
+              setEnriching(true);
+              try {
+                const enrich = await fetchMediaEnrichment(apiBaseUrl, { tmdbId, rawgId, type });
+                if (!enrich) return;
+                setForm((prev) => {
+                  if (prev.sourceId !== selectedSourceId) return prev;
+                  return {
+                    ...prev,
+                    title: enrich.title || prev.title,
+                    poster: enrich.poster_url || prev.poster,
+                    releaseDate: enrich.release_date || prev.releaseDate,
+                    summary: enrich.overview || prev.summary,
+                    episodeCount: enrich.episode_count ?? null,
+                    seasonCount: enrich.season_count ?? null,
+                    runtime: enrich.runtime ?? null,
+                  };
+                });
+              } catch (err) {
+                console.error("media enrich failed", err);
+              } finally {
+                setEnriching(false);
+              }
+            }}
+            apiBaseUrl={apiBaseUrl}
+            inputStyle={inputStyle}
+            accentColor={accent}
+            placeholder={isGame ? "게임 제목으로 재검색..." : "제목으로 재검색..."}
+          />
+        </div>
 
         <div><label style={labelStyle}>메모</label><textarea value={form.summary} onChange={(e) => setForm((prev) => ({ ...prev, summary: e.target.value }))} style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} /></div>
         <div style={splitFieldStyle}>
