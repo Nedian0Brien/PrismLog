@@ -1837,7 +1837,7 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
               style={{
                 width: "100%",
                 height: "100%",
-                objectFit: isSeries ? "contain" : "cover",
+                objectFit: "cover",
                 display: "block",
               }}
             />
@@ -1868,7 +1868,6 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    padding: c.poster ? 10 : 0,
                     boxShadow: "0 18px 36px rgba(0,0,0,0.2)",
                   }}>
                     {posterNode}
