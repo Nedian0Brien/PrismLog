@@ -362,8 +362,12 @@ const FloatingSeriesProgressToast = ({ toast, visible, animatedProgress }) => {
 };
 
 const SeriesProgressTrendChart = ({ points }) => {
+  const hasPoints = points.length > 0;
   const [activePointIndex, setActivePointIndex] = useState(points.length - 1);
-  if (!points.length) return null;
+  const [previewDrawProgress, setPreviewDrawProgress] = useState(1);
+  const [mainDrawProgress, setMainDrawProgress] = useState(1);
+  const [displayedProgress, setDisplayedProgress] = useState(points[points.length - 1]?.progress ?? 0);
+  const displayedProgressRef = useRef(points[points.length - 1]?.progress ?? 0);
 
   const width = 220;
   const height = 104;
@@ -371,24 +375,100 @@ const SeriesProgressTrendChart = ({ points }) => {
   const paddingY = 14;
   const innerWidth = width - paddingX * 2;
   const innerHeight = height - paddingY * 2;
-  const maxIndex = Math.max(points.length - 1, 1);
+  const sourcePoints = hasPoints ? points : [{ dateKey: "", label: "", progress: 0 }];
+  const maxIndex = Math.max(sourcePoints.length - 1, 1);
 
-  const coordinates = points.map((point, index) => {
+  const coordinates = sourcePoints.map((point, index) => {
     const x = paddingX + (innerWidth * (points.length === 1 ? 0.5 : index / maxIndex));
     const y = paddingY + innerHeight - ((point.progress / 100) * innerHeight);
     return { ...point, x, y };
   });
-  const safePointIndex = Math.min(activePointIndex, coordinates.length - 1);
+  const safePointIndex = Math.max(0, Math.min(activePointIndex, coordinates.length - 1));
   const activePoint = coordinates[safePointIndex];
   const tooltipX = Math.max(46, Math.min(width - 46, activePoint.x));
   const tooltipY = Math.max(22, activePoint.y - 20);
+  const lineLength = Math.max(coordinates.slice(1).reduce(
+    (total, point, index) => total + Math.hypot(point.x - coordinates[index].x, point.y - coordinates[index].y),
+    0
+  ), 1);
+  const pointsSignature = points.map((point) => `${point.dateKey}:${point.progress}`).join("|");
+  const animatedProgressLabel = `${Math.round(displayedProgress)}%`;
 
   const linePath = coordinates.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
   const areaPath = `${linePath} L ${coordinates[coordinates.length - 1].x} ${height - paddingY} L ${coordinates[0].x} ${height - paddingY} Z`;
 
   useEffect(() => {
-    setActivePointIndex(points.length - 1);
-  }, [points]);
+    setActivePointIndex(hasPoints ? points.length - 1 : -1);
+  }, [hasPoints, points]);
+
+  useEffect(() => {
+    displayedProgressRef.current = displayedProgress;
+  }, [displayedProgress]);
+
+  useEffect(() => {
+    if (!hasPoints || lineLength <= 1) {
+      setPreviewDrawProgress(1);
+      setMainDrawProgress(1);
+      return undefined;
+    }
+
+    const previewDuration = 420;
+    const mainDelay = 130;
+    const mainDuration = 640;
+    let rafId = 0;
+
+    setPreviewDrawProgress(0);
+    setMainDrawProgress(0);
+
+    const animationStart = window.performance.now();
+    const step = (frameTime) => {
+      const elapsed = frameTime - animationStart;
+      const previewElapsed = Math.min(elapsed / previewDuration, 1);
+      const mainElapsed = Math.min(Math.max((elapsed - mainDelay) / mainDuration, 0), 1);
+      const easedPreview = 1 - ((1 - previewElapsed) ** 3);
+      const easedMain = 1 - ((1 - mainElapsed) ** 3);
+      setPreviewDrawProgress(easedPreview);
+      setMainDrawProgress(easedMain);
+      if (previewElapsed < 1 || mainElapsed < 1) {
+        rafId = window.requestAnimationFrame(step);
+      }
+    };
+
+    rafId = window.requestAnimationFrame(step);
+    return () => window.cancelAnimationFrame(rafId);
+  }, [hasPoints, lineLength, pointsSignature, points.length]);
+
+  useEffect(() => {
+    if (!hasPoints) {
+      setDisplayedProgress(0);
+      return undefined;
+    }
+    const fromValue = displayedProgressRef.current;
+    const toValue = activePoint.progress;
+    if (Math.round(fromValue) === Math.round(toValue)) {
+      setDisplayedProgress(toValue);
+      return undefined;
+    }
+
+    const duration = 460;
+    const startedAt = window.performance.now();
+    let rafId = 0;
+
+    const step = (frameTime) => {
+      const elapsed = Math.min((frameTime - startedAt) / duration, 1);
+      const eased = 1 - ((1 - elapsed) ** 3);
+      const nextValue = fromValue + ((toValue - fromValue) * eased);
+      setDisplayedProgress(nextValue);
+      if (elapsed < 1) {
+        rafId = window.requestAnimationFrame(step);
+      }
+    };
+
+    rafId = window.requestAnimationFrame(step);
+    return () => window.cancelAnimationFrame(rafId);
+  }, [activePoint.dateKey, activePoint.progress, hasPoints]);
+
+  if (!hasPoints) return null;
 
   return (
     <div style={{
@@ -413,7 +493,7 @@ const SeriesProgressTrendChart = ({ points }) => {
           {activePoint.label}
         </span>
         <strong style={{ fontSize: 18, color: COLORS.series.main, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
-          {activePoint.progress}%
+          {animatedProgressLabel}
         </strong>
       </div>
       <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ display: "block", overflow: "visible" }}>
@@ -438,7 +518,26 @@ const SeriesProgressTrendChart = ({ points }) => {
           );
         })}
         <path d={areaPath} fill="url(#seriesTrendFill)" />
-        <path d={linePath} fill="none" stroke={COLORS.series.main} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d={linePath}
+          fill="none"
+          stroke="rgba(255,181,159,0.68)"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray={lineLength}
+          strokeDashoffset={lineLength * (1 - previewDrawProgress)}
+        />
+        <path
+          d={linePath}
+          fill="none"
+          stroke={COLORS.series.main}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray={lineLength}
+          strokeDashoffset={lineLength * (1 - mainDrawProgress)}
+        />
         <g style={{ pointerEvents: "none" }}>
           <path
             d={`M ${tooltipX} ${tooltipY} L ${tooltipX - 7} ${tooltipY - 10} H ${tooltipX - 40} Q ${tooltipX - 46} ${tooltipY - 10} ${tooltipX - 46} ${tooltipY - 16} V ${tooltipY - 34} Q ${tooltipX - 46} ${tooltipY - 40} ${tooltipX - 40} ${tooltipY - 40} H ${tooltipX + 40} Q ${tooltipX + 46} ${tooltipY - 40} ${tooltipX + 46} ${tooltipY - 34} V ${tooltipY - 16} Q ${tooltipX + 46} ${tooltipY - 10} ${tooltipX + 40} ${tooltipY - 10} H ${tooltipX + 7} Z`}
@@ -459,7 +558,7 @@ const SeriesProgressTrendChart = ({ points }) => {
             textAnchor="middle"
             style={{ fill: COLORS.series.main, fontSize: 12, fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}
           >
-            {`${activePoint.progress}%`}
+            {animatedProgressLabel}
           </text>
         </g>
         {coordinates.map((point, index) => (
@@ -489,7 +588,7 @@ const SeriesProgressTrendChart = ({ points }) => {
       </svg>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
         <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{points[0].label}</span>
-        <span style={{ fontSize: 11, color: COLORS.series.main, fontFamily: "'Outfit', sans-serif" }}>{points[points.length - 1].progress}%</span>
+        <span style={{ fontSize: 11, color: COLORS.series.main, fontFamily: "'Outfit', sans-serif" }}>{animatedProgressLabel}</span>
       </div>
     </div>
   );
