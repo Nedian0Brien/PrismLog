@@ -82,6 +82,26 @@ class MediaSearchResponse(BaseModel):
     items: list[MediaSearchItem] = Field(default_factory=list)
 
 
+class MediaEpisodeInfo(BaseModel):
+    season_number: int
+    episode_number: int
+    name: str | None = None
+    air_date: str | None = None
+    runtime: int | None = None
+    overview: str | None = None
+    still_url: str | None = None
+
+
+class MediaSeasonInfo(BaseModel):
+    season_number: int
+    name: str | None = None
+    air_date: str | None = None
+    episode_count: int | None = None
+    overview: str | None = None
+    poster_url: str | None = None
+    episodes: list[MediaEpisodeInfo] = Field(default_factory=list)
+
+
 class MediaEnrichResponse(BaseModel):
     source_provider: Literal["tmdb"]
     type: MediaType
@@ -89,6 +109,7 @@ class MediaEnrichResponse(BaseModel):
     episode_count: int | None = None
     season_count: int | None = None
     runtime: int | None = None
+    seasons: list[MediaSeasonInfo] = Field(default_factory=list)
 
 
 class BookEnrichmentResponse(BaseModel):

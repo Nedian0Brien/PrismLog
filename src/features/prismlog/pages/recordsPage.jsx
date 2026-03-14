@@ -1,9 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import {
+  API_BASE_URL,
   COLORS,
   CULTURE_TYPES,
+  fetchMediaEnrichment,
   getResponsiveColumns,
   getCultureTone,
+  getSeriesProgressMetrics,
   formatMonthDayLabel,
   safeNumber,
   BookIcon,
@@ -60,6 +63,357 @@ export const StudyAccordion = ({ study }) => {
           )}
         </div>
       ))}
+    </div>
+  );
+};
+
+const getSeriesTmdbId = (item) => {
+  const explicitId = safeNumber(item?.tmdbId, 0);
+  if (explicitId > 0) return explicitId;
+  const match = String(item?.sourceId || "").match(/^tmdb:series:(\d+)$/);
+  return match ? safeNumber(match[1], 0) : null;
+};
+
+const buildSeriesSeasonRows = (item) => {
+  const metrics = getSeriesProgressMetrics(item);
+  let remainingWatched = metrics.watchedEpisodes;
+  let currentPointer = null;
+
+  const seasons = metrics.seasons.map((season) => {
+    const totalEpisodes = Math.max(safeNumber(season.episodeCount, season.episodes.length), 0);
+    const watchedEpisodes = totalEpisodes > 0 ? Math.min(remainingWatched, totalEpisodes) : 0;
+    remainingWatched = Math.max(remainingWatched - totalEpisodes, 0);
+
+    const episodes = season.episodes.map((episode, index) => {
+      const watched = index < watchedEpisodes;
+      const isCurrent = !currentPointer && !watched && metrics.watchedEpisodes < metrics.totalEpisodes;
+      if (isCurrent) {
+        currentPointer = {
+          seasonNumber: season.seasonNumber,
+          episodeNumber: episode.episodeNumber,
+          name: episode.name || `에피소드 ${episode.episodeNumber}`,
+        };
+      }
+      return { ...episode, watched, isCurrent };
+    });
+
+    const progress = totalEpisodes > 0 ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0;
+    return {
+      ...season,
+      totalEpisodes,
+      watchedEpisodes,
+      progress,
+      episodes,
+    };
+  });
+
+  if (!currentPointer && metrics.totalEpisodes > 0 && metrics.watchedEpisodes >= metrics.totalEpisodes) {
+    currentPointer = { seasonNumber: null, episodeNumber: null, name: "완주" };
+  }
+
+  return { metrics, seasons, currentPointer };
+};
+
+const SeriesProgressSummary = ({ item, accent }) => {
+  const { metrics } = buildSeriesSeasonRows(item);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>
+          {metrics.playtimeLabel || "회차 미기록"}
+        </span>
+        <strong style={{ fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>
+          {metrics.progress}%
+        </strong>
+      </div>
+      <ProgressBar value={metrics.progress} color={accent} height={7} />
+    </div>
+  );
+};
+
+const SeriesDetailPage = ({ item, layout, onBack, onEdit }) => {
+  const [remoteSeriesData, setRemoteSeriesData] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [attemptedRemoteLoad, setAttemptedRemoteLoad] = useState(false);
+  const accent = COLORS.series.main;
+  const tmdbId = getSeriesTmdbId(item);
+
+  useEffect(() => {
+    setRemoteSeriesData(null);
+    setLoadError("");
+    setAttemptedRemoteLoad(false);
+  }, [item.id]);
+
+  useEffect(() => {
+    if (item.seasons?.length > 0 || remoteSeriesData || !tmdbId || loadingDetails || attemptedRemoteLoad) return;
+    let cancelled = false;
+
+    const loadSeriesDetails = async () => {
+      setAttemptedRemoteLoad(true);
+      setLoadingDetails(true);
+      setLoadError("");
+      try {
+        const enrich = await fetchMediaEnrichment(API_BASE_URL, tmdbId, "series");
+        if (!cancelled && enrich) {
+          setRemoteSeriesData({
+            tmdbId,
+            episodeCount: enrich.episode_count ?? item.episodeCount ?? null,
+            seasonCount: enrich.season_count ?? item.seasonCount ?? null,
+            runtime: enrich.runtime ?? item.runtime ?? null,
+            seasons: enrich.seasons ?? [],
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error instanceof Error ? error.message : "unknown error");
+        }
+      } finally {
+        if (!cancelled) setLoadingDetails(false);
+      }
+    };
+
+    loadSeriesDetails();
+    return () => {
+      cancelled = true;
+    };
+  }, [attemptedRemoteLoad, item.episodeCount, item.runtime, item.seasonCount, item.seasons, loadingDetails, remoteSeriesData, tmdbId]);
+
+  const effectiveItem = remoteSeriesData ? { ...item, ...remoteSeriesData } : item;
+  const { metrics, seasons, currentPointer } = buildSeriesSeasonRows(effectiveItem);
+  const seasonCount = effectiveItem.seasonCount || seasons.length;
+  const metaCards = [
+    { label: "진행률", value: `${metrics.progress}%`, tone: accent },
+    { label: "시청 회차", value: metrics.playtimeLabel || "미기록", tone: COLORS.dark.text },
+    { label: "시즌", value: seasonCount > 0 ? `${seasonCount}시즌` : "정보 없음", tone: COLORS.dark.text },
+    { label: "러닝타임", value: effectiveItem.runtime ? `평균 ${effectiveItem.runtime}분` : "정보 없음", tone: COLORS.dark.text },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <button
+        type="button"
+        onClick={onBack}
+        style={{
+          alignSelf: "flex-start",
+          minHeight: 40,
+          padding: "0 14px",
+          borderRadius: 999,
+          border: `1px solid ${COLORS.dark.border}`,
+          background: "rgba(255,255,255,0.03)",
+          color: COLORS.dark.text,
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: "pointer",
+          fontFamily: "'Pretendard', sans-serif",
+        }}
+      >
+        ← 시리즈 목록
+      </button>
+
+      <GlassCard glow={COLORS.series.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px", overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "200px minmax(0, 1fr)", gap: 18, alignItems: "start" }}>
+          <div style={{
+            minHeight: 280,
+            borderRadius: 22,
+            overflow: "hidden",
+            border: `1px solid ${accent}26`,
+            background: effectiveItem.poster
+              ? COLORS.dark.surfaceSolid
+              : `linear-gradient(155deg, ${accent}2a, rgba(255,255,255,0.04))`,
+            boxShadow: "0 20px 40px rgba(0,0,0,0.22)",
+          }}>
+            {effectiveItem.poster ? (
+              <img src={effectiveItem.poster} alt={`${effectiveItem.title} 포스터`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ) : (
+              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: `${accent}aa` }}>
+                <FilmIcon size={48} color={`${accent}aa`} />
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+                  Series Detail
+                </p>
+                <h3 style={{ margin: "0 0 8px", fontSize: layout.isPhone ? 24 : 30, lineHeight: 1.15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                  {effectiveItem.title}
+                </h3>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <StatusBadge status={effectiveItem.status} />
+                  {effectiveItem.releaseDate && <Badge text={formatMonthDayLabel(effectiveItem.releaseDate)} color={accent} />}
+                  {effectiveItem.tags.map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
+                </div>
+              </div>
+              <IconActionButton onClick={() => onEdit(effectiveItem)} />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr 1fr" : "repeat(4, minmax(0, 1fr))", gap: 10 }}>
+              {metaCards.map((card) => (
+                <div
+                  key={card.label}
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 16,
+                    border: `1px solid ${accent}1f`,
+                    background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))",
+                  }}
+                >
+                  <p style={{ margin: "0 0 6px", fontSize: 11, color: COLORS.dark.textMuted }}>{card.label}</p>
+                  <strong style={{ fontSize: 15, color: card.tone, fontFamily: "'Outfit', sans-serif" }}>{card.value}</strong>
+                </div>
+              ))}
+            </div>
+
+            <div style={{
+              padding: "14px 16px",
+              borderRadius: 18,
+              border: `1px solid ${accent}24`,
+              background: `linear-gradient(135deg, ${accent}14, rgba(255,255,255,0.03))`,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>현재 시청 포인트</p>
+                  <strong style={{ fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                    {currentPointer
+                      ? currentPointer.seasonNumber
+                        ? `시즌 ${currentPointer.seasonNumber} · ${currentPointer.name}`
+                        : currentPointer.name
+                      : "회차 정보 없음"}
+                  </strong>
+                </div>
+                {effectiveItem.rating > 0 && <RatingStars rating={effectiveItem.rating} size={14} />}
+              </div>
+              <ProgressBar value={metrics.progress} color={accent} height={8} />
+            </div>
+
+            {(effectiveItem.overview || effectiveItem.summary) && (
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.75, color: COLORS.dark.textMuted }}>
+                {effectiveItem.overview || effectiveItem.summary}
+              </p>
+            )}
+
+            {(loadingDetails || loadError) && item.seasons?.length === 0 && (
+              <p style={{ margin: 0, fontSize: 12, color: loadError ? "#f8b4bb" : COLORS.dark.textMuted }}>
+                {loadError ? `시즌 정보를 불러오지 못했습니다: ${loadError}` : "시즌 정보를 불러오는 중..."}
+              </p>
+            )}
+          </div>
+        </div>
+      </GlassCard>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div>
+          <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+            Season Board
+          </p>
+          <h4 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+            시즌별 진행 현황
+          </h4>
+        </div>
+
+        {seasons.length === 0 ? (
+          <GlassCard style={{ padding: "18px 20px" }}>
+            <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>
+              시즌 상세 정보가 아직 없습니다. 새로 추가한 시리즈이거나 TMDB 보강이 완료되면 회차별 목록이 표시됩니다.
+            </p>
+          </GlassCard>
+        ) : (
+          seasons.map((season) => (
+            <GlassCard key={`${item.id}-season-${season.seasonNumber}`} glow={COLORS.series.glow} style={{ padding: "18px 20px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                  <div>
+                    <h5 style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                      {season.name || `시즌 ${season.seasonNumber}`}
+                    </h5>
+                    <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
+                      {[
+                        season.airDate ? formatMonthDayLabel(season.airDate) : null,
+                        season.totalEpisodes > 0 ? `${season.totalEpisodes}화` : null,
+                        season.watchedEpisodes > 0 ? `${season.watchedEpisodes}화 시청` : null,
+                      ].filter(Boolean).join(" · ") || "메타데이터 없음"}
+                    </p>
+                  </div>
+                  <strong style={{ fontSize: 14, color: accent, fontFamily: "'Outfit', sans-serif" }}>
+                    {season.progress}%
+                  </strong>
+                </div>
+
+                <ProgressBar value={season.progress} color={accent} height={7} />
+
+                <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+                  {season.episodes.length === 0 ? (
+                    <div style={{
+                      padding: "14px 16px",
+                      borderRadius: 16,
+                      border: `1px dashed ${accent}36`,
+                      background: "rgba(255,255,255,0.02)",
+                      color: COLORS.dark.textMuted,
+                      fontSize: 12,
+                    }}>
+                      회차 상세 정보가 없습니다.
+                    </div>
+                  ) : season.episodes.map((episode) => (
+                    <div
+                      key={`${item.id}-season-${season.seasonNumber}-episode-${episode.episodeNumber}`}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 16,
+                        border: `1px solid ${episode.isCurrent ? `${accent}66` : episode.watched ? `${accent}36` : COLORS.dark.border}`,
+                        background: episode.watched
+                          ? `${accent}14`
+                          : episode.isCurrent
+                            ? "rgba(255,255,255,0.06)"
+                            : "rgba(255,255,255,0.03)",
+                        boxShadow: episode.isCurrent ? `0 0 0 1px ${accent}22 inset` : "none",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: "0 0 4px", fontSize: 11, color: episode.watched ? accent : COLORS.dark.textMuted }}>
+                          EP {episode.episodeNumber}
+                        </p>
+                        <p style={{ margin: "0 0 4px", fontSize: 13, lineHeight: 1.45, color: COLORS.dark.text, fontWeight: 600 }}>
+                          {episode.name || `제 ${episode.episodeNumber}화`}
+                        </p>
+                        <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted }}>
+                          {[episode.airDate ? formatMonthDayLabel(episode.airDate) : null, episode.runtime ? `${episode.runtime}분` : null].filter(Boolean).join(" · ") || "방영 정보 없음"}
+                        </p>
+                      </div>
+                      {(episode.watched || episode.isCurrent) && (
+                        <div style={{
+                          minWidth: 26,
+                          height: 26,
+                          padding: "0 8px",
+                          borderRadius: 999,
+                          background: episode.watched ? accent : "rgba(255,255,255,0.08)",
+                          color: episode.watched ? "#1a1816" : accent,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 11,
+                          fontWeight: 800,
+                        }}>
+                          {episode.watched ? "완" : "현재"}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </GlassCard>
+          ))
+        )}
+      </div>
     </div>
   );
 };
@@ -576,16 +930,30 @@ export const StudyPage = ({ studies, loading, onEdit, layout }) => {
 /* ──────────── Page: Culture ──────────── */
 export const CulturePage = ({ items, loading, onEdit, layout, title = "문화생활", fixedType = null }) => {
   const [filter, setFilter] = useState(fixedType || "전체");
+  const [detailId, setDetailId] = useState(null);
   const filters = ["전체", ...CULTURE_TYPES];
 
   useEffect(() => {
     if (fixedType) setFilter(fixedType);
   }, [fixedType]);
 
+  useEffect(() => {
+    setDetailId(null);
+  }, [fixedType]);
+
   const filtered = useMemo(() => {
     if (fixedType) return items.filter((item) => item.type === fixedType);
     return filter === "전체" ? items : items.filter((item) => item.type === filter);
   }, [filter, fixedType, items]);
+
+  const detailItem = useMemo(
+    () => filtered.find((item) => item.id === detailId) || null,
+    [detailId, filtered]
+  );
+
+  if (detailItem?.type === "시리즈") {
+    return <SeriesDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} />;
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -615,8 +983,14 @@ export const CulturePage = ({ items, loading, onEdit, layout, title = "문화생
           const tone = getCultureTone(c.type);
           const accent = tone.main;
           const glow = tone.glow;
+          const isSeries = c.type === "시리즈";
           return (
-          <GlassCard key={c.id} glow={glow} style={{ padding: 0, overflow: "hidden" }}>
+          <GlassCard
+            key={c.id}
+            glow={glow}
+            style={{ padding: 0, overflow: "hidden", cursor: isSeries ? "pointer" : "default" }}
+            onClick={isSeries ? () => setDetailId(c.id) : undefined}
+          >
             {/* poster placeholder */}
             <div style={{
               height: 160, background: c.poster ? COLORS.dark.surfaceSolid : `linear-gradient(160deg, ${accent}25, ${COLORS.dark.surfaceSolid})`,
@@ -634,16 +1008,26 @@ export const CulturePage = ({ items, loading, onEdit, layout, title = "문화생
             <div style={{ padding: "12px 14px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                 <h4 style={{ fontSize: 14, fontWeight: 700, color: COLORS.dark.text, margin: "0 0 4px", fontFamily: "'Pretendard', sans-serif", flex: 1 }}>{c.title}</h4>
-                <IconActionButton onClick={() => onEdit(c)} />
+                <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(c); }} />
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
                 <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{c.type}</span>
                 {c.playtime && <span style={{ fontSize: 11, color: accent }}>· {c.playtime}</span>}
               </div>
               {c.rating > 0 && <RatingStars rating={c.rating} size={12} />}
+              {isSeries && (
+                <div style={{ marginTop: 10 }}>
+                  <SeriesProgressSummary item={c} accent={accent} />
+                </div>
+              )}
               <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
                 {c.tags.map(t => <Badge key={t} text={`#${t}`} color={accent} />)}
               </div>
+              {isSeries && (
+                <p style={{ margin: "10px 0 0", fontSize: 11, color: accent, fontWeight: 700 }}>
+                  상세 보기 →
+                </p>
+              )}
             </div>
           </GlassCard>
         )})}

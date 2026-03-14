@@ -13,9 +13,12 @@ import {
   formatReadingSourceSummary,
   normalizeMetadataObject,
   applyCultureSelectionToForm,
+  applyMediaEnrichmentToCultureForm,
+  buildCulturePayload,
   clearCultureMetadata,
   fetchMediaEnrichment,
   getCultureStatusOptions,
+  getSeriesProgressMetrics,
   safeNumber,
   clamp,
   parseTags,
@@ -352,9 +355,10 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
 export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layout, apiBaseUrl }) => {
   const [form, setForm] = useState({
     title: "", summary: "", type: "영화", status: "시청 중",
-    playtime: "", rating: 0, tags: "",
+    playtime: "", watchedEpisodes: "0", rating: 0, tags: "",
     poster: "", releaseDate: "", sourceProvider: "", sourceId: "",
-    episodeCount: null, seasonCount: null, runtime: null,
+    tmdbId: null, igdbId: null,
+    episodeCount: null, seasonCount: null, runtime: null, seasons: [],
   });
   const [enriching, setEnriching] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -370,15 +374,19 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
       type,
       status: record.status || (type === "게임" ? "플레이 중" : "시청 중"),
       playtime: record.playtime || "",
+      watchedEpisodes: String(record.watchedEpisodes ?? 0),
       rating: safeNumber(record.rating),
       tags: (record.tags || []).map((tag) => `#${tag}`).join(" "),
       poster: record.poster || "",
       releaseDate: record.releaseDate || "",
       sourceProvider: record.sourceProvider || "",
       sourceId: record.sourceId || "",
-      episodeCount: null,
-      seasonCount: null,
-      runtime: null,
+      tmdbId: record.tmdbId || null,
+      igdbId: record.igdbId || null,
+      episodeCount: record.episodeCount ?? null,
+      seasonCount: record.seasonCount ?? null,
+      runtime: record.runtime ?? null,
+      seasons: record.seasons || [],
     });
     setEnriching(false);
     setMessage("");
@@ -390,6 +398,14 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
   const labelStyle = FORM_LABEL_STYLE;
   const splitFieldStyle = getSplitFieldStyle(layout);
   const accent = COLORS.culture.main;
+  const seriesMetrics = form.type === "시리즈"
+    ? getSeriesProgressMetrics({
+      episodeCount: form.episodeCount,
+      seasons: form.seasons,
+      watchedEpisodes: form.watchedEpisodes,
+      playtime: form.playtime,
+    })
+    : null;
 
   const save = async () => {
     if (!form.title.trim()) { setMessage("제목을 입력해 주세요."); return; }
@@ -400,19 +416,7 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
         title: form.title.trim(),
         summary: form.summary.trim(),
         tags: parseTags(form.tags),
-        payload: {
-          type: form.type,
-          status: form.status,
-          playtime: form.playtime.trim() || null,
-          rating: clamp(safeNumber(form.rating), 0, 5),
-          poster: form.poster || null,
-          release_date: form.releaseDate || null,
-          episode_count: form.episodeCount ?? null,
-          season_count: form.seasonCount ?? null,
-          runtime: form.runtime ?? null,
-          source_provider: form.sourceProvider || null,
-          source_id: form.sourceId || null,
-        },
+        payload: buildCulturePayload(form),
       });
       setMessage("저장 완료");
     } catch (error) {
@@ -482,12 +486,7 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
                   if (!enrich) return;
                   setForm((prev) => {
                     if (prev.sourceId !== selectedSourceId) return prev;
-                    return {
-                      ...prev,
-                      episodeCount: enrich.episode_count ?? null,
-                      seasonCount: enrich.season_count ?? null,
-                      runtime: enrich.runtime ?? null,
-                    };
+                    return applyMediaEnrichmentToCultureForm(prev, enrich);
                   });
                 } catch (err) {
                   console.error("media enrich failed", err);
@@ -511,9 +510,47 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
           <div><label style={labelStyle}>상태</label><select value={form.status} onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))} style={inputStyle}>{getCultureStatusOptions(form.type).map((status) => <option key={status}>{status}</option>)}</select></div>
         </div>
         <div style={splitFieldStyle}>
-          <div><label style={labelStyle}>{isGame ? "플레이타임" : "시청 회차"}</label><input value={form.playtime} onChange={(e) => setForm((prev) => ({ ...prev, playtime: e.target.value }))} style={inputStyle} /></div>
-          <div><label style={labelStyle}>평점</label><input value={form.rating} onChange={(e) => setForm((prev) => ({ ...prev, rating: safeNumber(e.target.value) }))} style={inputStyle} type="number" min="0" max="5" /></div>
+          {form.type === "시리즈" ? (
+            <>
+              <div>
+                <label style={labelStyle}>시청한 회차 수</label>
+                <input
+                  value={form.watchedEpisodes}
+                  onChange={(e) => setForm((prev) => ({ ...prev, watchedEpisodes: e.target.value }))}
+                  style={inputStyle}
+                  type="number"
+                  min="0"
+                  max={form.episodeCount || undefined}
+                />
+              </div>
+              <div><label style={labelStyle}>평점</label><input value={form.rating} onChange={(e) => setForm((prev) => ({ ...prev, rating: safeNumber(e.target.value) }))} style={inputStyle} type="number" min="0" max="5" /></div>
+            </>
+          ) : (
+            <>
+              <div><label style={labelStyle}>{isGame ? "플레이타임" : "시청 메모"}</label><input value={form.playtime} onChange={(e) => setForm((prev) => ({ ...prev, playtime: e.target.value }))} style={inputStyle} /></div>
+              <div><label style={labelStyle}>평점</label><input value={form.rating} onChange={(e) => setForm((prev) => ({ ...prev, rating: safeNumber(e.target.value) }))} style={inputStyle} type="number" min="0" max="5" /></div>
+            </>
+          )}
         </div>
+        {form.type === "시리즈" && (
+          <div style={{
+            padding: "12px 14px",
+            borderRadius: 14,
+            border: `1px solid ${accent}22`,
+            background: `${accent}12`,
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+          }}>
+            <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>
+              {seriesMetrics?.playtimeLabel || "회차 수를 입력하면 진행률이 계산됩니다."}
+            </span>
+            <strong style={{ fontSize: 12, color: accent }}>
+              {seriesMetrics ? `${seriesMetrics.progress}% 진행` : "0% 진행"}
+            </strong>
+          </div>
+        )}
         <div><label style={labelStyle}>태그</label><input value={form.tags} onChange={(e) => setForm((prev) => ({ ...prev, tags: e.target.value }))} style={inputStyle} placeholder="#SF #드라마" /></div>
         {message && <p style={{ margin: 0, fontSize: 12, color: message.startsWith("저장 실패") ? "#f8b4bb" : COLORS.culture.light }}>{message}</p>}
         <button onClick={save} disabled={saving || deleting} style={getPrimaryActionStyle({ accent: COLORS.culture.main, disabled: saving || deleting })}>

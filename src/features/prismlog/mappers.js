@@ -1,4 +1,10 @@
-import { clamp, normalizeCultureType, normalizeMetadataObject, safeNumber } from "./core";
+import {
+  clamp,
+  getSeriesProgressMetrics,
+  normalizeCultureType,
+  normalizeMetadataObject,
+  safeNumber,
+} from "./core";
 
 export const mapReadingLog = (log) => {
   const payload = log.payload || {};
@@ -59,19 +65,37 @@ export const mapStudyLog = (log) => {
 export const mapCultureLog = (log) => {
   const payload = log.payload || {};
   const type = normalizeCultureType(payload.type);
+  const seriesMetrics = type === "시리즈"
+    ? getSeriesProgressMetrics({
+      episodeCount: payload.episode_count,
+      seasons: payload.seasons,
+      watchedEpisodes: payload.watched_episode_count,
+      playtime: payload.playtime,
+      progress: payload.progress,
+    })
+    : null;
   return {
     id: log.id,
     title: log.title,
     summary: log.summary || "",
+    overview: payload.overview || log.summary || "",
     type,
     status: payload.status || (type === "게임" ? "플레이 중" : "시청 중"),
     poster: payload.poster || null,
     releaseDate: payload.release_date || null,
     sourceProvider: payload.source_provider || "",
     sourceId: payload.source_id || "",
+    tmdbId: payload.tmdb_id || null,
+    igdbId: payload.igdb_id || null,
+    episodeCount: safeNumber(payload.episode_count, 0) || null,
+    seasonCount: safeNumber(payload.season_count, 0) || null,
+    runtime: safeNumber(payload.runtime, 0) || null,
+    seasons: seriesMetrics?.seasons || [],
+    watchedEpisodes: seriesMetrics?.watchedEpisodes ?? safeNumber(payload.watched_episode_count, 0),
+    progress: seriesMetrics?.progress ?? clamp(safeNumber(payload.progress), 0, 100),
     rating: clamp(safeNumber(payload.rating), 0, 5),
     date: log.created_at,
     tags: Array.isArray(log.tags) ? log.tags : [],
-    playtime: payload.playtime || null,
+    playtime: type === "시리즈" ? seriesMetrics?.playtimeLabel || payload.playtime || null : payload.playtime || null,
   };
 };

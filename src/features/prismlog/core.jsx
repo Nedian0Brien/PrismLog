@@ -413,12 +413,108 @@ export const fetchReadingEnrichment = async (apiBaseUrl, isbn) => {
   };
 };
 
+const normalizeSeriesEpisode = (episode, fallbackSeasonNumber = null) => {
+  if (!episode || typeof episode !== "object" || Array.isArray(episode)) return null;
+  const seasonNumber = safeNumber(episode.season_number ?? episode.seasonNumber ?? fallbackSeasonNumber, 0);
+  const episodeNumber = safeNumber(episode.episode_number ?? episode.episodeNumber, 0);
+  if (seasonNumber < 1 || episodeNumber < 1) return null;
+  const runtime = safeNumber(episode.runtime, 0);
+  return {
+    seasonNumber,
+    episodeNumber,
+    name: String(episode.name || "").trim() || null,
+    airDate: String(episode.air_date || episode.airDate || "").trim() || null,
+    runtime: runtime > 0 ? runtime : null,
+    overview: String(episode.overview || "").trim() || null,
+    stillUrl: String(episode.still_url || episode.stillUrl || "").trim() || null,
+  };
+};
+
+const normalizeSeriesSeason = (season) => {
+  if (!season || typeof season !== "object" || Array.isArray(season)) return null;
+  const seasonNumber = safeNumber(season.season_number ?? season.seasonNumber, 0);
+  if (seasonNumber < 1) return null;
+  const rawEpisodes = Array.isArray(season.episodes) ? season.episodes : [];
+  const episodes = rawEpisodes
+    .map((episode) => normalizeSeriesEpisode(episode, seasonNumber))
+    .filter(Boolean)
+    .sort((a, b) => a.episodeNumber - b.episodeNumber);
+  const episodeCount = safeNumber(season.episode_count ?? season.episodeCount, 0);
+  return {
+    seasonNumber,
+    name: String(season.name || "").trim() || null,
+    airDate: String(season.air_date || season.airDate || "").trim() || null,
+    episodeCount: episodeCount > 0 ? episodeCount : (episodes.length || null),
+    overview: String(season.overview || "").trim() || null,
+    posterUrl: String(season.poster_url || season.posterUrl || "").trim() || null,
+    episodes,
+  };
+};
+
+export const normalizeSeriesSeasons = (value) => (
+  Array.isArray(value)
+    ? value
+      .map((season) => normalizeSeriesSeason(season))
+      .filter(Boolean)
+      .sort((a, b) => a.seasonNumber - b.seasonNumber)
+    : []
+);
+
+export const getSeriesTotalEpisodes = (episodeCount, seasons = []) => {
+  const explicitCount = safeNumber(episodeCount, 0);
+  if (explicitCount > 0) return explicitCount;
+  return normalizeSeriesSeasons(seasons).reduce((sum, season) => {
+    const seasonCount = safeNumber(season.episodeCount, season.episodes.length);
+    return sum + Math.max(seasonCount, 0);
+  }, 0);
+};
+
+export const parseWatchedEpisodeCount = (value) => {
+  const numeric = safeNumber(value, Number.NaN);
+  if (Number.isFinite(numeric) && numeric >= 0) return Math.floor(numeric);
+  const text = String(value || "").trim();
+  if (!text) return 0;
+  const fractionMatch = text.match(/(\d+)\s*\/\s*\d+/);
+  if (fractionMatch) return safeNumber(fractionMatch[1], 0);
+  const episodeMatch = text.match(/(\d+)\s*화/);
+  if (episodeMatch) return safeNumber(episodeMatch[1], 0);
+  return 0;
+};
+
+export const formatSeriesPlaytime = (watchedEpisodes, totalEpisodes) => {
+  const watched = Math.max(0, Math.floor(safeNumber(watchedEpisodes)));
+  const total = Math.max(0, Math.floor(safeNumber(totalEpisodes)));
+  if (total > 0) return `${Math.min(watched, total)} / ${total}화`;
+  if (watched > 0) return `${watched}화 시청`;
+  return "";
+};
+
+export const getSeriesProgressMetrics = ({ episodeCount, seasons, watchedEpisodes, playtime, progress }) => {
+  const normalizedSeasons = normalizeSeriesSeasons(seasons);
+  const totalEpisodes = getSeriesTotalEpisodes(episodeCount, normalizedSeasons);
+  const rawWatchedEpisodes = parseWatchedEpisodeCount(watchedEpisodes ?? playtime);
+  const boundedWatchedEpisodes = totalEpisodes > 0
+    ? clamp(rawWatchedEpisodes, 0, totalEpisodes)
+    : Math.max(rawWatchedEpisodes, 0);
+  const computedProgress = totalEpisodes > 0
+    ? clamp(Math.round((boundedWatchedEpisodes / totalEpisodes) * 100), 0, 100)
+    : clamp(safeNumber(progress), 0, 100);
+  return {
+    seasons: normalizedSeasons,
+    totalEpisodes,
+    watchedEpisodes: boundedWatchedEpisodes,
+    progress: computedProgress,
+    playtimeLabel: formatSeriesPlaytime(boundedWatchedEpisodes, totalEpisodes),
+  };
+};
+
 export const createCultureFormState = () => ({
   title: "",
   type: "영화",
   status: "시청 중",
   rating: 0,
   playtime: "",
+  watchedEpisodes: "0",
   tags: "",
   poster: "",
   releaseDate: "",
@@ -430,6 +526,7 @@ export const createCultureFormState = () => ({
   episodeCount: null,
   seasonCount: null,
   runtime: null,
+  seasons: [],
 });
 
 export const applyCultureSelectionToForm = (form, media) => ({
@@ -442,7 +539,69 @@ export const applyCultureSelectionToForm = (form, media) => ({
   sourceId: media.source_id || "",
   tmdbId: media.tmdb_id || null,
   igdbId: media.igdb_id || null,
+  episodeCount: null,
+  seasonCount: null,
+  runtime: null,
+  seasons: [],
 });
+
+export const applyMediaEnrichmentToCultureForm = (form, enrichment) => {
+  const normalizedType = normalizeCultureType(form.type);
+  const episodeCount = safeNumber(enrichment?.episode_count, 0);
+  const seasons = normalizeSeriesSeasons(enrichment?.seasons);
+  const totalEpisodes = getSeriesTotalEpisodes(episodeCount, seasons);
+  const watchedEpisodes = normalizedType === "시리즈"
+    ? (totalEpisodes > 0
+      ? clamp(parseWatchedEpisodeCount(form.watchedEpisodes), 0, totalEpisodes)
+      : Math.max(parseWatchedEpisodeCount(form.watchedEpisodes), 0))
+    : parseWatchedEpisodeCount(form.watchedEpisodes);
+
+  return {
+    ...form,
+    episodeCount: episodeCount > 0 ? episodeCount : null,
+    seasonCount: safeNumber(enrichment?.season_count, 0) > 0 ? safeNumber(enrichment?.season_count) : null,
+    runtime: safeNumber(enrichment?.runtime, 0) > 0 ? safeNumber(enrichment?.runtime) : null,
+    seasons,
+    watchedEpisodes: String(watchedEpisodes),
+    playtime: normalizedType === "시리즈"
+      ? formatSeriesPlaytime(watchedEpisodes, totalEpisodes)
+      : form.playtime,
+  };
+};
+
+export const buildCulturePayload = (form) => {
+  const normalizedType = normalizeCultureType(form.type);
+  const metrics = normalizedType === "시리즈"
+    ? getSeriesProgressMetrics({
+      episodeCount: form.episodeCount,
+      seasons: form.seasons,
+      watchedEpisodes: form.watchedEpisodes,
+      playtime: form.playtime,
+    })
+    : null;
+
+  return {
+    type: normalizedType,
+    status: form.status,
+    playtime: normalizedType === "시리즈"
+      ? metrics.playtimeLabel || null
+      : form.playtime.trim() || null,
+    watched_episode_count: normalizedType === "시리즈" ? metrics.watchedEpisodes : null,
+    progress: normalizedType === "시리즈" ? metrics.progress : null,
+    rating: clamp(safeNumber(form.rating), 0, 5),
+    poster: form.poster || null,
+    release_date: form.releaseDate || null,
+    overview: form.overview.trim() || null,
+    tmdb_id: form.tmdbId || null,
+    igdb_id: form.igdbId || null,
+    episode_count: form.episodeCount ?? null,
+    season_count: form.seasonCount ?? null,
+    runtime: form.runtime ?? null,
+    seasons: normalizedType === "시리즈" ? normalizeSeriesSeasons(form.seasons) : [],
+    source_provider: form.sourceProvider || null,
+    source_id: form.sourceId || null,
+  };
+};
 
 export const fetchMediaEnrichment = async (apiBaseUrl, tmdbId, type) => {
   if (!tmdbId || !["movie", "series"].includes(type)) return null;
@@ -465,6 +624,7 @@ export const clearCultureMetadata = (form) => ({
   episodeCount: null,
   seasonCount: null,
   runtime: null,
+  seasons: [],
 });
 
 export const normalizeCultureType = (value) => {

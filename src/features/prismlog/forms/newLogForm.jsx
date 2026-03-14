@@ -14,9 +14,12 @@ import {
   getReadingEnrichmentMessage,
   createCultureFormState,
   applyCultureSelectionToForm,
+  applyMediaEnrichmentToCultureForm,
+  buildCulturePayload,
   clearCultureMetadata,
   fetchMediaEnrichment,
   getCultureStatusOptions,
+  getSeriesProgressMetrics,
   safeNumber,
   clamp,
   parseTags,
@@ -920,15 +923,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
               if (!enrich) return;
               setCultureForm((prev) => {
                 if (prev.sourceId !== selectedSourceId) return prev;
-                const updates = {
-                  episodeCount: enrich.episode_count ?? null,
-                  seasonCount: enrich.season_count ?? null,
-                  runtime: enrich.runtime ?? null,
-                };
-                if (type === "series" && enrich.episode_count && !prev.playtime) {
-                  updates.playtime = `0 / ${enrich.episode_count}화`;
-                }
-                return { ...prev, ...updates };
+                return applyMediaEnrichmentToCultureForm(prev, enrich);
               });
             } catch (err) {
               console.error("media enrich failed", err);
@@ -959,6 +954,14 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
   }
 
   // culture — step: details (또는 게임)
+  const seriesMetrics = cultureForm.type === "시리즈"
+    ? getSeriesProgressMetrics({
+      episodeCount: cultureForm.episodeCount,
+      seasons: cultureForm.seasons,
+      watchedEpisodes: cultureForm.watchedEpisodes,
+      playtime: cultureForm.playtime,
+    })
+    : null;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {(
@@ -1040,13 +1043,56 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
         </div>
       </div>
 
-      <div><label style={labelStyle}>{isGameType ? "플레이타임" : "시청 회차"}</label>
-        <input value={cultureForm.playtime} onChange={(e) => setCultureForm((prev) => ({ ...prev, playtime: e.target.value }))} style={inputStyle} placeholder={isGameType ? "예: 42시간" : "예: 8화 / 10화"} />
-      </div>
-
-      <div><label style={labelStyle}>평점</label>
-        <input value={cultureForm.rating} onChange={(e) => setCultureForm((prev) => ({ ...prev, rating: safeNumber(e.target.value) }))} style={inputStyle} type="number" min="0" max="5" />
-      </div>
+      {cultureForm.type === "시리즈" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={splitFieldStyle}>
+            <div>
+              <label style={labelStyle}>시청한 회차 수</label>
+              <input
+                value={cultureForm.watchedEpisodes}
+                onChange={(e) => setCultureForm((prev) => ({ ...prev, watchedEpisodes: e.target.value }))}
+                style={inputStyle}
+                type="number"
+                min="0"
+                max={cultureForm.episodeCount || undefined}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>평점</label>
+              <input value={cultureForm.rating} onChange={(e) => setCultureForm((prev) => ({ ...prev, rating: safeNumber(e.target.value) }))} style={inputStyle} type="number" min="0" max="5" />
+            </div>
+          </div>
+          <div style={{
+            padding: "12px 14px",
+            borderRadius: 14,
+            border: `1px solid ${accent}22`,
+            background: `${accent}12`,
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+          }}>
+            <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>
+              {seriesMetrics?.playtimeLabel || "회차 정보를 입력하면 진행률이 계산됩니다."}
+            </span>
+            <strong style={{ fontSize: 12, color: accent }}>
+              {seriesMetrics ? `${seriesMetrics.progress}% 진행` : "0% 진행"}
+            </strong>
+          </div>
+        </div>
+      ) : (
+        <div style={splitFieldStyle}>
+          <div>
+            <label style={labelStyle}>{isGameType ? "플레이타임" : "시청 메모"}</label>
+            <input value={cultureForm.playtime} onChange={(e) => setCultureForm((prev) => ({ ...prev, playtime: e.target.value }))} style={inputStyle} placeholder={isGameType ? "예: 42시간" : "예: 극장 관람"} />
+          </div>
+          <div>
+            <label style={labelStyle}>평점</label>
+            <input value={cultureForm.rating} onChange={(e) => setCultureForm((prev) => ({ ...prev, rating: safeNumber(e.target.value) }))} style={inputStyle} type="number" min="0" max="5" />
+          </div>
+        </div>
+      )}
 
       <div><label style={labelStyle}>태그</label>
         <input value={cultureForm.tags} onChange={(e) => setCultureForm((prev) => ({ ...prev, tags: e.target.value }))} style={inputStyle} placeholder="#SF #드라마 ..." />
@@ -1062,19 +1108,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
             title: cultureForm.title.trim(),
             summary: cultureForm.overview.trim(),
             tags: parseTags(cultureForm.tags),
-            payload: {
-              type: cultureForm.type,
-              status: cultureForm.status,
-              playtime: cultureForm.playtime.trim() || null,
-              rating: clamp(safeNumber(cultureForm.rating), 0, 5),
-              poster: cultureForm.poster || null,
-              release_date: cultureForm.releaseDate || null,
-              episode_count: cultureForm.episodeCount ?? null,
-              season_count: cultureForm.seasonCount ?? null,
-              runtime: cultureForm.runtime ?? null,
-              source_provider: cultureForm.sourceProvider || null,
-              source_id: cultureForm.sourceId || null,
-            },
+            payload: buildCulturePayload(cultureForm),
           },
           () => {
             setCultureForm(createCultureFormState());
