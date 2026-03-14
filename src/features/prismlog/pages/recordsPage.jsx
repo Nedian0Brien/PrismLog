@@ -362,6 +362,7 @@ const FloatingSeriesProgressToast = ({ toast, visible, animatedProgress }) => {
 };
 
 const SeriesProgressTrendChart = ({ points }) => {
+  const [activePointIndex, setActivePointIndex] = useState(points.length - 1);
   if (!points.length) return null;
 
   const width = 220;
@@ -377,9 +378,17 @@ const SeriesProgressTrendChart = ({ points }) => {
     const y = paddingY + innerHeight - ((point.progress / 100) * innerHeight);
     return { ...point, x, y };
   });
+  const safePointIndex = Math.min(activePointIndex, coordinates.length - 1);
+  const activePoint = coordinates[safePointIndex];
+  const tooltipX = Math.max(46, Math.min(width - 46, activePoint.x));
+  const tooltipY = Math.max(22, activePoint.y - 20);
 
   const linePath = coordinates.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
   const areaPath = `${linePath} L ${coordinates[coordinates.length - 1].x} ${height - paddingY} L ${coordinates[0].x} ${height - paddingY} Z`;
+
+  useEffect(() => {
+    setActivePointIndex(points.length - 1);
+  }, [points]);
 
   return (
     <div style={{
@@ -398,6 +407,14 @@ const SeriesProgressTrendChart = ({ points }) => {
         <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>
           {`${points[0].label} → ${points[points.length - 1].label}`}
         </span>
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>
+          {activePoint.label}
+        </span>
+        <strong style={{ fontSize: 18, color: COLORS.series.main, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
+          {activePoint.progress}%
+        </strong>
       </div>
       <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ display: "block", overflow: "visible" }}>
         <defs>
@@ -422,9 +439,51 @@ const SeriesProgressTrendChart = ({ points }) => {
         })}
         <path d={areaPath} fill="url(#seriesTrendFill)" />
         <path d={linePath} fill="none" stroke={COLORS.series.main} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        {coordinates.map((point) => (
+        <g style={{ pointerEvents: "none" }}>
+          <path
+            d={`M ${tooltipX} ${tooltipY} L ${tooltipX - 7} ${tooltipY - 10} H ${tooltipX - 40} Q ${tooltipX - 46} ${tooltipY - 10} ${tooltipX - 46} ${tooltipY - 16} V ${tooltipY - 34} Q ${tooltipX - 46} ${tooltipY - 40} ${tooltipX - 40} ${tooltipY - 40} H ${tooltipX + 40} Q ${tooltipX + 46} ${tooltipY - 40} ${tooltipX + 46} ${tooltipY - 34} V ${tooltipY - 16} Q ${tooltipX + 46} ${tooltipY - 10} ${tooltipX + 40} ${tooltipY - 10} H ${tooltipX + 7} Z`}
+            fill="rgba(22,20,19,0.92)"
+            stroke="rgba(255,138,101,0.32)"
+          />
+          <text
+            x={tooltipX}
+            y={tooltipY - 24}
+            textAnchor="middle"
+            style={{ fill: COLORS.dark.text, fontSize: 10, fontFamily: "'Outfit', sans-serif", letterSpacing: 0.4 }}
+          >
+            {activePoint.label}
+          </text>
+          <text
+            x={tooltipX}
+            y={tooltipY - 13}
+            textAnchor="middle"
+            style={{ fill: COLORS.series.main, fontSize: 12, fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}
+          >
+            {`${activePoint.progress}%`}
+          </text>
+        </g>
+        {coordinates.map((point, index) => (
           <g key={`trend-point-${point.dateKey}`}>
-            <circle cx={point.x} cy={point.y} r="4.5" fill={COLORS.dark.bg} stroke={COLORS.series.main} strokeWidth="2" />
+            <circle
+              cx={point.x}
+              cy={point.y}
+              r={index === safePointIndex ? "6" : "4.5"}
+              fill={index === safePointIndex ? COLORS.series.main : COLORS.dark.bg}
+              stroke={COLORS.series.main}
+              strokeWidth={index === safePointIndex ? "2.5" : "2"}
+              style={{ transition: "all 180ms ease" }}
+            />
+            <rect
+              x={point.x - 14}
+              y={paddingY}
+              width={28}
+              height={innerHeight}
+              fill="transparent"
+              onMouseEnter={() => setActivePointIndex(index)}
+              onMouseMove={() => setActivePointIndex(index)}
+              onPointerDown={() => setActivePointIndex(index)}
+              onTouchStart={() => setActivePointIndex(index)}
+            />
           </g>
         ))}
       </svg>
@@ -966,6 +1025,9 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
             gap: 8,
             padding: "16px 0 4px",
           }}>
+            <div style={{ width: "100%" }}>
+              <SeriesProgressTrendChart points={trendPoints} />
+            </div>
             <div style={{ position: "relative", width: layout.isPhone ? 126 : 144, height: layout.isPhone ? 126 : 144 }}>
               <SeriesProgressDonut value={metrics.progress} size={layout.isPhone ? 126 : 144} strokeWidth={12} />
               <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
@@ -982,9 +1044,6 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
               {seasonCount > 0 ? `${seasonCount}시즌` : "시즌 정보 없음"}
               {effectiveItem.runtime ? ` · 평균 ${effectiveItem.runtime}분` : ""}
             </p>
-            <div style={{ width: "100%" }}>
-              <SeriesProgressTrendChart points={trendPoints} />
-            </div>
           </div>
         </div>
       </GlassCard>
