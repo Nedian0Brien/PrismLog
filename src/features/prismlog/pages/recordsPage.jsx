@@ -246,8 +246,9 @@ const SeriesProgressSummary = ({ item, accent }) => {
             {metrics.playtimeLabel || "회차 미기록"}
           </strong>
         </div>
-        <strong style={{ fontSize: 32, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", lineHeight: 0.9, letterSpacing: -1 }}>
-          {metrics.progress}%
+        <strong style={{ fontSize: 28, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", lineHeight: 0.9, letterSpacing: -0.8, display: "inline-flex", alignItems: "flex-start", gap: 1 }}>
+          <span>{metrics.progress}</span>
+          <span style={{ fontSize: 14, color: accent, lineHeight: 1.1, paddingTop: 2 }}>%</span>
         </strong>
       </div>
       <ProgressBar value={metrics.progress} color={accent} height={8} />
