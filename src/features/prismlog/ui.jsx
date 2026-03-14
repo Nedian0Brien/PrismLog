@@ -399,11 +399,11 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
           const visibleBottom = containerRect.bottom - keyboardInset - 20;
 
           if (targetRect.bottom > visibleBottom) {
-            container.scrollBy({ top: targetRect.bottom - visibleBottom, behavior: "smooth" });
+            container.scrollBy({ top: targetRect.bottom - visibleBottom, behavior: "auto" });
             return;
           }
           if (targetRect.top < visibleTop) {
-            container.scrollBy({ top: targetRect.top - visibleTop, behavior: "smooth" });
+            container.scrollBy({ top: targetRect.top - visibleTop, behavior: "auto" });
           }
         }, 180);
       });
@@ -420,10 +420,10 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
   // --app-vh: 키보드가 올라와도 변하지 않는 최대 뷰포트 높이
   const sheetMaxHeight = isWide
     ? "min(85vh, calc(var(--app-vh) - 48px))"
-    : "calc(var(--app-vh) - var(--viewport-safe-top) - 8px)";
+    : "calc(var(--app-vh) - max(var(--safe-area-top), var(--safe-area-max-top)) - 8px)";
   const sheetContentMaxHeight = isWide
     ? "calc(min(85vh, calc(var(--app-vh) - 48px)) - 24px)"
-    : "calc(var(--app-vh) - var(--viewport-safe-top) - 48px)";
+    : "calc(var(--app-vh) - max(var(--safe-area-top), var(--safe-area-max-top)) - 48px)";
 
   return (
     <div style={{
@@ -442,7 +442,7 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
         <div
           ref={contentRef}
           style={{
-            padding: isWide ? "12px 28px calc(32px + var(--viewport-safe-bottom))" : "0 24px calc(32px + var(--viewport-safe-bottom))",
+            padding: isWide ? "12px 28px calc(32px + var(--viewport-safe-bottom))" : "0 24px calc(32px + var(--safe-area-bottom-base))",
             overflowY: "auto",
             maxHeight: sheetContentMaxHeight,
             WebkitOverflowScrolling: "touch",
