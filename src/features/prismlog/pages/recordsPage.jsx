@@ -1904,9 +1904,6 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {c.tags.map(t => <Badge key={t} text={`#${t}`} color={accent} />)}
                 </div>
-                <p style={{ margin: 0, fontSize: 11, color: accent, fontWeight: 700, fontFamily: "'Outfit', sans-serif", letterSpacing: 0.6 }}>
-                  OPEN SERIES DETAIL
-                </p>
               </div>
             ) : (
               <>
