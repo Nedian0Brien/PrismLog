@@ -16,10 +16,9 @@ class Settings(BaseSettings):
     google_books_api_key: str = ""
     nl_isbn_api_cert_key: str = ""
     tmdb_api_key: str = ""
+    rawg_api_key: str = ""
     media_search_timeout_seconds: float = 3.0
     media_search_cache_ttl_seconds: int = 300
-    igdb_client_id: str = ""
-    igdb_client_secret: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

@@ -64,10 +64,10 @@ MediaType = Literal["movie", "series", "game"]
 
 
 class MediaSearchItem(BaseModel):
-    source_provider: Literal["tmdb", "igdb"]
+    source_provider: Literal["tmdb", "rawg"]
     source_id: str
     tmdb_id: int | None = None
-    igdb_id: int | None = None
+    rawg_id: int | None = None
     type: MediaType
     title: str
     original_title: str | None = None
@@ -83,9 +83,15 @@ class MediaSearchResponse(BaseModel):
 
 
 class MediaEnrichResponse(BaseModel):
-    source_provider: Literal["tmdb"]
+    source_provider: Literal["tmdb", "rawg"]
     type: MediaType
-    tmdb_id: int
+    tmdb_id: int | None = None
+    rawg_id: int | None = None
+    title: str | None = None
+    original_title: str | None = None
+    poster_url: str | None = None
+    release_date: str | None = None
+    overview: str | None = None
     episode_count: int | None = None
     season_count: int | None = None
     runtime: int | None = None

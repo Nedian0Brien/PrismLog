@@ -912,15 +912,23 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
             setCultureForm((prev) => applyCultureSelectionToForm(prev, media));
             setCultureStep("details");
             const tmdbId = media.tmdb_id;
+            const rawgId = media.rawg_id;
             const type = media.type;
-            if (!tmdbId || !["movie", "series"].includes(type)) return;
+            if (
+              (type !== "game" && (!tmdbId || !["movie", "series"].includes(type)))
+              || (type === "game" && !rawgId)
+            ) return;
             setCultureEnriching(true);
             try {
-              const enrich = await fetchMediaEnrichment(apiBaseUrl, tmdbId, type);
+              const enrich = await fetchMediaEnrichment(apiBaseUrl, { tmdbId, rawgId, type });
               if (!enrich) return;
               setCultureForm((prev) => {
                 if (prev.sourceId !== selectedSourceId) return prev;
                 const updates = {
+                  title: enrich.title || prev.title,
+                  poster: enrich.poster_url || prev.poster,
+                  releaseDate: enrich.release_date || prev.releaseDate,
+                  overview: enrich.overview || prev.overview,
                   episodeCount: enrich.episode_count ?? null,
                   seasonCount: enrich.season_count ?? null,
                   runtime: enrich.runtime ?? null,
