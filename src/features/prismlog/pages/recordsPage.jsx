@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   API_BASE_URL,
   buildCulturePayload,
@@ -293,6 +293,9 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
   const [toast, setToast] = useState(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [animatedToastProgress, setAnimatedToastProgress] = useState(0);
+  const seasonRefs = useRef({});
+  const seasonScrollerRefs = useRef({});
+  const episodeRefs = useRef({});
   const accent = COLORS.series.main;
   const successColor = "#63d2a4";
   const tmdbId = getSeriesTmdbId(item);
@@ -374,10 +377,39 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
     };
   }, [toast]);
 
+  const scrollToEpisode = (target) => {
+    if (!target?.seasonNumber || !target?.episodeNumber) return;
+    const episodeKey = `${target.seasonNumber}-${target.episodeNumber}`;
+    const seasonNode = seasonRefs.current[target.seasonNumber];
+    const scrollerNode = seasonScrollerRefs.current[target.seasonNumber];
+    const episodeNode = episodeRefs.current[episodeKey];
+
+    if (seasonNode) {
+      seasonNode.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    window.setTimeout(() => {
+      if (scrollerNode && episodeNode) {
+        const scrollerRect = scrollerNode.getBoundingClientRect();
+        const episodeRect = episodeNode.getBoundingClientRect();
+        const nextLeft = scrollerNode.scrollLeft + (episodeRect.left - scrollerRect.left) - ((scrollerRect.width - episodeRect.width) / 2);
+        scrollerNode.scrollTo({ left: Math.max(nextLeft, 0), behavior: "smooth" });
+      }
+      if (episodeNode) {
+        episodeNode.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    }, 260);
+  };
+
   const handleEpisodeSelect = async (episode) => {
     if (!onUpdateSeriesProgress) return;
     const episodeKey = `${episode.seasonNumber}-${episode.episodeNumber}`;
     const startedAt = Date.now();
+    const isTogglingOff = episode.watched;
+    if (isTogglingOff) {
+      const confirmed = window.confirm(`시즌 ${episode.seasonNumber} · EP ${episode.episodeNumber} 시청 완료를 해제할까요? 이 회차 이후 완료 표시도 함께 해제됩니다.`);
+      if (!confirmed) return;
+    }
     const nextWatchedEpisodes = episode.watched
       ? Math.max(episode.absoluteEpisodeNumber - 1, 0)
       : episode.absoluteEpisodeNumber;
@@ -541,13 +573,29 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                 <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
                   Next episode
                 </p>
-                <strong style={{ display: "block", marginBottom: 6, fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                <button
+                  type="button"
+                  onClick={() => scrollToEpisode(currentPointer)}
+                  style={{
+                    display: "block",
+                    margin: "0 0 6px",
+                    padding: 0,
+                    background: "none",
+                    border: "none",
+                    fontSize: 15,
+                    color: COLORS.dark.text,
+                    fontFamily: "'Outfit', sans-serif",
+                    fontWeight: 800,
+                    textAlign: "left",
+                    cursor: currentPointer?.seasonNumber ? "pointer" : "default",
+                  }}
+                >
                   {currentPointer
                     ? currentPointer.seasonNumber
                       ? `시즌 ${currentPointer.seasonNumber} · ${currentPointer.name}`
                       : currentPointer.name
                     : "다음 회차 정보 없음"}
-                </strong>
+                </button>
                 {currentPointer?.overview && (
                   <p style={{
                     margin: 0,
@@ -662,9 +710,19 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
           </GlassCard>
         ) : (
           seasons.map((season) => (
-            <GlassCard key={`${item.id}-season-${season.seasonNumber}`} glow={COLORS.series.glow} style={{ padding: "18px 20px" }}>
+            <GlassCard
+              key={`${item.id}-season-${season.seasonNumber}`}
+              glow={COLORS.series.glow}
+              style={{ padding: "18px 20px" }}
+              className=""
+            >
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                <div
+                  ref={(node) => {
+                    seasonRefs.current[season.seasonNumber] = node;
+                  }}
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}
+                >
                   <div>
                     <h5 style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
                       {season.name || `시즌 ${season.seasonNumber}`}
@@ -684,7 +742,11 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
 
                 <ProgressBar value={season.progress} color={accent} height={7} />
 
-                <div style={{
+                <div
+                  ref={(node) => {
+                    seasonScrollerRefs.current[season.seasonNumber] = node;
+                  }}
+                  style={{
                   display: "flex",
                   gap: 12,
                   overflowX: "auto",
@@ -712,6 +774,9 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                     <button
                       type="button"
                       key={`${item.id}-season-${season.seasonNumber}-episode-${episode.episodeNumber}`}
+                      ref={(node) => {
+                        episodeRefs.current[episodeKey] = node;
+                      }}
                       onClick={() => handleEpisodeSelect(episode)}
                       disabled={Boolean(savingEpisode)}
                       style={{
