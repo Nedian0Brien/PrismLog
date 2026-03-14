@@ -258,10 +258,10 @@ const FloatingSeriesProgressToast = ({ toast, visible, animatedProgress }) => {
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {toast.seasons.map((season) => (
-                <div key={`toast-season-${season.seasonNumber}`} style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", gap: 8, alignItems: "center" }}>
+                <div key={`toast-season-${season.seasonNumber}`} style={{ display: "grid", gridTemplateColumns: "64px minmax(0, 1fr) 48px", gap: 8, alignItems: "center" }}>
                   <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{season.name || `S${season.seasonNumber}`}</span>
                   <ProgressBar value={season.progress} color={COLORS.series.main} height={6} />
-                  <strong style={{ fontSize: 11, color: COLORS.series.main, fontFamily: "'Outfit', sans-serif" }}>{season.progress}%</strong>
+                  <strong style={{ fontSize: 11, color: COLORS.series.main, fontFamily: "'Outfit', sans-serif", textAlign: "right" }}>{season.progress}%</strong>
                 </div>
               ))}
             </div>
@@ -418,17 +418,18 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
       await onUpdateSeriesProgress(item.id, payload);
       const remainingDelay = Math.max(0, 560 - (Date.now() - startedAt));
       window.setTimeout(() => {
+        const activeSeason = nextRows.seasons.find((season) => season.seasonNumber === episode.seasonNumber);
         setToast({
           id: `${item.id}-${episodeKey}-${Date.now()}`,
           title: effectiveItem.title,
           poster: effectiveItem.poster,
           prevProgress: metrics.progress,
           nextProgress: nextRows.metrics.progress,
-          seasons: nextRows.seasons.map((season) => ({
-            seasonNumber: season.seasonNumber,
-            name: season.name,
-            progress: season.progress,
-          })),
+          seasons: activeSeason ? [{
+            seasonNumber: activeSeason.seasonNumber,
+            name: activeSeason.name,
+            progress: activeSeason.progress,
+          }] : [],
         });
       }, remainingDelay);
     } catch (error) {
@@ -502,53 +503,6 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
               <IconActionButton onClick={() => onEdit(effectiveItem)} />
             </div>
 
-            <div style={{
-              padding: "14px 16px",
-              borderRadius: 18,
-              border: `1px solid ${accent}24`,
-              background: `linear-gradient(135deg, ${accent}14, rgba(255,255,255,0.03))`,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                <div>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>Watching status</p>
-                  <strong style={{ fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
-                    {metrics.playtimeLabel || "회차 미기록"}
-                  </strong>
-                </div>
-                {effectiveItem.rating > 0 && <RatingStars rating={effectiveItem.rating} size={14} />}
-              </div>
-              <ProgressBar value={metrics.progress} color={accent} height={8} />
-              <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted }}>
-                회차를 누르면 해당 회차까지 자동으로 시청 완료 처리됩니다.
-              </p>
-            </div>
-
-            <div style={{
-              padding: "14px 16px",
-              borderRadius: 18,
-              border: `1px solid ${accent}22`,
-              background: "rgba(255,255,255,0.03)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-            }}>
-              <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", gap: 8, alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>전체</span>
-                <ProgressBar value={metrics.progress} color={accent} height={6} />
-                <strong style={{ fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>{metrics.progress}%</strong>
-              </div>
-              {seasons.map((season) => (
-                <div key={`hero-season-${season.seasonNumber}`} style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", gap: 8, alignItems: "center" }}>
-                  <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{season.name || `S${season.seasonNumber}`}</span>
-                  <ProgressBar value={season.progress} color={accent} height={6} />
-                  <strong style={{ fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>{season.progress}%</strong>
-                </div>
-              ))}
-            </div>
-
             {(effectiveItem.overview || effectiveItem.summary) && (
               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.75, color: COLORS.dark.textMuted }}>
                 {effectiveItem.overview || effectiveItem.summary}
@@ -609,6 +563,50 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                   </p>
                 )}
               </div>
+            </div>
+
+            <div style={{
+              padding: "14px 16px",
+              borderRadius: 18,
+              border: `1px solid ${accent}24`,
+              background: `linear-gradient(135deg, ${accent}14, rgba(255,255,255,0.03))`,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>Watching status</p>
+                  <strong style={{ fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                    {metrics.playtimeLabel || "회차 미기록"}
+                  </strong>
+                </div>
+                {effectiveItem.rating > 0 && <RatingStars rating={effectiveItem.rating} size={14} />}
+              </div>
+              <ProgressBar value={metrics.progress} color={accent} height={8} />
+            </div>
+
+            <div style={{
+              padding: "14px 16px",
+              borderRadius: 18,
+              border: `1px solid ${accent}22`,
+              background: "rgba(255,255,255,0.03)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}>
+              <div style={{ display: "grid", gridTemplateColumns: "64px minmax(0, 1fr) 48px", gap: 8, alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>전체</span>
+                <ProgressBar value={metrics.progress} color={accent} height={6} />
+                <strong style={{ fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif", textAlign: "right" }}>{metrics.progress}%</strong>
+              </div>
+              {seasons.map((season) => (
+                <div key={`hero-season-${season.seasonNumber}`} style={{ display: "grid", gridTemplateColumns: "64px minmax(0, 1fr) 48px", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{season.name || `S${season.seasonNumber}`}</span>
+                  <ProgressBar value={season.progress} color={accent} height={6} />
+                  <strong style={{ fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif", textAlign: "right" }}>{season.progress}%</strong>
+                </div>
+              ))}
             </div>
 
             {(loadingDetails || loadError) && item.seasons?.length === 0 && (
