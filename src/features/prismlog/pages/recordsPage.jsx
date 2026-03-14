@@ -100,6 +100,52 @@ const formatEpisodeWatchDate = (isoLike) => (
   isoLike ? `${formatMonthDayLabel(isoLike)} 시청` : ""
 );
 
+const easeInOutQuint = (value) => (
+  value < 0.5
+    ? 16 * value ** 5
+    : 1 - ((-2 * value + 2) ** 5) / 2
+);
+
+const getScrollableAncestor = (node) => {
+  let current = node?.parentElement || null;
+  while (current) {
+    const style = window.getComputedStyle(current);
+    const hasVerticalScroll = /(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight;
+    const hasHorizontalScroll = /(auto|scroll)/.test(style.overflowX) && current.scrollWidth > current.clientWidth;
+    if (hasVerticalScroll || hasHorizontalScroll) return current;
+    current = current.parentElement;
+  }
+  return document.scrollingElement || document.documentElement;
+};
+
+const animateScrollAxis = (element, axis, target, duration = 760) => new Promise((resolve) => {
+  const start = axis === "top" ? element.scrollTop : element.scrollLeft;
+  const nextTarget = Math.max(target, 0);
+  if (Math.abs(nextTarget - start) < 1) {
+    resolve();
+    return;
+  }
+
+  const startTime = performance.now();
+  const step = (timestamp) => {
+    const elapsed = Math.min((timestamp - startTime) / duration, 1);
+    const eased = easeInOutQuint(elapsed);
+    const nextValue = start + (nextTarget - start) * eased;
+    if (axis === "top") {
+      element.scrollTo({ top: nextValue, behavior: "auto" });
+    } else {
+      element.scrollTo({ left: nextValue, behavior: "auto" });
+    }
+    if (elapsed < 1) {
+      window.requestAnimationFrame(step);
+    } else {
+      resolve();
+    }
+  };
+
+  window.requestAnimationFrame(step);
+});
+
 const buildSeriesSeasonRows = (item) => {
   const metrics = getSeriesProgressMetrics(item);
   const episodeWatchDates = item.episodeWatchDates || {};
@@ -296,6 +342,8 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
   const seasonRefs = useRef({});
   const seasonScrollerRefs = useRef({});
   const episodeRefs = useRef({});
+  const [pendingUnwatchEpisode, setPendingUnwatchEpisode] = useState(null);
+  const [highlightedEpisodeKey, setHighlightedEpisodeKey] = useState(null);
   const accent = COLORS.series.main;
   const successColor = "#63d2a4";
   const tmdbId = getSeriesTmdbId(item);
@@ -309,6 +357,8 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
     setAnimatedEpisodeKey(null);
     setToast(null);
     setToastVisible(false);
+    setPendingUnwatchEpisode(null);
+    setHighlightedEpisodeKey(null);
   }, [item.id]);
 
   useEffect(() => {
@@ -383,33 +433,28 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
     const seasonNode = seasonRefs.current[target.seasonNumber];
     const scrollerNode = seasonScrollerRefs.current[target.seasonNumber];
     const episodeNode = episodeRefs.current[episodeKey];
+    if (!seasonNode || !scrollerNode || !episodeNode) return;
 
-    if (seasonNode) {
-      seasonNode.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+    const verticalContainer = getScrollableAncestor(seasonNode);
+    const containerRect = verticalContainer.getBoundingClientRect ? verticalContainer.getBoundingClientRect() : { top: 0, height: window.innerHeight };
+    const seasonRect = seasonNode.getBoundingClientRect();
+    const nextTop = verticalContainer.scrollTop + (seasonRect.top - containerRect.top) - Math.max(containerRect.height * 0.18, 96);
 
-    window.setTimeout(() => {
-      if (scrollerNode && episodeNode) {
-        const scrollerRect = scrollerNode.getBoundingClientRect();
-        const episodeRect = episodeNode.getBoundingClientRect();
-        const nextLeft = scrollerNode.scrollLeft + (episodeRect.left - scrollerRect.left) - ((scrollerRect.width - episodeRect.width) / 2);
-        scrollerNode.scrollTo({ left: Math.max(nextLeft, 0), behavior: "smooth" });
-      }
-      if (episodeNode) {
-        episodeNode.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-      }
-    }, 260);
+    animateScrollAxis(verticalContainer, "top", nextTop, 820).then(() => {
+      const scrollerRect = scrollerNode.getBoundingClientRect();
+      const episodeRect = episodeNode.getBoundingClientRect();
+      const nextLeft = scrollerNode.scrollLeft + (episodeRect.left - scrollerRect.left) - ((scrollerRect.width - episodeRect.width) / 2);
+      return animateScrollAxis(scrollerNode, "left", nextLeft, 720);
+    }).then(() => {
+      setHighlightedEpisodeKey(episodeKey);
+      window.setTimeout(() => setHighlightedEpisodeKey((current) => (current === episodeKey ? null : current)), 1900);
+    });
   };
 
-  const handleEpisodeSelect = async (episode) => {
-    if (!onUpdateSeriesProgress) return;
+  const commitEpisodeSelection = async (episode) => {
+    if (!onUpdateSeriesProgress || !episode) return;
     const episodeKey = `${episode.seasonNumber}-${episode.episodeNumber}`;
     const startedAt = Date.now();
-    const isTogglingOff = episode.watched;
-    if (isTogglingOff) {
-      const confirmed = window.confirm(`시즌 ${episode.seasonNumber} · EP ${episode.episodeNumber} 시청 완료를 해제할까요? 이 회차 이후 완료 표시도 함께 해제됩니다.`);
-      if (!confirmed) return;
-    }
     const nextWatchedEpisodes = episode.watched
       ? Math.max(episode.absoluteEpisodeNumber - 1, 0)
       : episode.absoluteEpisodeNumber;
@@ -472,9 +517,91 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
     }
   };
 
+  const handleEpisodeSelect = async (episode) => {
+    if (!episode) return;
+    if (episode.watched) {
+      setPendingUnwatchEpisode(episode);
+      return;
+    }
+    await commitEpisodeSelection(episode);
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <FloatingSeriesProgressToast toast={toast} visible={toastVisible} animatedProgress={animatedToastProgress} />
+      {pendingUnwatchEpisode && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 255,
+          background: "rgba(15, 14, 13, 0.46)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 20,
+          animation: "fadeIn 0.22s ease-out",
+        }}>
+          <GlassCard glow={COLORS.series.glow} style={{ width: "min(92vw, 420px)", padding: "22px 20px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+                  Undo Completion
+                </p>
+                <h4 style={{ margin: "0 0 8px", fontSize: 20, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                  시청 완료를 해제할까요?
+                </h4>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>
+                  {`시즌 ${pendingUnwatchEpisode.seasonNumber} · EP ${pendingUnwatchEpisode.episodeNumber} 완료를 해제하면 이 회차 이후 완료 표시는 함께 해제됩니다.`}
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => setPendingUnwatchEpisode(null)}
+                  style={{
+                    minHeight: 42,
+                    padding: "0 16px",
+                    borderRadius: 14,
+                    border: `1px solid ${COLORS.dark.border}`,
+                    background: "rgba(255,255,255,0.04)",
+                    color: COLORS.dark.textMuted,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontFamily: "'Pretendard', sans-serif",
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const targetEpisode = pendingUnwatchEpisode;
+                    setPendingUnwatchEpisode(null);
+                    await commitEpisodeSelection(targetEpisode);
+                  }}
+                  style={{
+                    minHeight: 42,
+                    padding: "0 16px",
+                    borderRadius: 14,
+                    border: `1px solid ${accent}45`,
+                    background: `${accent}18`,
+                    color: accent,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    fontFamily: "'Pretendard', sans-serif",
+                  }}
+                >
+                  완료 해제
+                </button>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+      )}
 
       <button
         type="button"
@@ -643,11 +770,6 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
               flexDirection: "column",
               gap: 10,
             }}>
-              <div style={{ display: "grid", gridTemplateColumns: "64px minmax(0, 1fr) 48px", gap: 8, alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>전체</span>
-                <ProgressBar value={metrics.progress} color={accent} height={6} />
-                <strong style={{ fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif", textAlign: "right" }}>{metrics.progress}%</strong>
-              </div>
               {seasons.map((season) => (
                 <div key={`hero-season-${season.seasonNumber}`} style={{ display: "grid", gridTemplateColumns: "64px minmax(0, 1fr) 48px", gap: 8, alignItems: "center" }}>
                   <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{season.name || `S${season.seasonNumber}`}</span>
@@ -788,9 +910,11 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                           : episode.isCurrent
                             ? "rgba(255,255,255,0.06)"
                             : "rgba(255,255,255,0.03)",
-                        boxShadow: isAnimating
-                          ? `0 0 0 1px ${successColor}55 inset, 0 12px 28px ${successColor}22`
-                          : episode.isCurrent ? `0 0 0 1px ${accent}22 inset` : "none",
+                        boxShadow: highlightedEpisodeKey === episodeKey
+                          ? `0 0 0 1px ${accent}40, 0 0 28px ${accent}20`
+                          : isAnimating
+                            ? `0 0 0 1px ${successColor}55 inset, 0 12px 28px ${successColor}22`
+                            : episode.isCurrent ? `0 0 0 1px ${accent}22 inset` : "none",
                         display: "flex",
                         flexDirection: "column",
                         gap: 12,
@@ -800,7 +924,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                         cursor: savingEpisode ? "wait" : "pointer",
                         opacity: isSaving ? 0.72 : 1,
                         scrollSnapAlign: "start",
-                        animation: isAnimating ? "seriesEpisodeComplete 560ms cubic-bezier(.2,.8,.2,1)" : "none",
+                        animation: isAnimating ? "seriesEpisodeComplete 560ms cubic-bezier(.2,.8,.2,1)" : highlightedEpisodeKey === episodeKey ? "seriesEpisodePulse 1.5s ease-out 2" : "none",
                       }}
                     >
                       <div style={{

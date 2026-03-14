@@ -404,6 +404,11 @@ export default function PrismLog() {
           68% { transform: translateY(0) scale(1.01); }
           100% { transform: translateY(0) scale(1); }
         }
+        @keyframes seriesEpisodePulse {
+          0% { box-shadow: 0 0 0 0 rgba(255,138,101,0.38); }
+          55% { box-shadow: 0 0 0 10px rgba(255,138,101,0.08); }
+          100% { box-shadow: 0 0 0 0 rgba(255,138,101,0); }
+        }
 
         * { box-sizing: border-box; }
         *::-webkit-scrollbar { width: 4px; }
