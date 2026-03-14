@@ -342,6 +342,12 @@ export default function PrismLog() {
           from { opacity: 0; transform: translateY(10px) scale(0.995); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
+        @keyframes seriesEpisodeComplete {
+          0% { transform: translateY(0) scale(1); }
+          32% { transform: translateY(-4px) scale(1.02); }
+          68% { transform: translateY(0) scale(1.01); }
+          100% { transform: translateY(0) scale(1); }
+        }
 
         * { box-sizing: border-box; }
         *::-webkit-scrollbar { width: 4px; }

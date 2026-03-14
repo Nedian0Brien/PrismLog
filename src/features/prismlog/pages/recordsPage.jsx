@@ -154,6 +154,118 @@ const SeriesProgressSummary = ({ item, accent }) => {
   );
 };
 
+const SeriesProgressDonut = ({ value, size = 120, strokeWidth = 10, color = COLORS.series.main }) => {
+  const safeValue = Math.max(0, Math.min(value, 100));
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference - (safeValue / 100) * circumference;
+  const center = size / 2;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: "block" }}>
+      <circle
+        cx={center}
+        cy={center}
+        r={radius}
+        fill="none"
+        stroke="rgba(255,255,255,0.08)"
+        strokeWidth={strokeWidth}
+      />
+      <circle
+        cx={center}
+        cy={center}
+        r={radius}
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={dashOffset}
+        transform={`rotate(-90 ${center} ${center})`}
+        style={{ transition: "stroke-dashoffset 900ms cubic-bezier(.2,.8,.2,1)" }}
+      />
+    </svg>
+  );
+};
+
+const FloatingSeriesProgressToast = ({ toast, visible, animatedProgress }) => {
+  if (!toast) return null;
+
+  return (
+    <div style={{
+      position: "fixed",
+      top: 18,
+      left: "50%",
+      transform: `translateX(-50%) translateY(${visible ? "0" : "-34px"}) scale(${visible ? 1 : 0.98})`,
+      opacity: visible ? 1 : 0,
+      transition: "transform 420ms cubic-bezier(.2,.8,.2,1), opacity 320ms ease",
+      zIndex: 260,
+      width: "min(92vw, 520px)",
+      pointerEvents: "none",
+    }}>
+      <div style={{
+        borderRadius: 24,
+        padding: "14px 16px",
+        background: "rgba(28, 26, 24, 0.9)",
+        backdropFilter: "blur(18px)",
+        WebkitBackdropFilter: "blur(18px)",
+        border: `1px solid ${COLORS.series.main}35`,
+        boxShadow: "0 20px 48px rgba(0,0,0,0.28)",
+      }}>
+        <div style={{ display: "grid", gridTemplateColumns: "72px minmax(0, 1fr) 88px", gap: 12, alignItems: "center" }}>
+          <div style={{
+            width: 72,
+            height: 98,
+            borderRadius: 16,
+            overflow: "hidden",
+            background: toast.poster ? COLORS.dark.surfaceSolid : `linear-gradient(155deg, ${COLORS.series.main}28, rgba(255,255,255,0.06))`,
+            border: `1px solid ${COLORS.series.main}28`,
+          }}>
+            {toast.poster ? (
+              <img src={toast.poster} alt={`${toast.title} 포스터`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ) : (
+              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <FilmIcon size={26} color={COLORS.series.main} />
+              </div>
+            )}
+          </div>
+
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 1.1, color: COLORS.series.main, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+              Watching Updated
+            </p>
+            <h4 style={{ margin: "0 0 6px", fontSize: 17, lineHeight: 1.2, color: COLORS.dark.text, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+              {toast.title}
+            </h4>
+            <p style={{ margin: "0 0 10px", fontSize: 12, color: COLORS.dark.textMuted }}>
+              진행률이 업데이트되었습니다.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {toast.seasons.map((season) => (
+                <div key={`toast-season-${season.seasonNumber}`} style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{season.name || `S${season.seasonNumber}`}</span>
+                  <ProgressBar value={season.progress} color={COLORS.series.main} height={6} />
+                  <strong style={{ fontSize: 11, color: COLORS.series.main, fontFamily: "'Outfit', sans-serif" }}>{season.progress}%</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
+            <div style={{ position: "relative", width: 82, height: 82 }}>
+              <SeriesProgressDonut value={animatedProgress} size={82} strokeWidth={8} />
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <strong style={{ fontSize: 20, color: COLORS.series.main, fontFamily: "'Outfit', sans-serif" }}>{animatedProgress}%</strong>
+                <span style={{ fontSize: 10, color: COLORS.dark.textMuted }}>TOTAL</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress }) => {
   const [remoteSeriesData, setRemoteSeriesData] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -161,7 +273,12 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
   const [attemptedRemoteLoad, setAttemptedRemoteLoad] = useState(false);
   const [optimisticWatchedEpisodes, setOptimisticWatchedEpisodes] = useState(null);
   const [savingEpisode, setSavingEpisode] = useState(null);
+  const [animatedEpisodeKey, setAnimatedEpisodeKey] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [animatedToastProgress, setAnimatedToastProgress] = useState(0);
   const accent = COLORS.series.main;
+  const successColor = "#63d2a4";
   const tmdbId = getSeriesTmdbId(item);
 
   useEffect(() => {
@@ -170,7 +287,16 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
     setAttemptedRemoteLoad(false);
     setOptimisticWatchedEpisodes(null);
     setSavingEpisode(null);
+    setAnimatedEpisodeKey(null);
+    setToast(null);
+    setToastVisible(false);
   }, [item.id]);
+
+  useEffect(() => {
+    if (!animatedEpisodeKey) return undefined;
+    const timeoutId = window.setTimeout(() => setAnimatedEpisodeKey(null), 620);
+    return () => window.clearTimeout(timeoutId);
+  }, [animatedEpisodeKey]);
 
   useEffect(() => {
     if (item.seasons?.length > 0 || remoteSeriesData || !tmdbId || loadingDetails || attemptedRemoteLoad) return;
@@ -212,12 +338,36 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
     : { ...effectiveItemBase, watchedEpisodes: optimisticWatchedEpisodes };
   const { metrics, seasons, currentPointer } = buildSeriesSeasonRows(effectiveItem);
   const seasonCount = effectiveItem.seasonCount || seasons.length;
+
+  useEffect(() => {
+    if (!toast) return undefined;
+
+    setAnimatedToastProgress(toast.prevProgress);
+    setToastVisible(false);
+
+    const showTimer = window.setTimeout(() => setToastVisible(true), 30);
+    const progressTimer = window.setTimeout(() => setAnimatedToastProgress(toast.nextProgress), 240);
+    const hideTimer = window.setTimeout(() => setToastVisible(false), 2300);
+    const clearTimer = window.setTimeout(() => setToast(null), 2820);
+
+    return () => {
+      window.clearTimeout(showTimer);
+      window.clearTimeout(progressTimer);
+      window.clearTimeout(hideTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [toast]);
+
   const handleEpisodeSelect = async (episode) => {
     if (!onUpdateSeriesProgress) return;
+    const episodeKey = `${episode.seasonNumber}-${episode.episodeNumber}`;
+    const startedAt = Date.now();
     const nextWatchedEpisodes = episode.absoluteEpisodeNumber;
     const nextStatus = metrics.totalEpisodes > 0 && nextWatchedEpisodes >= metrics.totalEpisodes
       ? "시청 완료"
       : "시청 중";
+    const nextItem = { ...effectiveItem, watchedEpisodes: nextWatchedEpisodes, status: nextStatus };
+    const nextRows = buildSeriesSeasonRows(nextItem);
     const payload = buildCulturePayload(createCultureFormLike(effectiveItem, {
       watchedEpisodes: nextWatchedEpisodes,
       status: nextStatus,
@@ -227,9 +377,25 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
     }));
 
     setOptimisticWatchedEpisodes(nextWatchedEpisodes);
-    setSavingEpisode(`${episode.seasonNumber}-${episode.episodeNumber}`);
+    setSavingEpisode(episodeKey);
+    setAnimatedEpisodeKey(episodeKey);
     try {
       await onUpdateSeriesProgress(item.id, payload);
+      const remainingDelay = Math.max(0, 560 - (Date.now() - startedAt));
+      window.setTimeout(() => {
+        setToast({
+          id: `${item.id}-${episodeKey}-${Date.now()}`,
+          title: effectiveItem.title,
+          poster: effectiveItem.poster,
+          prevProgress: metrics.progress,
+          nextProgress: nextRows.metrics.progress,
+          seasons: nextRows.seasons.map((season) => ({
+            seasonNumber: season.seasonNumber,
+            name: season.name,
+            progress: season.progress,
+          })),
+        });
+      }, remainingDelay);
     } catch (error) {
       setOptimisticWatchedEpisodes(null);
       window.alert(`시청 진행률 저장 실패: ${error instanceof Error ? error.message : "unknown error"}`);
@@ -238,15 +404,10 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
     }
   };
 
-  const metaCards = [
-    { label: "진행률", value: `${metrics.progress}%`, tone: accent },
-    { label: "시청 회차", value: metrics.playtimeLabel || "미기록", tone: COLORS.dark.text },
-    { label: "시즌", value: seasonCount > 0 ? `${seasonCount}시즌` : "정보 없음", tone: COLORS.dark.text },
-    { label: "러닝타임", value: effectiveItem.runtime ? `평균 ${effectiveItem.runtime}분` : "정보 없음", tone: COLORS.dark.text },
-  ];
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <FloatingSeriesProgressToast toast={toast} visible={toastVisible} animatedProgress={animatedToastProgress} />
+
       <button
         type="button"
         onClick={onBack}
@@ -268,9 +429,9 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
       </button>
 
       <GlassCard glow={COLORS.series.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "200px minmax(0, 1fr)", gap: 18, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "180px minmax(0, 1fr) 158px", gap: 18, alignItems: "start" }}>
           <div style={{
-            minHeight: 280,
+            minHeight: 252,
             borderRadius: 22,
             overflow: "hidden",
             border: `1px solid ${accent}26`,
@@ -306,23 +467,6 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
               <IconActionButton onClick={() => onEdit(effectiveItem)} />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr 1fr" : "repeat(4, minmax(0, 1fr))", gap: 10 }}>
-              {metaCards.map((card) => (
-                <div
-                  key={card.label}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: 16,
-                    border: `1px solid ${accent}1f`,
-                    background: "linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))",
-                  }}
-                >
-                  <p style={{ margin: "0 0 6px", fontSize: 11, color: COLORS.dark.textMuted }}>{card.label}</p>
-                  <strong style={{ fontSize: 15, color: card.tone, fontFamily: "'Outfit', sans-serif" }}>{card.value}</strong>
-                </div>
-              ))}
-            </div>
-
             <div style={{
               padding: "14px 16px",
               borderRadius: 18,
@@ -351,6 +495,29 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
               </p>
             </div>
 
+            <div style={{
+              padding: "14px 16px",
+              borderRadius: 18,
+              border: `1px solid ${accent}22`,
+              background: "rgba(255,255,255,0.03)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}>
+              <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", gap: 8, alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>전체</span>
+                <ProgressBar value={metrics.progress} color={accent} height={6} />
+                <strong style={{ fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>{metrics.progress}%</strong>
+              </div>
+              {seasons.map((season) => (
+                <div key={`hero-season-${season.seasonNumber}`} style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr) auto", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{season.name || `S${season.seasonNumber}`}</span>
+                  <ProgressBar value={season.progress} color={accent} height={6} />
+                  <strong style={{ fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>{season.progress}%</strong>
+                </div>
+              ))}
+            </div>
+
             {(effectiveItem.overview || effectiveItem.summary) && (
               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.75, color: COLORS.dark.textMuted }}>
                 {effectiveItem.overview || effectiveItem.summary}
@@ -362,6 +529,32 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                 {loadError ? `시즌 정보를 불러오지 못했습니다: ${loadError}` : "시즌 정보를 불러오는 중..."}
               </p>
             )}
+          </div>
+
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            padding: "16px 0 4px",
+          }}>
+            <div style={{ position: "relative", width: layout.isPhone ? 126 : 144, height: layout.isPhone ? 126 : 144 }}>
+              <SeriesProgressDonut value={metrics.progress} size={layout.isPhone ? 126 : 144} strokeWidth={12} />
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 13, color: COLORS.dark.textMuted, letterSpacing: 0.5 }}>TOTAL</span>
+                <strong style={{ fontSize: layout.isPhone ? 28 : 34, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
+                  {metrics.progress}%
+                </strong>
+              </div>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
+              {metrics.playtimeLabel || "회차 미기록"}
+            </p>
+            <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
+              {seasonCount > 0 ? `${seasonCount}시즌` : "시즌 정보 없음"}
+              {effectiveItem.runtime ? ` · 평균 ${effectiveItem.runtime}분` : ""}
+            </p>
           </div>
         </div>
       </GlassCard>
@@ -406,7 +599,14 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
 
                 <ProgressBar value={season.progress} color={accent} height={7} />
 
-                <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+                <div style={{
+                  display: "flex",
+                  gap: 12,
+                  overflowX: "auto",
+                  paddingBottom: 4,
+                  WebkitOverflowScrolling: "touch",
+                  scrollSnapType: "x proximity",
+                }}>
                   {season.episodes.length === 0 ? (
                     <div style={{
                       padding: "14px 16px",
@@ -415,12 +615,14 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                       background: "rgba(255,255,255,0.02)",
                       color: COLORS.dark.textMuted,
                       fontSize: 12,
+                      minWidth: 220,
                     }}>
                       회차 상세 정보가 없습니다.
                     </div>
                   ) : season.episodes.map((episode) => {
                     const episodeKey = `${episode.seasonNumber}-${episode.episodeNumber}`;
                     const isSaving = savingEpisode === episodeKey;
+                    const isAnimating = animatedEpisodeKey === episodeKey;
                     return (
                     <button
                       type="button"
@@ -436,48 +638,73 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                           : episode.isCurrent
                             ? "rgba(255,255,255,0.06)"
                             : "rgba(255,255,255,0.03)",
-                        boxShadow: episode.isCurrent ? `0 0 0 1px ${accent}22 inset` : "none",
-                        display: "grid",
-                        gridTemplateColumns: layout.isPhone ? "1fr" : "108px minmax(0, 1fr) auto",
-                        justifyContent: "space-between",
+                        boxShadow: isAnimating
+                          ? `0 0 0 1px ${successColor}55 inset, 0 12px 28px ${successColor}22`
+                          : episode.isCurrent ? `0 0 0 1px ${accent}22 inset` : "none",
+                        display: "flex",
+                        flexDirection: "column",
                         gap: 12,
-                        alignItems: "stretch",
-                        width: "100%",
+                        width: layout.isPhone ? 244 : 276,
+                        minWidth: layout.isPhone ? 244 : 276,
                         textAlign: "left",
                         cursor: savingEpisode ? "wait" : "pointer",
                         opacity: isSaving ? 0.72 : 1,
+                        scrollSnapAlign: "start",
+                        animation: isAnimating ? "seriesEpisodeComplete 560ms cubic-bezier(.2,.8,.2,1)" : "none",
                       }}
                     >
-                      {episode.stillUrl ? (
-                        <div style={{
-                          borderRadius: 12,
-                          overflow: "hidden",
-                          minHeight: 64,
-                          background: COLORS.dark.surfaceSolid,
-                          border: `1px solid ${episode.watched ? `${accent}36` : COLORS.dark.border}`,
-                        }}>
+                      <div style={{
+                        position: "relative",
+                        borderRadius: 14,
+                        overflow: "hidden",
+                        height: 144,
+                        background: COLORS.dark.surfaceSolid,
+                        border: `1px solid ${episode.watched ? `${successColor}4d` : COLORS.dark.border}`,
+                      }}>
+                        {episode.stillUrl ? (
                           <img
                             src={episode.stillUrl}
                             alt={`${episode.name || `에피소드 ${episode.episodeNumber}`} 썸네일`}
                             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                           />
-                        </div>
-                      ) : (
+                        ) : (
+                          <div style={{
+                            width: "100%",
+                            height: "100%",
+                            background: `linear-gradient(155deg, ${accent}20, rgba(255,255,255,0.04))`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: episode.watched ? successColor : accent,
+                            fontSize: 11,
+                            fontWeight: 700,
+                          }}>
+                            No Still
+                          </div>
+                        )}
                         <div style={{
-                          borderRadius: 12,
-                          minHeight: 64,
-                          border: `1px dashed ${episode.watched ? `${accent}42` : COLORS.dark.border}`,
-                          background: "rgba(255,255,255,0.02)",
+                          position: "absolute",
+                          top: 10,
+                          right: 10,
+                          width: 34,
+                          height: 34,
+                          borderRadius: "50%",
+                          border: episode.watched || isSaving ? "none" : `1.5px solid ${COLORS.dark.text}77`,
+                          background: isSaving
+                            ? "rgba(255,255,255,0.14)"
+                            : episode.watched
+                              ? successColor
+                              : "rgba(26,24,22,0.56)",
+                          color: episode.watched ? "#182017" : COLORS.dark.text,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          color: episode.watched ? accent : COLORS.dark.textMuted,
-                          fontSize: 11,
-                          fontWeight: 700,
+                          boxShadow: episode.watched ? `0 10px 22px ${successColor}33` : "none",
+                          animation: isAnimating ? "seriesEpisodeComplete 560ms cubic-bezier(.2,.8,.2,1)" : "none",
                         }}>
-                          No Still
+                          <CheckIcon size={16} color={episode.watched ? "#182017" : COLORS.dark.textMuted} />
                         </div>
-                      )}
+                      </div>
                       <div style={{ minWidth: 0 }}>
                         <p style={{ margin: "0 0 4px", fontSize: 11, color: episode.watched ? accent : COLORS.dark.textMuted }}>
                           EP {episode.episodeNumber}
@@ -488,24 +715,39 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                         <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted }}>
                           {[episode.airDate ? formatMonthDayLabel(episode.airDate) : null, episode.runtime ? `${episode.runtime}분` : null].filter(Boolean).join(" · ") || "방영 정보 없음"}
                         </p>
-                      </div>
-                        {(episode.watched || episode.isCurrent || isSaving) && (
-                          <div style={{
-                            minWidth: 26,
-                            height: 26,
-                            padding: "0 8px",
-                            borderRadius: 999,
-                            background: isSaving ? "rgba(255,255,255,0.12)" : episode.watched ? accent : "rgba(255,255,255,0.08)",
-                            color: isSaving ? COLORS.dark.text : episode.watched ? "#1a1816" : accent,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 11,
-                            fontWeight: 800,
+                        {episode.overview && (
+                          <p style={{
+                            margin: "8px 0 0",
+                            fontSize: 12,
+                            lineHeight: 1.55,
+                            color: COLORS.dark.textMuted,
+                            display: "-webkit-box",
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
                           }}>
-                          {isSaving ? "저장" : episode.watched ? "완" : "현재"}
-                        </div>
-                      )}
+                            {episode.overview}
+                          </p>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "6px 10px",
+                          borderRadius: 999,
+                          background: episode.watched ? `${successColor}18` : episode.isCurrent ? `${accent}18` : "rgba(255,255,255,0.04)",
+                          color: episode.watched ? successColor : episode.isCurrent ? accent : COLORS.dark.textMuted,
+                          fontSize: 11,
+                          fontWeight: 700,
+                        }}>
+                          {isSaving ? "저장 중" : episode.watched ? "시청 완료" : episode.isCurrent ? "다음 회차" : "미시청"}
+                        </span>
+                        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>
+                          누르면 여기까지 완료
+                        </span>
+                      </div>
                     </button>
                   )})}
                 </div>
