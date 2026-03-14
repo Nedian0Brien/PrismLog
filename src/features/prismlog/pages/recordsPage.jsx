@@ -888,10 +888,12 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
 
   const sections = useMemo(() => ([
     {
+      order: 0,
       key: "reading",
       label: "독서",
       description: "표지와 진행률",
       count: sortedReading.length,
+      latestUpdatedAt: sortedReading[0]?.date ? new Date(sortedReading[0].date).getTime() : 0,
       unit: "권",
       accent: COLORS.reading.main,
       icon: <BookIcon color={COLORS.reading.main} />,
@@ -903,10 +905,12 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       })),
     },
     {
+      order: 1,
       key: "study",
       label: "공부",
       description: "진척률과 챕터",
       count: sortedStudy.length,
+      latestUpdatedAt: sortedStudy[0]?.date ? new Date(sortedStudy[0].date).getTime() : 0,
       unit: "개",
       accent: COLORS.study.main,
       icon: <PenIcon color={COLORS.study.main} />,
@@ -918,10 +922,12 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       })),
     },
     {
+      order: 2,
       key: "movie",
       label: "영화",
       description: "포스터와 평점",
       count: movieLogs.length,
+      latestUpdatedAt: movieLogs[0]?.date ? new Date(movieLogs[0].date).getTime() : 0,
       unit: "편",
       accent: COLORS.movie.main,
       icon: <FilmIcon color={COLORS.movie.main} />,
@@ -933,10 +939,12 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       })),
     },
     {
+      order: 3,
       key: "series",
       label: "시리즈",
       description: "회차와 상태",
       count: seriesLogs.length,
+      latestUpdatedAt: seriesLogs[0]?.date ? new Date(seriesLogs[0].date).getTime() : 0,
       unit: "편",
       accent: COLORS.series.main,
       icon: <FilmIcon color={COLORS.series.main} />,
@@ -948,10 +956,12 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       })),
     },
     {
+      order: 4,
       key: "game",
       label: "게임",
       description: "플레이 시간",
       count: gameLogs.length,
+      latestUpdatedAt: gameLogs[0]?.date ? new Date(gameLogs[0].date).getTime() : 0,
       unit: "개",
       accent: COLORS.game.main,
       icon: <GamepadIcon color={COLORS.game.main} />,
@@ -962,7 +972,10 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
         icon: <GamepadIcon color={COLORS.game.main} />,
       })),
     },
-  ]), [gameLogs, movieLogs, seriesLogs, sortedReading, sortedStudy]);
+  ].sort((a, b) => {
+    if (b.latestUpdatedAt !== a.latestUpdatedAt) return b.latestUpdatedAt - a.latestUpdatedAt;
+    return a.order - b.order;
+  })), [gameLogs, movieLogs, seriesLogs, sortedReading, sortedStudy]);
 
   const activeSection = sections.find((section) => section.key === selectedSection) || null;
   const mobileColumnOptions = [
