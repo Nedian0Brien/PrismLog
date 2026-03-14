@@ -93,10 +93,16 @@ const createCultureFormLike = (item, overrides = {}) => ({
   seasonCount: overrides.seasonCount ?? item.seasonCount ?? null,
   runtime: item.runtime ?? null,
   seasons: overrides.seasons ?? item.seasons ?? [],
+  episodeWatchDates: overrides.episodeWatchDates ?? item.episodeWatchDates ?? {},
 });
+
+const formatEpisodeWatchDate = (isoLike) => (
+  isoLike ? `${formatMonthDayLabel(isoLike)} 시청` : ""
+);
 
 const buildSeriesSeasonRows = (item) => {
   const metrics = getSeriesProgressMetrics(item);
+  const episodeWatchDates = item.episodeWatchDates || {};
   let remainingWatched = metrics.watchedEpisodes;
   let currentPointer = null;
   let absoluteEpisodeCursor = 0;
@@ -115,9 +121,19 @@ const buildSeriesSeasonRows = (item) => {
           seasonNumber: season.seasonNumber,
           episodeNumber: episode.episodeNumber,
           name: episode.name || `에피소드 ${episode.episodeNumber}`,
+          stillUrl: episode.stillUrl || null,
+          overview: episode.overview || null,
         };
       }
-      return { ...episode, watched, isCurrent, absoluteEpisodeNumber: absoluteEpisodeCursor };
+      const episodeKey = `${season.seasonNumber}-${episode.episodeNumber}`;
+      return {
+        ...episode,
+        watched,
+        isCurrent,
+        absoluteEpisodeNumber: absoluteEpisodeCursor,
+        episodeKey,
+        watchedAt: episodeWatchDates[episodeKey] || null,
+      };
     });
 
     const progress = totalEpisodes > 0 ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0;
@@ -362,11 +378,29 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
     if (!onUpdateSeriesProgress) return;
     const episodeKey = `${episode.seasonNumber}-${episode.episodeNumber}`;
     const startedAt = Date.now();
-    const nextWatchedEpisodes = episode.absoluteEpisodeNumber;
+    const nextWatchedEpisodes = episode.watched
+      ? Math.max(episode.absoluteEpisodeNumber - 1, 0)
+      : episode.absoluteEpisodeNumber;
     const nextStatus = metrics.totalEpisodes > 0 && nextWatchedEpisodes >= metrics.totalEpisodes
       ? "시청 완료"
-      : "시청 중";
-    const nextItem = { ...effectiveItem, watchedEpisodes: nextWatchedEpisodes, status: nextStatus };
+      : nextWatchedEpisodes > 0 ? "시청 중" : "기대 중";
+    const nextEpisodeWatchDates = { ...(effectiveItem.episodeWatchDates || {}) };
+    const nowIso = new Date().toISOString();
+    seasons.forEach((season) => {
+      season.episodes.forEach((seasonEpisode) => {
+        if (seasonEpisode.absoluteEpisodeNumber <= nextWatchedEpisodes) {
+          nextEpisodeWatchDates[seasonEpisode.episodeKey] = nextEpisodeWatchDates[seasonEpisode.episodeKey] || nowIso;
+        } else {
+          delete nextEpisodeWatchDates[seasonEpisode.episodeKey];
+        }
+      });
+    });
+    const nextItem = {
+      ...effectiveItem,
+      watchedEpisodes: nextWatchedEpisodes,
+      status: nextStatus,
+      episodeWatchDates: nextEpisodeWatchDates,
+    };
     const nextRows = buildSeriesSeasonRows(nextItem);
     const payload = buildCulturePayload(createCultureFormLike(effectiveItem, {
       watchedEpisodes: nextWatchedEpisodes,
@@ -374,6 +408,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
       episodeCount: effectiveItem.episodeCount ?? metrics.totalEpisodes ?? null,
       seasonCount: effectiveItem.seasonCount ?? seasons.length ?? null,
       seasons: metrics.seasons,
+      episodeWatchDates: nextEpisodeWatchDates,
     }));
 
     setOptimisticWatchedEpisodes(nextWatchedEpisodes);
@@ -478,13 +513,9 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                 <div>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>현재 시청 포인트</p>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>Watching status</p>
                   <strong style={{ fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
-                    {currentPointer
-                      ? currentPointer.seasonNumber
-                        ? `시즌 ${currentPointer.seasonNumber} · ${currentPointer.name}`
-                        : currentPointer.name
-                      : "회차 정보 없음"}
+                    {metrics.playtimeLabel || "회차 미기록"}
                   </strong>
                 </div>
                 {effectiveItem.rating > 0 && <RatingStars rating={effectiveItem.rating} size={14} />}
@@ -523,6 +554,62 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                 {effectiveItem.overview || effectiveItem.summary}
               </p>
             )}
+
+            <div style={{
+              padding: "14px 16px",
+              borderRadius: 18,
+              border: `1px solid ${accent}22`,
+              background: "rgba(255,255,255,0.03)",
+              display: "grid",
+              gridTemplateColumns: layout.isPhone ? "84px minmax(0, 1fr)" : "104px minmax(0, 1fr)",
+              gap: 12,
+              alignItems: "start",
+            }}>
+              <div style={{
+                width: layout.isPhone ? 84 : 104,
+                height: layout.isPhone ? 60 : 74,
+                borderRadius: 14,
+                overflow: "hidden",
+                background: currentPointer?.stillUrl
+                  ? COLORS.dark.surfaceSolid
+                  : `linear-gradient(145deg, ${accent}18, rgba(255,255,255,0.04))`,
+                border: `1px solid ${accent}22`,
+              }}>
+                {currentPointer?.stillUrl ? (
+                  <img src={currentPointer.stillUrl} alt={`${currentPointer.name} 썸네일`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                ) : (
+                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <FilmIcon size={18} color={accent} />
+                  </div>
+                )}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+                  Next episode
+                </p>
+                <strong style={{ display: "block", marginBottom: 6, fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                  {currentPointer
+                    ? currentPointer.seasonNumber
+                      ? `시즌 ${currentPointer.seasonNumber} · ${currentPointer.name}`
+                      : currentPointer.name
+                    : "다음 회차 정보 없음"}
+                </strong>
+                {currentPointer?.overview && (
+                  <p style={{
+                    margin: 0,
+                    fontSize: 12,
+                    lineHeight: 1.6,
+                    color: COLORS.dark.textMuted,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}>
+                    {currentPointer.overview}
+                  </p>
+                )}
+              </div>
+            </div>
 
             {(loadingDetails || loadError) && item.seasons?.length === 0 && (
               <p style={{ margin: 0, fontSize: 12, color: loadError ? "#f8b4bb" : COLORS.dark.textMuted }}>
@@ -682,36 +769,38 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                             No Still
                           </div>
                         )}
-                        <div style={{
-                          position: "absolute",
-                          top: 10,
-                          right: 10,
-                          width: 34,
-                          height: 34,
-                          borderRadius: "50%",
-                          border: episode.watched || isSaving ? "none" : `1.5px solid ${COLORS.dark.text}77`,
-                          background: isSaving
-                            ? "rgba(255,255,255,0.14)"
-                            : episode.watched
-                              ? successColor
-                              : "rgba(26,24,22,0.56)",
-                          color: episode.watched ? "#182017" : COLORS.dark.text,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          boxShadow: episode.watched ? `0 10px 22px ${successColor}33` : "none",
-                          animation: isAnimating ? "seriesEpisodeComplete 560ms cubic-bezier(.2,.8,.2,1)" : "none",
-                        }}>
-                          <CheckIcon size={16} color={episode.watched ? "#182017" : COLORS.dark.textMuted} />
-                        </div>
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <p style={{ margin: "0 0 4px", fontSize: 11, color: episode.watched ? accent : COLORS.dark.textMuted }}>
-                          EP {episode.episodeNumber}
-                        </p>
-                        <p style={{ margin: "0 0 4px", fontSize: 13, lineHeight: 1.45, color: COLORS.dark.text, fontWeight: 600 }}>
-                          {episode.name || `제 ${episode.episodeNumber}화`}
-                        </p>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 4 }}>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ margin: "0 0 4px", fontSize: 11, color: episode.watched ? accent : COLORS.dark.textMuted }}>
+                              EP {episode.episodeNumber}
+                            </p>
+                            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.45, color: COLORS.dark.text, fontWeight: 600 }}>
+                              {episode.name || `제 ${episode.episodeNumber}화`}
+                            </p>
+                          </div>
+                          <div style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: "50%",
+                            border: episode.watched || isSaving ? "none" : `1.5px solid ${COLORS.dark.text}77`,
+                            background: isSaving
+                              ? "rgba(255,255,255,0.14)"
+                              : episode.watched
+                                ? successColor
+                                : "rgba(26,24,22,0.52)",
+                            color: episode.watched ? "#182017" : COLORS.dark.text,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                            boxShadow: episode.watched ? `0 8px 18px ${successColor}26` : "none",
+                            animation: isAnimating ? "seriesEpisodeComplete 560ms cubic-bezier(.2,.8,.2,1)" : "none",
+                          }}>
+                            <CheckIcon size={14} color={episode.watched ? "#182017" : COLORS.dark.textMuted} />
+                          </div>
+                        </div>
                         <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted }}>
                           {[episode.airDate ? formatMonthDayLabel(episode.airDate) : null, episode.runtime ? `${episode.runtime}분` : null].filter(Boolean).join(" · ") || "방영 정보 없음"}
                         </p>
@@ -744,9 +833,11 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                         }}>
                           {isSaving ? "저장 중" : episode.watched ? "시청 완료" : episode.isCurrent ? "다음 회차" : "미시청"}
                         </span>
-                        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>
-                          누르면 여기까지 완료
-                        </span>
+                        {episode.watchedAt && (
+                          <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>
+                            {formatEpisodeWatchDate(episode.watchedAt)}
+                          </span>
+                        )}
                       </div>
                     </button>
                   )})}

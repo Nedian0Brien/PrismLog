@@ -2,6 +2,7 @@ import {
   clamp,
   getSeriesProgressMetrics,
   normalizeCultureType,
+  normalizeEpisodeWatchDates,
   normalizeMetadataObject,
   safeNumber,
 } from "./core";
@@ -91,6 +92,7 @@ export const mapCultureLog = (log) => {
     seasonCount: safeNumber(payload.season_count, 0) || null,
     runtime: safeNumber(payload.runtime, 0) || null,
     seasons: seriesMetrics?.seasons || [],
+    episodeWatchDates: normalizeEpisodeWatchDates(payload.episode_watch_dates),
     watchedEpisodes: seriesMetrics?.watchedEpisodes ?? safeNumber(payload.watched_episode_count, 0),
     progress: seriesMetrics?.progress ?? clamp(safeNumber(payload.progress), 0, 100),
     rating: clamp(safeNumber(payload.rating), 0, 5),

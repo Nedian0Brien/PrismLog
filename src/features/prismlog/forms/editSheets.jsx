@@ -358,7 +358,7 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
     playtime: "", watchedEpisodes: "0", rating: 0, tags: "",
     poster: "", releaseDate: "", sourceProvider: "", sourceId: "",
     tmdbId: null, igdbId: null,
-    episodeCount: null, seasonCount: null, runtime: null, seasons: [],
+    episodeCount: null, seasonCount: null, runtime: null, seasons: [], episodeWatchDates: {},
   });
   const [enriching, setEnriching] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -387,6 +387,7 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
       seasonCount: record.seasonCount ?? null,
       runtime: record.runtime ?? null,
       seasons: record.seasons || [],
+      episodeWatchDates: record.episodeWatchDates || {},
     });
     setEnriching(false);
     setMessage("");

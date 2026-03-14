@@ -460,6 +460,16 @@ export const normalizeSeriesSeasons = (value) => (
     : []
 );
 
+export const normalizeEpisodeWatchDates = (value) => (
+  value && typeof value === "object" && !Array.isArray(value)
+    ? Object.fromEntries(
+      Object.entries(value)
+        .filter(([key, rawValue]) => Boolean(key) && typeof rawValue === "string" && rawValue.trim())
+        .map(([key, rawValue]) => [key, rawValue.trim()])
+    )
+    : {}
+);
+
 export const getSeriesTotalEpisodes = (episodeCount, seasons = []) => {
   const explicitCount = safeNumber(episodeCount, 0);
   if (explicitCount > 0) return explicitCount;
@@ -527,6 +537,7 @@ export const createCultureFormState = () => ({
   seasonCount: null,
   runtime: null,
   seasons: [],
+  episodeWatchDates: {},
 });
 
 export const applyCultureSelectionToForm = (form, media) => ({
@@ -598,6 +609,11 @@ export const buildCulturePayload = (form) => {
     season_count: form.seasonCount ?? null,
     runtime: form.runtime ?? null,
     seasons: normalizedType === "시리즈" ? normalizeSeriesSeasons(form.seasons) : [],
+    episode_watch_dates: normalizedType === "시리즈"
+      ? (Object.keys(normalizeEpisodeWatchDates(form.episodeWatchDates)).length > 0
+        ? normalizeEpisodeWatchDates(form.episodeWatchDates)
+        : null)
+      : null,
     source_provider: form.sourceProvider || null,
     source_id: form.sourceId || null,
   };
