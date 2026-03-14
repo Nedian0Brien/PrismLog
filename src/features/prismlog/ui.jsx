@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -337,6 +337,28 @@ export const DistributionBarChart = ({ counts, enabled }) => {
 /* ──────────── Bottom Sheet ──────────── */
 export const BottomSheet = ({ open, onClose, children, title, layout }) => {
   const contentRef = useRef(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open || layout?.isTabletUp) return undefined;
+
+    const handleKeyboardChange = () => {
+      setKeyboardOpen(document.documentElement.dataset.keyboardOpen === "true");
+    };
+
+    const observer = new MutationObserver(handleKeyboardChange);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-keyboard-open"],
+    });
+
+    handleKeyboardChange();
+
+    return () => {
+      observer.disconnect();
+      setKeyboardOpen(false);
+    };
+  }, [open, layout?.isTabletUp]);
 
   useEffect(() => {
     if (!open || typeof window === "undefined") return undefined;
@@ -417,28 +439,39 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
 
   if (!open) return null;
   const isWide = layout?.isTabletUp;
+  const mobileKbOpen = !isWide && keyboardOpen;
   const sheetMaxHeight = isWide
     ? "min(85vh, calc(var(--viewport-height) - 48px))"
-    : "calc(var(--viewport-height) - var(--viewport-safe-top) - 8px)";
+    : mobileKbOpen
+      ? "calc(var(--viewport-height) - var(--viewport-safe-top))"
+      : "calc(var(--viewport-height) - var(--viewport-safe-top) - 8px)";
   const sheetContentMaxHeight = isWide
     ? "calc(min(85vh, calc(var(--viewport-height) - 48px)) - 24px)"
-    : "calc(var(--viewport-height) - var(--viewport-safe-top) - 48px)";
+    : mobileKbOpen
+      ? "calc(var(--viewport-height) - var(--viewport-safe-top) - 40px)"
+      : "calc(var(--viewport-height) - var(--viewport-safe-top) - 48px)";
 
   return (
     <div style={{
-      position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: isWide ? "center" : "flex-end", justifyContent: "center",
+      position: "fixed", inset: 0, zIndex: 100, display: "flex",
+      alignItems: isWide ? "center" : (mobileKbOpen ? "flex-start" : "flex-end"),
+      justifyContent: "center",
       padding: isWide
         ? "24px"
-        : "0 var(--safe-area-right) var(--keyboard-inset-height) var(--safe-area-left)",
+        : mobileKbOpen
+          ? "var(--viewport-safe-top) var(--safe-area-right) 0 var(--safe-area-left)"
+          : "0 var(--safe-area-right) var(--keyboard-inset-height) var(--safe-area-left)",
     }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={onClose} />
       <div style={{
         position: "relative", width: "100%", maxWidth: isWide ? (layout?.isDesktop ? 760 : 680) : 480, maxHeight: sheetMaxHeight,
-        background: COLORS.dark.surfaceSolid, borderRadius: isWide ? 24 : "24px 24px 0 0",
+        background: COLORS.dark.surfaceSolid,
+        borderRadius: isWide ? 24 : (mobileKbOpen ? "0 0 24px 24px" : "24px 24px 0 0"),
         padding: "8px 0 0", overflow: "hidden",
         animation: "slideUp 0.35s cubic-bezier(.32,.72,.24,1)",
+        transition: "border-radius 0.2s ease, max-height 0.2s ease",
       }}>
-        {!isWide && <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)", margin: "0 auto 16px" }} />}
+        {!isWide && !mobileKbOpen && <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)", margin: "0 auto 16px" }} />}
         <div
           ref={contentRef}
           style={{
