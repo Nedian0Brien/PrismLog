@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -337,37 +337,6 @@ export const DistributionBarChart = ({ counts, enabled }) => {
 /* ──────────── Bottom Sheet ──────────── */
 export const BottomSheet = ({ open, onClose, children, title, layout }) => {
   const contentRef = useRef(null);
-  const [vvTop, setVvTop] = useState(0);
-  const [vvHeight, setVvHeight] = useState(
-    typeof window !== "undefined" ? (window.visualViewport?.height ?? window.innerHeight) : 600
-  );
-
-  // visual viewport 직접 추적: iOS/Android 키보드·주소창 변화에 정확히 대응
-  useEffect(() => {
-    if (!open || layout?.isTabletUp || typeof window === "undefined") return undefined;
-
-    const update = () => {
-      const vv = window.visualViewport;
-      if (vv) {
-        setVvTop(Math.round(vv.offsetTop));
-        setVvHeight(Math.round(vv.height));
-      } else {
-        setVvTop(0);
-        setVvHeight(window.innerHeight);
-      }
-    };
-
-    window.visualViewport?.addEventListener("resize", update, { passive: true });
-    window.visualViewport?.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update, { passive: true });
-    update();
-
-    return () => {
-      window.visualViewport?.removeEventListener("resize", update);
-      window.visualViewport?.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, [open, layout?.isTabletUp]);
 
   useEffect(() => {
     if (!open || typeof window === "undefined") return undefined;
@@ -423,8 +392,11 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
 
           const targetRect = target.getBoundingClientRect();
           const containerRect = container.getBoundingClientRect();
+          const keyboardInset = Number.parseFloat(
+            getComputedStyle(document.documentElement).getPropertyValue("--keyboard-inset-height")
+          ) || 0;
           const visibleTop = containerRect.top + 12;
-          const visibleBottom = containerRect.bottom - 20;
+          const visibleBottom = containerRect.bottom - keyboardInset - 20;
 
           if (targetRect.bottom > visibleBottom) {
             container.scrollBy({ top: targetRect.bottom - visibleBottom, behavior: "smooth" });
@@ -445,51 +417,46 @@ export const BottomSheet = ({ open, onClose, children, title, layout }) => {
 
   if (!open) return null;
   const isWide = layout?.isTabletUp;
+  // --app-vh: 키보드가 올라와도 변하지 않는 최대 뷰포트 높이
   const sheetMaxHeight = isWide
-    ? "min(85vh, calc(var(--viewport-height) - 48px))"
-    : `calc(${vvHeight}px - var(--viewport-safe-top) - 8px)`;
+    ? "min(85vh, calc(var(--app-vh) - 48px))"
+    : "calc(var(--app-vh) - var(--viewport-safe-top) - 8px)";
   const sheetContentMaxHeight = isWide
-    ? "calc(min(85vh, calc(var(--viewport-height) - 48px)) - 24px)"
-    : `calc(${vvHeight}px - var(--viewport-safe-top) - 48px)`;
+    ? "calc(min(85vh, calc(var(--app-vh) - 48px)) - 24px)"
+    : "calc(var(--app-vh) - var(--viewport-safe-top) - 48px)";
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 100 }}>
-      {/* backdrop: 레이아웃 뷰포트 전체 커버 */}
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 100, display: "flex",
+      alignItems: isWide ? "center" : "flex-end", justifyContent: "center",
+      padding: isWide ? "24px" : `0 var(--safe-area-right) 0 var(--safe-area-left)`,
+    }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} onClick={onClose} />
-      {/* modal positioner: visual viewport에 정확히 맞춤 (키보드 자동 대응) */}
       <div style={{
-        position: "absolute", left: 0, right: 0,
-        ...(isWide
-          ? { top: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px" }
-          : { top: vvTop, height: vvHeight, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: `0 var(--safe-area-right) 0 var(--safe-area-left)` }
-        ),
+        position: "relative", width: "100%", maxWidth: isWide ? (layout?.isDesktop ? 760 : 680) : 480, maxHeight: sheetMaxHeight,
+        background: COLORS.dark.surfaceSolid, borderRadius: isWide ? 24 : "24px 24px 0 0",
+        padding: "8px 0 0", overflow: "hidden",
+        animation: "slideUp 0.35s cubic-bezier(.32,.72,.24,1)",
       }}>
-        <div style={{
-          position: "relative", width: "100%", maxWidth: isWide ? (layout?.isDesktop ? 760 : 680) : 480, maxHeight: sheetMaxHeight,
-          background: COLORS.dark.surfaceSolid, borderRadius: isWide ? 24 : "24px 24px 0 0",
-          padding: "8px 0 0", overflow: "hidden",
-          animation: "slideUp 0.35s cubic-bezier(.32,.72,.24,1)",
-        }}>
-          {!isWide && <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)", margin: "0 auto 16px" }} />}
-          <div
-            ref={contentRef}
-            style={{
-              padding: isWide ? "12px 28px calc(32px + var(--viewport-safe-bottom))" : "0 24px calc(32px + var(--viewport-safe-bottom))",
-              overflowY: "auto",
-              maxHeight: sheetContentMaxHeight,
-              WebkitOverflowScrolling: "touch",
-              overscrollBehavior: "contain",
-              scrollPaddingBottom: "24px",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 700, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", margin: 0 }}>{title}</h3>
-              <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <XIcon color={COLORS.dark.textMuted} />
-              </button>
-            </div>
-            {children}
+        {!isWide && <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)", margin: "0 auto 16px" }} />}
+        <div
+          ref={contentRef}
+          style={{
+            padding: isWide ? "12px 28px calc(32px + var(--viewport-safe-bottom))" : "0 24px calc(32px + var(--viewport-safe-bottom))",
+            overflowY: "auto",
+            maxHeight: sheetContentMaxHeight,
+            WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain",
+            scrollPaddingBottom: "calc(24px + var(--keyboard-inset-height))",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", margin: 0 }}>{title}</h3>
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <XIcon color={COLORS.dark.textMuted} />
+            </button>
           </div>
+          {children}
         </div>
       </div>
     </div>
