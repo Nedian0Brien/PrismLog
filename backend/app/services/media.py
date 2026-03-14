@@ -245,6 +245,7 @@ def _enrich_rawg_game(rawg_id: int, settings: Settings) -> MediaEnrichResponse:
         poster_url=(payload.get("background_image") or "").strip() or None,
         release_date=_format_date(payload.get("released")),
         overview=description or None,
+        runtime=int(payload["playtime"]) if isinstance(payload.get("playtime"), int) and payload["playtime"] > 0 else None,
     )
 
 

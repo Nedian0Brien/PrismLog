@@ -11,11 +11,6 @@ cp .env.example .env
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## Required media API keys
-
-- `TMDB_API_KEY`: 영화/시리즈 검색 및 상세 정보
-- `RAWG_API_KEY`: 게임 검색 및 상세 정보
-
 ## API
 
 - `GET /health`
