@@ -233,18 +233,24 @@ const buildSeriesProgressTrend = (episodeWatchDates, totalEpisodes) => {
 };
 
 const SeriesProgressSummary = ({ item, accent }) => {
-  const { metrics } = buildSeriesSeasonRows(item);
+  const { metrics, seasons } = buildSeriesSeasonRows(item);
+  const seasonCount = item.seasonCount || seasons.length;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>
-          {metrics.playtimeLabel || "회차 미기록"}
-        </span>
-        <strong style={{ fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+          <span style={{ fontSize: 11, letterSpacing: 0.6, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+            {seasonCount > 0 ? `${seasonCount}시즌` : "시리즈 진행률"}
+          </span>
+          <strong style={{ fontSize: 13, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>
+            {metrics.playtimeLabel || "회차 미기록"}
+          </strong>
+        </div>
+        <strong style={{ fontSize: 32, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 0.9, letterSpacing: -1 }}>
           {metrics.progress}%
         </strong>
       </div>
-      <ProgressBar value={metrics.progress} color={accent} height={7} />
+      <ProgressBar value={metrics.progress} color={accent} height={8} />
     </div>
   );
 };
@@ -1824,6 +1830,22 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
           const accent = tone.main;
           const glow = tone.glow;
           const isSeries = c.type === "시리즈";
+          const posterNode = c.poster ? (
+            <img
+              src={c.poster}
+              alt={`${c.title} 포스터`}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: isSeries ? "contain" : "cover",
+                display: "block",
+              }}
+            />
+          ) : c.type === "게임" ? (
+            <GamepadIcon size={36} color={`${accent}88`} />
+          ) : (
+            <FilmIcon size={36} color={`${accent}88`} />
+          );
           return (
           <GlassCard
             key={c.id}
@@ -1831,44 +1853,86 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
             style={{ padding: 0, overflow: "hidden", cursor: isSeries ? "pointer" : "default" }}
             onClick={isSeries ? () => setDetailId(c.id) : undefined}
           >
-            {/* poster placeholder */}
-            <div style={{
-              height: 160, background: c.poster ? COLORS.dark.surfaceSolid : `linear-gradient(160deg, ${accent}25, ${COLORS.dark.surfaceSolid})`,
-              display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
-            }}>
-              {c.poster ? (
-                <img src={c.poster} alt={`${c.title} 포스터`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              ) : c.type === "게임" ? (
-                <GamepadIcon size={36} color={`${accent}88`} />
-              ) : (
-                <FilmIcon size={36} color={`${accent}88`} />
-              )}
-              <div style={{ position: "absolute", top: 8, right: 8 }}><StatusBadge status={c.status} /></div>
-            </div>
-            <div style={{ padding: "12px 14px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 700, color: COLORS.dark.text, margin: "0 0 4px", fontFamily: "'Pretendard', sans-serif", flex: 1 }}>{c.title}</h4>
-                <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(c); }} />
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{c.type}</span>
-                {c.playtime && <span style={{ fontSize: 11, color: accent }}>· {c.playtime}</span>}
-              </div>
-              {c.rating > 0 && <RatingStars rating={c.rating} size={12} />}
-              {isSeries && (
-                <div style={{ marginTop: 10 }}>
-                  <SeriesProgressSummary item={c} accent={accent} />
+            {isSeries ? (
+              <div style={{ padding: "16px 16px 14px", display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "96px minmax(0, 1fr)" : "110px minmax(0, 1fr)", gap: 14, alignItems: "start" }}>
+                  <div style={{
+                    position: "relative",
+                    aspectRatio: "2 / 3",
+                    borderRadius: 18,
+                    overflow: "hidden",
+                    border: `1px solid ${accent}24`,
+                    background: c.poster
+                      ? `linear-gradient(155deg, rgba(255,255,255,0.05), ${accent}18)`
+                      : `linear-gradient(160deg, ${accent}25, ${COLORS.dark.surfaceSolid})`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: c.poster ? 10 : 0,
+                    boxShadow: "0 18px 36px rgba(0,0,0,0.2)",
+                  }}>
+                    {posterNode}
+                  </div>
+                  <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                      <StatusBadge status={c.status} />
+                      <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(c); }} />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <h4 style={{
+                        fontSize: 18,
+                        fontWeight: 800,
+                        lineHeight: 1.2,
+                        color: COLORS.dark.text,
+                        margin: "0 0 6px",
+                        fontFamily: "'Outfit', sans-serif",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}>
+                        {c.title}
+                      </h4>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{c.type}</span>
+                        {c.rating > 0 && <RatingStars rating={c.rating} size={12} />}
+                      </div>
+                    </div>
+                    <SeriesProgressSummary item={c} accent={accent} />
+                  </div>
                 </div>
-              )}
-              <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
-                {c.tags.map(t => <Badge key={t} text={`#${t}`} color={accent} />)}
-              </div>
-              {isSeries && (
-                <p style={{ margin: "10px 0 0", fontSize: 11, color: accent, fontWeight: 700 }}>
-                  상세 보기 →
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {c.tags.map(t => <Badge key={t} text={`#${t}`} color={accent} />)}
+                </div>
+                <p style={{ margin: 0, fontSize: 11, color: accent, fontWeight: 700, fontFamily: "'Outfit', sans-serif", letterSpacing: 0.6 }}>
+                  OPEN SERIES DETAIL
                 </p>
-              )}
-            </div>
+              </div>
+            ) : (
+              <>
+                <div style={{
+                  height: 160, background: c.poster ? COLORS.dark.surfaceSolid : `linear-gradient(160deg, ${accent}25, ${COLORS.dark.surfaceSolid})`,
+                  display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
+                }}>
+                  {posterNode}
+                  <div style={{ position: "absolute", top: 8, right: 8 }}><StatusBadge status={c.status} /></div>
+                </div>
+                <div style={{ padding: "12px 14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: COLORS.dark.text, margin: "0 0 4px", fontFamily: "'Pretendard', sans-serif", flex: 1 }}>{c.title}</h4>
+                    <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(c); }} />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{c.type}</span>
+                    {c.playtime && <span style={{ fontSize: 11, color: accent }}>· {c.playtime}</span>}
+                  </div>
+                  {c.rating > 0 && <RatingStars rating={c.rating} size={12} />}
+                  <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
+                    {c.tags.map(t => <Badge key={t} text={`#${t}`} color={accent} />)}
+                  </div>
+                </div>
+              </>
+            )}
           </GlassCard>
         )})}
       </div>
