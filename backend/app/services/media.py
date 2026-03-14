@@ -212,9 +212,25 @@ def _get_igdb_token(settings: Settings) -> str:
     return token
 
 
+def _is_korean(text: str) -> bool:
+    """한글 문자가 포함되어 있는지 확인합니다."""
+    if not text:
+        return False
+    # 한글 유니코드 범위: AC00-D7A3 (음절), 1100-11FF (초성/중성/종성), 3130-318F (자음/모음)
+    for char in text:
+        if "\uac00" <= char <= "\ud7a3" or "\u3130" <= char <= "\u318f":
+            return True
+    return False
+
+
 def _search_igdb_games(query: str, settings: Settings) -> list[MediaSearchItem]:
     token = _get_igdb_token(settings)
-    body = f'fields name, cover.image_id, first_release_date, summary, slug; search "{query}"; limit 10;'
+    # alternative_names를 포함하여 검색 결과에서 한글 제목을 찾을 수 있도록 쿼리 개선
+    body = (
+        f'fields name, cover.image_id, first_release_date, summary, slug, '
+        f'alternative_names.name, alternative_names.comment; '
+        f'search "{query}"; limit 10;'
+    )
     request = Request(
         f"{IGDB_API_BASE}/games",
         data=body.encode("utf-8"),
@@ -233,9 +249,23 @@ def _search_igdb_games(query: str, settings: Settings) -> list[MediaSearchItem]:
     items = []
     for r in results:
         igdb_id = r.get("id")
-        title = (r.get("name") or "").strip()
-        if not igdb_id or not title:
+        raw_name = (r.get("name") or "").strip()
+        if not igdb_id or not raw_name:
             continue
+
+        # 한글 제목 찾기
+        title = raw_name
+        original_title = raw_name
+        
+        # 기본 이름이 한글이 아닌 경우 alternative_names에서 한글 제목 탐색
+        if not _is_korean(raw_name):
+            alt_names = r.get("alternative_names", [])
+            for alt in alt_names:
+                alt_name = alt.get("name", "").strip()
+                if _is_korean(alt_name):
+                    title = alt_name
+                    break
+
         cover = r.get("cover") or {}
         image_id = cover.get("image_id") if isinstance(cover, dict) else None
         poster_url = f"{IGDB_IMAGE_BASE}/{image_id}.jpg" if image_id else None
@@ -243,13 +273,17 @@ def _search_igdb_games(query: str, settings: Settings) -> list[MediaSearchItem]:
         release_date = None
         if isinstance(release_ts, int):
             import datetime
-            release_date = datetime.datetime.utcfromtimestamp(release_ts).strftime("%Y-%m-%d")
+            # UTC 기준 날짜 포맷팅
+            dt = datetime.datetime.fromtimestamp(release_ts, datetime.timezone.utc)
+            release_date = dt.strftime("%Y-%m-%d")
+
         items.append(MediaSearchItem(
             source_provider="igdb",
             source_id=f"igdb:game:{igdb_id}",
             igdb_id=igdb_id,
             type="game",
             title=title,
+            original_title=original_title if title != original_title else None,
             poster_url=poster_url,
             release_date=release_date,
             overview=(r.get("summary") or "").strip() or None,
