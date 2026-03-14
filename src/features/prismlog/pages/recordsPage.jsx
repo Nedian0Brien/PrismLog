@@ -199,6 +199,15 @@ const buildSeriesSeasonRows = (item) => {
   return { metrics, seasons, currentPointer };
 };
 
+const getEpisodesToUnwatch = (seasons, targetEpisode, watchedEpisodes) => (
+  seasons
+    .flatMap((season) => season.episodes)
+    .filter((episode) => (
+      episode.absoluteEpisodeNumber >= targetEpisode.absoluteEpisodeNumber
+      && episode.absoluteEpisodeNumber <= watchedEpisodes
+    ))
+);
+
 const SeriesProgressSummary = ({ item, accent }) => {
   const { metrics } = buildSeriesSeasonRows(item);
   return (
@@ -520,7 +529,10 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
   const handleEpisodeSelect = async (episode) => {
     if (!episode) return;
     if (episode.watched) {
-      setPendingUnwatchEpisode(episode);
+      setPendingUnwatchEpisode({
+        ...episode,
+        affectedEpisodes: getEpisodesToUnwatch(seasons, episode, metrics.watchedEpisodes),
+      });
       return;
     }
     await commitEpisodeSelection(episode);
@@ -553,8 +565,58 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                   시청 완료를 해제할까요?
                 </h4>
                 <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>
-                  {`시즌 ${pendingUnwatchEpisode.seasonNumber} · EP ${pendingUnwatchEpisode.episodeNumber} 완료를 해제하면 이 회차 이후 완료 표시는 함께 해제됩니다.`}
+                  {`시즌 ${pendingUnwatchEpisode.seasonNumber} · EP ${pendingUnwatchEpisode.episodeNumber} 완료를 해제하면 이 회차 이후 완료 표시도 함께 해제됩니다.`}
                 </p>
+              </div>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "96px minmax(0, 1fr)",
+                gap: 14,
+                alignItems: "center",
+                padding: "12px 14px",
+                borderRadius: 18,
+                border: `1px solid ${accent}22`,
+                background: "rgba(255,255,255,0.03)",
+              }}>
+                <div style={{ position: "relative", height: 86 }}>
+                  {pendingUnwatchEpisode.affectedEpisodes.slice(0, 3).map((episode, index) => (
+                    <div
+                      key={`unwatch-preview-${episode.episodeKey}`}
+                      style={{
+                        position: "absolute",
+                        left: `${index * 18}px`,
+                        top: `${index * 4}px`,
+                        width: 54,
+                        height: 78,
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        border: `1px solid ${accent}26`,
+                        background: episode.stillUrl ? COLORS.dark.surfaceSolid : `linear-gradient(145deg, ${accent}18, rgba(255,255,255,0.04))`,
+                        boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
+                      }}
+                    >
+                      {episode.stillUrl ? (
+                        <img src={episode.stillUrl} alt={`${episode.name || `EP ${episode.episodeNumber}`} 썸네일`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                      ) : (
+                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <FilmIcon size={16} color={accent} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <strong style={{ display: "block", marginBottom: 6, fontSize: 14, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                    {pendingUnwatchEpisode.name || `EP ${pendingUnwatchEpisode.episodeNumber}`}
+                  </strong>
+                  <p style={{ margin: "0 0 6px", fontSize: 12, color: COLORS.dark.textMuted }}>
+                    {`총 ${pendingUnwatchEpisode.affectedEpisodes.length}개 회차가 해제됩니다.`}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted }}>
+                    {pendingUnwatchEpisode.affectedEpisodes.slice(0, 3).map((episode) => `EP ${episode.episodeNumber}`).join(" · ")}
+                    {pendingUnwatchEpisode.affectedEpisodes.length > 3 ? ` · +${pendingUnwatchEpisode.affectedEpisodes.length - 3}` : ""}
+                  </p>
+                </div>
               </div>
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                 <button
@@ -899,7 +961,9 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                       ref={(node) => {
                         episodeRefs.current[episodeKey] = node;
                       }}
-                      onClick={() => handleEpisodeSelect(episode)}
+                      onClick={() => {
+                        if (!episode.watched) handleEpisodeSelect(episode);
+                      }}
                       disabled={Boolean(savingEpisode)}
                       style={{
                         padding: "12px 14px",
@@ -967,26 +1031,35 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                               {episode.name || `제 ${episode.episodeNumber}화`}
                             </p>
                           </div>
-                          <div style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: "50%",
-                            border: episode.watched || isSaving ? "none" : `1.5px solid ${COLORS.dark.text}77`,
-                            background: isSaving
-                              ? "rgba(255,255,255,0.14)"
-                              : episode.watched
-                                ? successColor
-                                : "rgba(26,24,22,0.52)",
-                            color: episode.watched ? "#182017" : COLORS.dark.text,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
-                            boxShadow: episode.watched ? `0 8px 18px ${successColor}26` : "none",
-                            animation: isAnimating ? "seriesEpisodeComplete 560ms cubic-bezier(.2,.8,.2,1)" : "none",
-                          }}>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleEpisodeSelect(episode);
+                            }}
+                            disabled={Boolean(savingEpisode)}
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: "50%",
+                              border: episode.watched || isSaving ? "none" : `1.5px solid ${COLORS.dark.text}77`,
+                              background: isSaving
+                                ? "rgba(255,255,255,0.14)"
+                                : episode.watched
+                                  ? successColor
+                                  : "rgba(26,24,22,0.52)",
+                              color: episode.watched ? "#182017" : COLORS.dark.text,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                              boxShadow: episode.watched ? `0 8px 18px ${successColor}26` : "none",
+                              animation: isAnimating ? "seriesEpisodeComplete 560ms cubic-bezier(.2,.8,.2,1)" : "none",
+                              cursor: savingEpisode ? "wait" : "pointer",
+                            }}
+                          >
                             <CheckIcon size={14} color={episode.watched ? "#182017" : COLORS.dark.textMuted} />
-                          </div>
+                          </button>
                         </div>
                         <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted }}>
                           {[episode.airDate ? formatMonthDayLabel(episode.airDate) : null, episode.runtime ? `${episode.runtime}분` : null].filter(Boolean).join(" · ") || "방영 정보 없음"}
