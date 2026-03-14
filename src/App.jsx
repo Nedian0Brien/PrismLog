@@ -31,8 +31,39 @@ const MobileFloatingNav = lazy(() => import("./components/MobileFloatingNav"));
 const ViewportHeightSync = lazy(() => import("./components/ViewportHeightSync"));
 const ViewportDebugOverlay = lazy(() => import("./components/ViewportDebugOverlay"));
 
+const RECORD_SECTION_KEYS = new Set(["reading", "study", "movie", "series", "game"]);
+
+const parseAppRoute = (pathname) => {
+  const normalized = (pathname || "/").replace(/\/+$/, "") || "/";
+  if (normalized === "/timeline") return { page: "timeline", recordsSection: null };
+  if (normalized === "/settings") return { page: "settings", recordsSection: null };
+  if (normalized === "/records") return { page: "records", recordsSection: null };
+  if (normalized.startsWith("/records/")) {
+    const section = normalized.split("/")[2] || null;
+    return {
+      page: "records",
+      recordsSection: section && RECORD_SECTION_KEYS.has(section) ? section : null,
+    };
+  }
+  return { page: "home", recordsSection: null };
+};
+
+const buildAppPath = (page, recordsSection = null) => {
+  if (page === "timeline") return "/timeline";
+  if (page === "settings") return "/settings";
+  if (page === "records") {
+    return recordsSection && RECORD_SECTION_KEYS.has(recordsSection) ? `/records/${recordsSection}` : "/records";
+  }
+  return "/";
+};
+
 export default function PrismLog() {
-  const [page, setPage] = useState("home");
+  const initialRoute = useMemo(
+    () => parseAppRoute(typeof window !== "undefined" ? window.location.pathname : "/"),
+    []
+  );
+  const [page, setPage] = useState(initialRoute.page);
+  const [recordsSection, setRecordsSection] = useState(initialRoute.recordsSection);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [newLogCat, setNewLogCat] = useState("reading");
   const [glowEffect, setGlowEffect] = useState(null);
@@ -65,6 +96,29 @@ export default function PrismLog() {
   useEffect(() => {
     fetchLogs();
   }, [fetchLogs]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const handlePopState = () => {
+      const nextRoute = parseAppRoute(window.location.pathname);
+      setPage(nextRoute.page);
+      setRecordsSection(nextRoute.recordsSection);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const navigateTo = useCallback((nextPage, nextRecordsSection = null, mode = "push") => {
+    const resolvedRecordsSection = nextPage === "records" ? (nextRecordsSection ?? null) : null;
+    setPage(nextPage);
+    setRecordsSection(resolvedRecordsSection);
+
+    if (typeof window === "undefined") return;
+    const nextPath = buildAppPath(nextPage, resolvedRecordsSection);
+    const currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+    if (currentPath === nextPath) return;
+    window.history[mode === "replace" ? "replaceState" : "pushState"]({}, "", nextPath);
+  }, []);
 
 
   const readingLogs = useMemo(
@@ -275,6 +329,8 @@ export default function PrismLog() {
         onEditCulture={openCultureEdit}
         onUpdateSeriesProgress={updateSeriesProgress}
         onAddReading={addReadingProgress}
+        initialSection={recordsSection}
+        onSectionChange={(section) => navigateTo("records", section)}
         layout={layout}
       />;
       case "timeline": return <TimelinePage logs={logs} loading={loading} layout={layout} />;
@@ -453,7 +509,7 @@ export default function PrismLog() {
                         <button
                           key={item.key}
                           type="button"
-                          onClick={() => setPage(item.key)}
+                          onClick={() => navigateTo(item.key, item.key === "records" ? recordsSection : null)}
                           style={{
                             width: "100%",
                             minHeight: 52,
@@ -536,7 +592,7 @@ export default function PrismLog() {
       {/* Bottom Nav */}
       {!layout.isTabletUp && !isAnySheetOpen && (
         <Suspense fallback={null}>
-          <MobileFloatingNav items={navItems} activeKey={page} onChange={setPage} />
+          <MobileFloatingNav items={navItems} activeKey={page} onChange={(nextPage) => navigateTo(nextPage, nextPage === "records" ? recordsSection : null)} />
         </Suspense>
       )}
 

@@ -1684,9 +1684,13 @@ export const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
   );
 };
 
-export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, layout }) => {
-  const [selectedSection, setSelectedSection] = useState(null);
+export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, initialSection = null, onSectionChange, layout }) => {
+  const [selectedSection, setSelectedSection] = useState(initialSection);
   const [mobileColumns, setMobileColumns] = useState(1);
+
+  useEffect(() => {
+    setSelectedSection(initialSection || null);
+  }, [initialSection]);
 
   useEffect(() => {
     if (!layout.isPhone) return;
@@ -1800,6 +1804,11 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
     { value: 2, label: "2열", icon: <GridIcon size={16} /> },
   ];
 
+  const handleSectionChange = (nextSection) => {
+    setSelectedSection(nextSection);
+    onSectionChange?.(nextSection || null);
+  };
+
   const renderSectionPage = () => {
     switch (selectedSection) {
       case "reading":
@@ -1823,7 +1832,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button
             type="button"
-            onClick={() => setSelectedSection(null)}
+            onClick={() => handleSectionChange(null)}
             style={{
               alignSelf: "flex-start",
               minHeight: 42,
@@ -1903,7 +1912,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
               animationDelay: `${Math.min(index * 40, 180)}ms`,
             }}
           >
-            <RecordAreaCard section={section} onSelect={setSelectedSection} layout={layout} columns={recordHubColumns} />
+            <RecordAreaCard section={section} onSelect={handleSectionChange} layout={layout} columns={recordHubColumns} />
           </div>
         ))}
       </div>
