@@ -250,6 +250,12 @@ export default function PrismLog() {
     setTimeout(() => setGlowEffect(null), 1200);
   }, [updateLog]);
 
+  const updateSeriesProgress = useCallback(async (logId, payload) => {
+    await updateLog(logId, { payload });
+    setGlowEffect(COLORS.series.main);
+    setTimeout(() => setGlowEffect(null), 1200);
+  }, [updateLog]);
+
   const navItems = useMemo(() => [
     { key: "home", label: "홈", Icon: HomeIcon, color: NAV_TAB_COLORS.home },
     { key: "records", label: "기록", Icon: BookIcon, color: NAV_TAB_COLORS.records },
@@ -267,6 +273,7 @@ export default function PrismLog() {
         onEditReading={openReadingEdit}
         onEditStudy={openStudyEdit}
         onEditCulture={openCultureEdit}
+        onUpdateSeriesProgress={updateSeriesProgress}
         onAddReading={addReadingProgress}
         layout={layout}
       />;

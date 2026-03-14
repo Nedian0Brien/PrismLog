@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   API_BASE_URL,
+  buildCulturePayload,
   COLORS,
   CULTURE_TYPES,
   fetchMediaEnrichment,
@@ -74,10 +75,31 @@ const getSeriesTmdbId = (item) => {
   return match ? safeNumber(match[1], 0) : null;
 };
 
+const createCultureFormLike = (item, overrides = {}) => ({
+  title: item.title || "",
+  type: item.type || "영화",
+  status: overrides.status ?? item.status ?? "시청 중",
+  playtime: item.playtime || "",
+  watchedEpisodes: String(overrides.watchedEpisodes ?? item.watchedEpisodes ?? 0),
+  rating: safeNumber(item.rating),
+  poster: item.poster || "",
+  releaseDate: item.releaseDate || "",
+  overview: item.overview || item.summary || "",
+  sourceProvider: item.sourceProvider || "",
+  sourceId: item.sourceId || "",
+  tmdbId: item.tmdbId || null,
+  igdbId: item.igdbId || null,
+  episodeCount: overrides.episodeCount ?? item.episodeCount ?? null,
+  seasonCount: overrides.seasonCount ?? item.seasonCount ?? null,
+  runtime: item.runtime ?? null,
+  seasons: overrides.seasons ?? item.seasons ?? [],
+});
+
 const buildSeriesSeasonRows = (item) => {
   const metrics = getSeriesProgressMetrics(item);
   let remainingWatched = metrics.watchedEpisodes;
   let currentPointer = null;
+  let absoluteEpisodeCursor = 0;
 
   const seasons = metrics.seasons.map((season) => {
     const totalEpisodes = Math.max(safeNumber(season.episodeCount, season.episodes.length), 0);
@@ -85,6 +107,7 @@ const buildSeriesSeasonRows = (item) => {
     remainingWatched = Math.max(remainingWatched - totalEpisodes, 0);
 
     const episodes = season.episodes.map((episode, index) => {
+      absoluteEpisodeCursor += 1;
       const watched = index < watchedEpisodes;
       const isCurrent = !currentPointer && !watched && metrics.watchedEpisodes < metrics.totalEpisodes;
       if (isCurrent) {
@@ -94,7 +117,7 @@ const buildSeriesSeasonRows = (item) => {
           name: episode.name || `에피소드 ${episode.episodeNumber}`,
         };
       }
-      return { ...episode, watched, isCurrent };
+      return { ...episode, watched, isCurrent, absoluteEpisodeNumber: absoluteEpisodeCursor };
     });
 
     const progress = totalEpisodes > 0 ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0;
@@ -131,11 +154,13 @@ const SeriesProgressSummary = ({ item, accent }) => {
   );
 };
 
-const SeriesDetailPage = ({ item, layout, onBack, onEdit }) => {
+const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress }) => {
   const [remoteSeriesData, setRemoteSeriesData] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [attemptedRemoteLoad, setAttemptedRemoteLoad] = useState(false);
+  const [optimisticWatchedEpisodes, setOptimisticWatchedEpisodes] = useState(null);
+  const [savingEpisode, setSavingEpisode] = useState(null);
   const accent = COLORS.series.main;
   const tmdbId = getSeriesTmdbId(item);
 
@@ -143,6 +168,8 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit }) => {
     setRemoteSeriesData(null);
     setLoadError("");
     setAttemptedRemoteLoad(false);
+    setOptimisticWatchedEpisodes(null);
+    setSavingEpisode(null);
   }, [item.id]);
 
   useEffect(() => {
@@ -179,9 +206,38 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit }) => {
     };
   }, [attemptedRemoteLoad, item.episodeCount, item.runtime, item.seasonCount, item.seasons, loadingDetails, remoteSeriesData, tmdbId]);
 
-  const effectiveItem = remoteSeriesData ? { ...item, ...remoteSeriesData } : item;
+  const effectiveItemBase = remoteSeriesData ? { ...item, ...remoteSeriesData } : item;
+  const effectiveItem = optimisticWatchedEpisodes === null
+    ? effectiveItemBase
+    : { ...effectiveItemBase, watchedEpisodes: optimisticWatchedEpisodes };
   const { metrics, seasons, currentPointer } = buildSeriesSeasonRows(effectiveItem);
   const seasonCount = effectiveItem.seasonCount || seasons.length;
+  const handleEpisodeSelect = async (episode) => {
+    if (!onUpdateSeriesProgress) return;
+    const nextWatchedEpisodes = episode.absoluteEpisodeNumber;
+    const nextStatus = metrics.totalEpisodes > 0 && nextWatchedEpisodes >= metrics.totalEpisodes
+      ? "시청 완료"
+      : "시청 중";
+    const payload = buildCulturePayload(createCultureFormLike(effectiveItem, {
+      watchedEpisodes: nextWatchedEpisodes,
+      status: nextStatus,
+      episodeCount: effectiveItem.episodeCount ?? metrics.totalEpisodes ?? null,
+      seasonCount: effectiveItem.seasonCount ?? seasons.length ?? null,
+      seasons: metrics.seasons,
+    }));
+
+    setOptimisticWatchedEpisodes(nextWatchedEpisodes);
+    setSavingEpisode(`${episode.seasonNumber}-${episode.episodeNumber}`);
+    try {
+      await onUpdateSeriesProgress(item.id, payload);
+    } catch (error) {
+      setOptimisticWatchedEpisodes(null);
+      window.alert(`시청 진행률 저장 실패: ${error instanceof Error ? error.message : "unknown error"}`);
+    } finally {
+      setSavingEpisode(null);
+    }
+  };
+
   const metaCards = [
     { label: "진행률", value: `${metrics.progress}%`, tone: accent },
     { label: "시청 회차", value: metrics.playtimeLabel || "미기록", tone: COLORS.dark.text },
@@ -290,6 +346,9 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit }) => {
                 {effectiveItem.rating > 0 && <RatingStars rating={effectiveItem.rating} size={14} />}
               </div>
               <ProgressBar value={metrics.progress} color={accent} height={8} />
+              <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted }}>
+                회차를 누르면 해당 회차까지 자동으로 시청 완료 처리됩니다.
+              </p>
             </div>
 
             {(effectiveItem.overview || effectiveItem.summary) && (
@@ -359,9 +418,15 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit }) => {
                     }}>
                       회차 상세 정보가 없습니다.
                     </div>
-                  ) : season.episodes.map((episode) => (
-                    <div
+                  ) : season.episodes.map((episode) => {
+                    const episodeKey = `${episode.seasonNumber}-${episode.episodeNumber}`;
+                    const isSaving = savingEpisode === episodeKey;
+                    return (
+                    <button
+                      type="button"
                       key={`${item.id}-season-${season.seasonNumber}-episode-${episode.episodeNumber}`}
+                      onClick={() => handleEpisodeSelect(episode)}
+                      disabled={Boolean(savingEpisode)}
                       style={{
                         padding: "12px 14px",
                         borderRadius: 16,
@@ -372,12 +437,47 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit }) => {
                             ? "rgba(255,255,255,0.06)"
                             : "rgba(255,255,255,0.03)",
                         boxShadow: episode.isCurrent ? `0 0 0 1px ${accent}22 inset` : "none",
-                        display: "flex",
+                        display: "grid",
+                        gridTemplateColumns: layout.isPhone ? "1fr" : "108px minmax(0, 1fr) auto",
                         justifyContent: "space-between",
                         gap: 12,
-                        alignItems: "flex-start",
+                        alignItems: "stretch",
+                        width: "100%",
+                        textAlign: "left",
+                        cursor: savingEpisode ? "wait" : "pointer",
+                        opacity: isSaving ? 0.72 : 1,
                       }}
                     >
+                      {episode.stillUrl ? (
+                        <div style={{
+                          borderRadius: 12,
+                          overflow: "hidden",
+                          minHeight: 64,
+                          background: COLORS.dark.surfaceSolid,
+                          border: `1px solid ${episode.watched ? `${accent}36` : COLORS.dark.border}`,
+                        }}>
+                          <img
+                            src={episode.stillUrl}
+                            alt={`${episode.name || `에피소드 ${episode.episodeNumber}`} 썸네일`}
+                            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{
+                          borderRadius: 12,
+                          minHeight: 64,
+                          border: `1px dashed ${episode.watched ? `${accent}42` : COLORS.dark.border}`,
+                          background: "rgba(255,255,255,0.02)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: episode.watched ? accent : COLORS.dark.textMuted,
+                          fontSize: 11,
+                          fontWeight: 700,
+                        }}>
+                          No Still
+                        </div>
+                      )}
                       <div style={{ minWidth: 0 }}>
                         <p style={{ margin: "0 0 4px", fontSize: 11, color: episode.watched ? accent : COLORS.dark.textMuted }}>
                           EP {episode.episodeNumber}
@@ -389,25 +489,25 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit }) => {
                           {[episode.airDate ? formatMonthDayLabel(episode.airDate) : null, episode.runtime ? `${episode.runtime}분` : null].filter(Boolean).join(" · ") || "방영 정보 없음"}
                         </p>
                       </div>
-                      {(episode.watched || episode.isCurrent) && (
-                        <div style={{
-                          minWidth: 26,
-                          height: 26,
-                          padding: "0 8px",
-                          borderRadius: 999,
-                          background: episode.watched ? accent : "rgba(255,255,255,0.08)",
-                          color: episode.watched ? "#1a1816" : accent,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 11,
-                          fontWeight: 800,
-                        }}>
-                          {episode.watched ? "완" : "현재"}
+                        {(episode.watched || episode.isCurrent || isSaving) && (
+                          <div style={{
+                            minWidth: 26,
+                            height: 26,
+                            padding: "0 8px",
+                            borderRadius: 999,
+                            background: isSaving ? "rgba(255,255,255,0.12)" : episode.watched ? accent : "rgba(255,255,255,0.08)",
+                            color: isSaving ? COLORS.dark.text : episode.watched ? "#1a1816" : accent,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 11,
+                            fontWeight: 800,
+                          }}>
+                          {isSaving ? "저장" : episode.watched ? "완" : "현재"}
                         </div>
                       )}
-                    </div>
-                  ))}
+                    </button>
+                  )})}
                 </div>
               </div>
             </GlassCard>
@@ -928,7 +1028,7 @@ export const StudyPage = ({ studies, loading, onEdit, layout }) => {
 };
 
 /* ──────────── Page: Culture ──────────── */
-export const CulturePage = ({ items, loading, onEdit, layout, title = "문화생활", fixedType = null }) => {
+export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, layout, title = "문화생활", fixedType = null }) => {
   const [filter, setFilter] = useState(fixedType || "전체");
   const [detailId, setDetailId] = useState(null);
   const filters = ["전체", ...CULTURE_TYPES];
@@ -952,7 +1052,7 @@ export const CulturePage = ({ items, loading, onEdit, layout, title = "문화생
   );
 
   if (detailItem?.type === "시리즈") {
-    return <SeriesDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} />;
+    return <SeriesDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} onUpdateSeriesProgress={onUpdateSeriesProgress} />;
   }
 
   return (
@@ -1251,7 +1351,7 @@ export const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
   );
 };
 
-export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onAddReading, layout }) => {
+export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, layout }) => {
   const [selectedSection, setSelectedSection] = useState(null);
   const [mobileColumns, setMobileColumns] = useState(1);
 
@@ -1374,11 +1474,11 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       case "study":
         return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} layout={layout} />;
       case "movie":
-        return <CulturePage items={movieLogs} loading={loading} onEdit={onEditCulture} layout={layout} title="영화 기록" fixedType="영화" />;
+        return <CulturePage items={movieLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="영화 기록" fixedType="영화" />;
       case "series":
-        return <CulturePage items={seriesLogs} loading={loading} onEdit={onEditCulture} layout={layout} title="시리즈 기록" fixedType="시리즈" />;
+        return <CulturePage items={seriesLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="시리즈 기록" fixedType="시리즈" />;
       case "game":
-        return <CulturePage items={gameLogs} loading={loading} onEdit={onEditCulture} layout={layout} title="게임 기록" fixedType="게임" />;
+        return <CulturePage items={gameLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="게임 기록" fixedType="게임" />;
       default:
         return null;
     }
