@@ -19,7 +19,10 @@ import {
   clearCultureMetadata,
   fetchMediaEnrichment,
   getCultureStatusOptions,
+  getSeriesPlatformLabel,
   getSeriesProgressMetrics,
+  SERIES_PLATFORM_OPTIONS,
+  SeriesPlatformIcon,
   safeNumber,
   clamp,
   parseTags,
@@ -62,6 +65,22 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     disabled: submitting,
   });
   const splitFieldStyle = getSplitFieldStyle(layout);
+  const platformChipStyle = (active) => ({
+    minHeight: 46,
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: `1px solid ${active ? `${accent}66` : COLORS.dark.border}`,
+    background: active ? `${accent}18` : "rgba(255,255,255,0.04)",
+    color: active ? COLORS.dark.text : COLORS.dark.textMuted,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    justifyContent: "center",
+    cursor: "pointer",
+    fontSize: 12,
+    fontWeight: 700,
+    fontFamily: "'Pretendard', sans-serif",
+  });
 
   useEffect(() => {
     if (isOpen) return;
@@ -1042,6 +1061,40 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
           ))}
         </div>
       </div>
+
+      {cultureForm.type === "시리즈" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <label style={labelStyle}>시청 플랫폼</label>
+          <div style={{ display: "grid", gridTemplateColumns: layout?.isPhone ? "repeat(2, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+            {SERIES_PLATFORM_OPTIONS.map((option) => {
+              const active = cultureForm.platformKey === option.key;
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setCultureForm((prev) => ({
+                    ...prev,
+                    platformKey: option.key,
+                    platformLabel: option.key === "other" ? prev.platformLabel : getSeriesPlatformLabel(option.key),
+                  }))}
+                  style={platformChipStyle(active)}
+                >
+                  <SeriesPlatformIcon platformKey={option.key} size={18} color={active ? accent : COLORS.dark.textMuted} />
+                  <span>{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          {cultureForm.platformKey === "other" && (
+            <input
+              value={cultureForm.platformLabel}
+              onChange={(e) => setCultureForm((prev) => ({ ...prev, platformLabel: e.target.value }))}
+              style={inputStyle}
+              placeholder="예: 왓챠"
+            />
+          )}
+        </div>
+      )}
 
       {cultureForm.type === "시리즈" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

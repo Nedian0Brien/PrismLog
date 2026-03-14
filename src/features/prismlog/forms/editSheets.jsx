@@ -18,7 +18,10 @@ import {
   clearCultureMetadata,
   fetchMediaEnrichment,
   getCultureStatusOptions,
+  getSeriesPlatformLabel,
   getSeriesProgressMetrics,
+  SERIES_PLATFORM_OPTIONS,
+  SeriesPlatformIcon,
   safeNumber,
   clamp,
   parseTags,
@@ -357,7 +360,7 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
     title: "", summary: "", type: "영화", status: "시청 중",
     playtime: "", watchedEpisodes: "0", rating: 0, tags: "",
     poster: "", releaseDate: "", sourceProvider: "", sourceId: "",
-    tmdbId: null, igdbId: null,
+    tmdbId: null, igdbId: null, platformKey: "", platformLabel: "",
     episodeCount: null, seasonCount: null, runtime: null, seasons: [], episodeWatchDates: {},
   });
   const [enriching, setEnriching] = useState(false);
@@ -383,6 +386,8 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
       sourceId: record.sourceId || "",
       tmdbId: record.tmdbId || null,
       igdbId: record.igdbId || null,
+      platformKey: record.platformKey || "",
+      platformLabel: record.platformLabel || "",
       episodeCount: record.episodeCount ?? null,
       seasonCount: record.seasonCount ?? null,
       runtime: record.runtime ?? null,
@@ -399,6 +404,22 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
   const labelStyle = FORM_LABEL_STYLE;
   const splitFieldStyle = getSplitFieldStyle(layout);
   const accent = COLORS.culture.main;
+  const platformChipStyle = (active) => ({
+    minHeight: 46,
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: `1px solid ${active ? `${accent}66` : COLORS.dark.border}`,
+    background: active ? `${accent}18` : "rgba(255,255,255,0.04)",
+    color: active ? COLORS.dark.text : COLORS.dark.textMuted,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    justifyContent: "center",
+    cursor: "pointer",
+    fontSize: 12,
+    fontWeight: 700,
+    fontFamily: "'Pretendard', sans-serif",
+  });
   const seriesMetrics = form.type === "시리즈"
     ? getSeriesProgressMetrics({
       episodeCount: form.episodeCount,
@@ -510,6 +531,39 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
           <div><label style={labelStyle}>유형</label><select value={form.type} onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value, status: getCultureStatusOptions(e.target.value)[0] }))} style={inputStyle}>{CULTURE_TYPES.map((type) => <option key={type}>{type}</option>)}</select></div>
           <div><label style={labelStyle}>상태</label><select value={form.status} onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))} style={inputStyle}>{getCultureStatusOptions(form.type).map((status) => <option key={status}>{status}</option>)}</select></div>
         </div>
+        {form.type === "시리즈" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <label style={labelStyle}>시청 플랫폼</label>
+            <div style={{ display: "grid", gridTemplateColumns: layout?.isPhone ? "repeat(2, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+              {SERIES_PLATFORM_OPTIONS.map((option) => {
+                const active = form.platformKey === option.key;
+                return (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => setForm((prev) => ({
+                      ...prev,
+                      platformKey: option.key,
+                      platformLabel: option.key === "other" ? prev.platformLabel : getSeriesPlatformLabel(option.key),
+                    }))}
+                    style={platformChipStyle(active)}
+                  >
+                    <SeriesPlatformIcon platformKey={option.key} size={18} color={active ? accent : COLORS.dark.textMuted} />
+                    <span>{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {form.platformKey === "other" && (
+              <input
+                value={form.platformLabel}
+                onChange={(e) => setForm((prev) => ({ ...prev, platformLabel: e.target.value }))}
+                style={inputStyle}
+                placeholder="예: 왓챠"
+              />
+            )}
+          </div>
+        )}
         <div style={splitFieldStyle}>
           {form.type === "시리즈" ? (
             <>

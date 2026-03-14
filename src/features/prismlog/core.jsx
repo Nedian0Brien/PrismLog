@@ -155,6 +155,14 @@ export const TabletIcon = ({ size = 18, color = "currentColor" }) => (
     <circle cx="12" cy="18" r="0.7" fill={color} stroke="none" />
   </svg>
 );
+export const TvIcon = ({ size = 18, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="5" width="18" height="12" rx="2" />
+    <path d="M8 21h8" />
+    <path d="M12 17v4" />
+    <path d="m8 3 4 4 4-4" />
+  </svg>
+);
 export const GridIcon = ({ size = 18, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
@@ -192,6 +200,36 @@ export const API_BASE_URL = (
 export const DEMO_USER_ID = import.meta.env.VITE_DEMO_USER_ID || "demo-user";
 export const DAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 export const CULTURE_TYPES = ["영화", "시리즈", "게임"];
+export const SERIES_PLATFORM_OPTIONS = [
+  { key: "netflix", label: "넷플릭스" },
+  { key: "apple_tv_plus", label: "애플티비+" },
+  { key: "disney_plus", label: "디즈니 플러스" },
+  { key: "tv", label: "TV" },
+  { key: "other", label: "기타" },
+];
+export const SERIES_PLATFORM_LOGOS = {
+  netflix: "/platforms/netflix.svg",
+  apple_tv_plus: "/platforms/apple-tv-plus.svg",
+  disney_plus: "/platforms/disney-plus.svg",
+};
+export const getSeriesPlatformLabel = (platformKey, customLabel = "") => {
+  if (!platformKey) return "";
+  if (platformKey === "other") return customLabel.trim() || "기타";
+  return SERIES_PLATFORM_OPTIONS.find((option) => option.key === platformKey)?.label || customLabel.trim() || platformKey;
+};
+export const SeriesPlatformIcon = ({ platformKey, size = 16, color = "currentColor" }) => {
+  const logoSrc = SERIES_PLATFORM_LOGOS[platformKey];
+  if (logoSrc) {
+    return <img src={logoSrc} alt="" aria-hidden="true" style={{ width: size, height: size, objectFit: "contain", display: "block" }} />;
+  }
+  if (platformKey === "tv") {
+    return <TvIcon size={size} color={color} />;
+  }
+  if (platformKey === "other") {
+    return <TagIcon size={size} color={color} />;
+  }
+  return null;
+};
 export const EBOOK_SERVICES = [
   { key: "ridi", label: "리디북스" },
   { key: "millie", label: "밀리의서재" },
@@ -538,6 +576,8 @@ export const createCultureFormState = () => ({
   runtime: null,
   seasons: [],
   episodeWatchDates: {},
+  platformKey: "",
+  platformLabel: "",
 });
 
 export const applyCultureSelectionToForm = (form, media) => ({
@@ -614,6 +654,8 @@ export const buildCulturePayload = (form) => {
         ? normalizeEpisodeWatchDates(form.episodeWatchDates)
         : null)
       : null,
+    platform_key: normalizedType === "시리즈" ? form.platformKey || null : null,
+    platform_label: normalizedType === "시리즈" ? getSeriesPlatformLabel(form.platformKey, form.platformLabel) || null : null,
     source_provider: form.sourceProvider || null,
     source_id: form.sourceId || null,
   };

@@ -7,7 +7,9 @@ import {
   fetchMediaEnrichment,
   getResponsiveColumns,
   getCultureTone,
+  getSeriesPlatformLabel,
   getSeriesProgressMetrics,
+  SeriesPlatformIcon,
   formatMonthDayLabel,
   safeNumber,
   BookIcon,
@@ -253,6 +255,29 @@ const SeriesProgressSummary = ({ item, accent }) => {
       </div>
       <ProgressBar value={metrics.progress} color={accent} height={8} />
     </div>
+  );
+};
+
+const SeriesPlatformBadge = ({ platformKey, platformLabel, accent = COLORS.series.main }) => {
+  if (!platformKey) return null;
+  return (
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+      padding: "6px 10px",
+      borderRadius: 999,
+      border: `1px solid ${accent}28`,
+      background: `${accent}12`,
+      color: COLORS.dark.text,
+      fontSize: 11,
+      fontWeight: 700,
+      fontFamily: "'Pretendard', sans-serif",
+      lineHeight: 1,
+    }}>
+      <SeriesPlatformIcon platformKey={platformKey} size={14} color={accent} />
+      <span>{getSeriesPlatformLabel(platformKey, platformLabel)}</span>
+    </span>
   );
 };
 
@@ -861,6 +886,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                 </h3>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                   <StatusBadge status={effectiveItem.status} />
+                  <SeriesPlatformBadge platformKey={effectiveItem.platformKey} platformLabel={effectiveItem.platformLabel} accent={accent} />
                   {effectiveItem.releaseDate && <Badge text={formatMonthDayLabel(effectiveItem.releaseDate)} color={accent} />}
                   {effectiveItem.tags.map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
                 </div>
@@ -1895,6 +1921,7 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
                       </h4>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{c.type}</span>
+                        <SeriesPlatformBadge platformKey={c.platformKey} platformLabel={c.platformLabel} accent={accent} />
                         {c.rating > 0 && <RatingStars rating={c.rating} size={12} />}
                       </div>
                     </div>
