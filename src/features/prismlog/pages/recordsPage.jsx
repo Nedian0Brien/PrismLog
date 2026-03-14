@@ -208,6 +208,30 @@ const getEpisodesToUnwatch = (seasons, targetEpisode, watchedEpisodes) => (
     ))
 );
 
+const buildSeriesProgressTrend = (episodeWatchDates, totalEpisodes) => {
+  const entries = Object.values(episodeWatchDates || {}).filter(Boolean);
+  if (!entries.length || totalEpisodes <= 0) return [];
+
+  const countsByDate = entries.reduce((acc, isoLike) => {
+    const dateKey = String(isoLike).slice(0, 10);
+    if (!dateKey) return acc;
+    acc[dateKey] = (acc[dateKey] || 0) + 1;
+    return acc;
+  }, {});
+
+  let cumulativeCount = 0;
+  return Object.keys(countsByDate)
+    .sort()
+    .map((dateKey) => {
+      cumulativeCount += countsByDate[dateKey];
+      return {
+        dateKey,
+        label: formatMonthDayLabel(dateKey),
+        progress: Math.min(Math.round((cumulativeCount / totalEpisodes) * 100), 100),
+      };
+    });
+};
+
 const SeriesProgressSummary = ({ item, accent }) => {
   const { metrics } = buildSeriesSeasonRows(item);
   return (
@@ -337,6 +361,81 @@ const FloatingSeriesProgressToast = ({ toast, visible, animatedProgress }) => {
   );
 };
 
+const SeriesProgressTrendChart = ({ points }) => {
+  if (!points.length) return null;
+
+  const width = 220;
+  const height = 104;
+  const paddingX = 14;
+  const paddingY = 14;
+  const innerWidth = width - paddingX * 2;
+  const innerHeight = height - paddingY * 2;
+  const maxIndex = Math.max(points.length - 1, 1);
+
+  const coordinates = points.map((point, index) => {
+    const x = paddingX + (innerWidth * (points.length === 1 ? 0.5 : index / maxIndex));
+    const y = paddingY + innerHeight - ((point.progress / 100) * innerHeight);
+    return { ...point, x, y };
+  });
+
+  const linePath = coordinates.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  const areaPath = `${linePath} L ${coordinates[coordinates.length - 1].x} ${height - paddingY} L ${coordinates[0].x} ${height - paddingY} Z`;
+
+  return (
+    <div style={{
+      padding: "12px 14px",
+      borderRadius: 18,
+      border: `1px solid ${COLORS.series.main}22`,
+      background: "rgba(255,255,255,0.03)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 8,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+        <p style={{ margin: 0, fontSize: 11, letterSpacing: 1, color: COLORS.series.main, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+          Progress Trend
+        </p>
+        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>
+          {`${points[0].label} → ${points[points.length - 1].label}`}
+        </span>
+      </div>
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ display: "block", overflow: "visible" }}>
+        <defs>
+          <linearGradient id="seriesTrendFill" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="rgba(255,138,101,0.28)" />
+            <stop offset="100%" stopColor="rgba(255,138,101,0.02)" />
+          </linearGradient>
+        </defs>
+        {[0, 50, 100].map((value) => {
+          const y = paddingY + innerHeight - ((value / 100) * innerHeight);
+          return (
+            <line
+              key={`trend-grid-${value}`}
+              x1={paddingX}
+              y1={y}
+              x2={width - paddingX}
+              y2={y}
+              stroke="rgba(255,255,255,0.07)"
+              strokeDasharray="3 5"
+            />
+          );
+        })}
+        <path d={areaPath} fill="url(#seriesTrendFill)" />
+        <path d={linePath} fill="none" stroke={COLORS.series.main} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {coordinates.map((point) => (
+          <g key={`trend-point-${point.dateKey}`}>
+            <circle cx={point.x} cy={point.y} r="4.5" fill={COLORS.dark.bg} stroke={COLORS.series.main} strokeWidth="2" />
+          </g>
+        ))}
+      </svg>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{points[0].label}</span>
+        <span style={{ fontSize: 11, color: COLORS.series.main, fontFamily: "'Outfit', sans-serif" }}>{points[points.length - 1].progress}%</span>
+      </div>
+    </div>
+  );
+};
+
 const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress }) => {
   const [remoteSeriesData, setRemoteSeriesData] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -416,6 +515,10 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
     : { ...effectiveItemBase, watchedEpisodes: optimisticWatchedEpisodes };
   const { metrics, seasons, currentPointer } = buildSeriesSeasonRows(effectiveItem);
   const seasonCount = effectiveItem.seasonCount || seasons.length;
+  const trendPoints = useMemo(
+    () => buildSeriesProgressTrend(effectiveItem.episodeWatchDates, metrics.totalEpisodes),
+    [effectiveItem.episodeWatchDates, metrics.totalEpisodes]
+  );
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -579,7 +682,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                 background: "rgba(255,255,255,0.03)",
               }}>
                 <div style={{ position: "relative", height: 86 }}>
-                  {pendingUnwatchEpisode.affectedEpisodes.slice(0, 3).map((episode, index) => (
+                  {pendingUnwatchEpisode.affectedEpisodes.slice(0, 3).map((episode, index, previewEpisodes) => (
                     <div
                       key={`unwatch-preview-${episode.episodeKey}`}
                       style={{
@@ -593,6 +696,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                         border: `1px solid ${accent}26`,
                         background: episode.stillUrl ? COLORS.dark.surfaceSolid : `linear-gradient(145deg, ${accent}18, rgba(255,255,255,0.04))`,
                         boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
+                        zIndex: previewEpisodes.length - index + (episode.episodeKey === pendingUnwatchEpisode.episodeKey ? 10 : 0),
                       }}
                     >
                       {episode.stillUrl ? (
@@ -740,16 +844,22 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
               gap: 12,
               alignItems: "start",
             }}>
-              <div style={{
-                width: layout.isPhone ? 84 : 104,
-                height: layout.isPhone ? 60 : 74,
-                borderRadius: 14,
-                overflow: "hidden",
-                background: currentPointer?.stillUrl
-                  ? COLORS.dark.surfaceSolid
-                  : `linear-gradient(145deg, ${accent}18, rgba(255,255,255,0.04))`,
-                border: `1px solid ${accent}22`,
-              }}>
+              <button
+                type="button"
+                onClick={() => scrollToEpisode(currentPointer)}
+                style={{
+                  padding: 0,
+                  width: layout.isPhone ? 84 : 104,
+                  height: layout.isPhone ? 60 : 74,
+                  borderRadius: 14,
+                  overflow: "hidden",
+                  background: currentPointer?.stillUrl
+                    ? COLORS.dark.surfaceSolid
+                    : `linear-gradient(145deg, ${accent}18, rgba(255,255,255,0.04))`,
+                  border: `1px solid ${accent}22`,
+                  cursor: currentPointer?.seasonNumber ? "pointer" : "default",
+                }}
+              >
                 {currentPointer?.stillUrl ? (
                   <img src={currentPointer.stillUrl} alt={`${currentPointer.name} 썸네일`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 ) : (
@@ -757,7 +867,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                     <FilmIcon size={18} color={accent} />
                   </div>
                 )}
-              </div>
+              </button>
               <div style={{ minWidth: 0 }}>
                 <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
                   Next episode
@@ -848,11 +958,11 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
             )}
           </div>
 
-          <div style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
             gap: 8,
             padding: "16px 0 4px",
           }}>
@@ -872,6 +982,9 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
               {seasonCount > 0 ? `${seasonCount}시즌` : "시즌 정보 없음"}
               {effectiveItem.runtime ? ` · 평균 ${effectiveItem.runtime}분` : ""}
             </p>
+            <div style={{ width: "100%" }}>
+              <SeriesProgressTrendChart points={trendPoints} />
+            </div>
           </div>
         </div>
       </GlassCard>
@@ -914,8 +1027,8 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                     <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
                       {[
                         season.airDate ? formatMonthDayLabel(season.airDate) : null,
-                        season.totalEpisodes > 0 ? `${season.totalEpisodes}화` : null,
-                        season.watchedEpisodes > 0 ? `${season.watchedEpisodes}화 시청` : null,
+                        season.totalEpisodes > 0 ? `시즌 총 ${season.totalEpisodes}화` : null,
+                        season.watchedEpisodes > 0 ? `${season.watchedEpisodes}화 시청함` : null,
                       ].filter(Boolean).join(" · ") || "메타데이터 없음"}
                     </p>
                   </div>
@@ -984,6 +1097,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                         gap: 12,
                         width: layout.isPhone ? 244 : 276,
                         minWidth: layout.isPhone ? 244 : 276,
+                        minHeight: layout.isPhone ? 350 : 366,
                         textAlign: "left",
                         cursor: savingEpisode ? "wait" : "pointer",
                         opacity: isSaving ? 0.72 : 1,
@@ -1021,7 +1135,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                           </div>
                         )}
                       </div>
-                      <div style={{ minWidth: 0 }}>
+                      <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 4 }}>
                           <div style={{ minWidth: 0 }}>
                             <p style={{ margin: "0 0 4px", fontSize: 11, color: episode.watched ? accent : COLORS.dark.textMuted }}>
@@ -1066,7 +1180,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                         </p>
                         {episode.overview && (
                           <p style={{
-                            margin: "8px 0 0",
+                            margin: 0,
                             fontSize: 12,
                             lineHeight: 1.55,
                             color: COLORS.dark.textMuted,
@@ -1079,7 +1193,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                           </p>
                         )}
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: "auto" }}>
                         <span style={{
                           display: "inline-flex",
                           alignItems: "center",
