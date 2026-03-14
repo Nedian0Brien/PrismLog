@@ -426,7 +426,7 @@ export const createCultureFormState = () => ({
   sourceProvider: "",
   sourceId: "",
   tmdbId: null,
-  rawgId: null,
+  igdbId: null,
   episodeCount: null,
   seasonCount: null,
   runtime: null,
@@ -441,17 +441,13 @@ export const applyCultureSelectionToForm = (form, media) => ({
   sourceProvider: media.source_provider || "",
   sourceId: media.source_id || "",
   tmdbId: media.tmdb_id || null,
-  rawgId: media.rawg_id || null,
+  igdbId: media.igdb_id || null,
 });
 
-export const fetchMediaEnrichment = async (apiBaseUrl, { tmdbId = null, rawgId = null, type }) => {
-  if (!type) return null;
-  const params = new URLSearchParams({ type });
-  if (["movie", "series"].includes(type) && tmdbId) params.set("tmdb_id", String(tmdbId));
-  if (type === "game" && rawgId) params.set("rawg_id", String(rawgId));
-  if (!params.get("tmdb_id") && !params.get("rawg_id")) return null;
+export const fetchMediaEnrichment = async (apiBaseUrl, tmdbId, type) => {
+  if (!tmdbId || !["movie", "series"].includes(type)) return null;
   const response = await fetch(
-    `${apiBaseUrl}/api/v1/media/enrich?${params.toString()}`
+    `${apiBaseUrl}/api/v1/media/enrich?tmdb_id=${encodeURIComponent(tmdbId)}&type=${encodeURIComponent(type)}`
   );
   if (!response.ok) return null;
   return response.json();
@@ -465,7 +461,7 @@ export const clearCultureMetadata = (form) => ({
   sourceProvider: "",
   sourceId: "",
   tmdbId: null,
-  rawgId: null,
+  igdbId: null,
   episodeCount: null,
   seasonCount: null,
   runtime: null,

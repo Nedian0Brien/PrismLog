@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.config import Settings, get_settings
 from app.schemas import MediaEnrichResponse, MediaSearchResponse
-from app.services.media import MediaSearchConfigError, MediaSearchError, enrich_media, search_media
+from app.services.media import MediaSearchConfigError, MediaSearchError, enrich_media_by_tmdb_id, search_media
 
 
 router = APIRouter(prefix="/media", tags=["media"])
@@ -26,13 +26,12 @@ def search_media_endpoint(
 
 @router.get("/enrich", response_model=MediaEnrichResponse)
 def enrich_media_endpoint(
-    type: str = Query(pattern="^(movie|series|game)$"),
-    tmdb_id: int | None = Query(default=None, ge=1),
-    rawg_id: int | None = Query(default=None, ge=1),
+    tmdb_id: int = Query(ge=1),
+    type: str = Query(pattern="^(movie|series)$"),
     settings: Settings = Depends(get_settings),
 ) -> MediaEnrichResponse:
     try:
-        return enrich_media(tmdb_id=tmdb_id, rawg_id=rawg_id, media_type=type, settings=settings)
+        return enrich_media_by_tmdb_id(tmdb_id=tmdb_id, media_type=type, settings=settings)
     except MediaSearchConfigError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except MediaSearchError as error:
