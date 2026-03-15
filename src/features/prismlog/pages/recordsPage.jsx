@@ -1922,8 +1922,8 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
                         {c.title}
                       </h4>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{c.type}</span>
                         <SeriesPlatformBadge platformKey={c.platformKey} platformLabel={c.platformLabel} accent={accent} />
+                        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{c.type}</span>
                         {c.rating > 0 && <RatingStars rating={c.rating} size={12} />}
                       </div>
                     </div>
