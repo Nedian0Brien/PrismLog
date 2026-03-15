@@ -57,6 +57,28 @@ const buildAppPath = (page, recordsSection = null) => {
   return "/";
 };
 
+const serializeReadingSession = (session) => ({
+  id: session?.id || "",
+  date: session?.date || session?.ended_at || session?.endedAt || session?.started_at || session?.startedAt || new Date().toISOString(),
+  from_pages: safeNumber(session?.from_pages ?? session?.fromPages, 0),
+  to_pages: safeNumber(session?.to_pages ?? session?.toPages, 0),
+  total_pages: safeNumber(session?.total_pages ?? session?.totalPages, 0),
+  pages_read: safeNumber(session?.pages_read ?? session?.pagesRead, 0),
+  from_progress: clamp(safeNumber(session?.from_progress ?? session?.fromProgress, 0), 0, 100),
+  to_progress: clamp(safeNumber(session?.to_progress ?? session?.toProgress, 0), 0, 100),
+  progress_delta: safeNumber(session?.progress_delta ?? session?.progressDelta, 0),
+  started_at: session?.started_at || session?.startedAt || session?.date || null,
+  ended_at: session?.ended_at || session?.endedAt || session?.date || null,
+  duration_minutes: safeNumber(session?.duration_minutes ?? session?.durationMinutes, 0),
+});
+
+const serializeReadingNote = (note) => ({
+  id: note?.id || "",
+  date: note?.date || new Date().toISOString(),
+  page: safeNumber(note?.page, 0),
+  text: String(note?.text || "").trim(),
+});
+
 export default function PrismLog() {
   const initialRoute = useMemo(
     () => parseAppRoute(typeof window !== "undefined" ? window.location.pathname : "/"),
@@ -234,19 +256,31 @@ export default function PrismLog() {
     const todayKey = nowIso.slice(0, 10);
     const currentRead = Math.max(0, safeNumber(book.readPages));
     const currentProgress = clamp(safeNumber(book.progress), 0, 100);
-    const sessions = Array.isArray(book.readingSessions) ? [...book.readingSessions] : [];
+    const sessions = Array.isArray(book.readingSessions)
+      ? book.readingSessions.map(serializeReadingSession)
+      : [];
     const existingIndex = sessions.findIndex((entry) => String(entry.date || "").slice(0, 10) === todayKey);
     const existing = existingIndex >= 0 ? sessions[existingIndex] : null;
+    const startedAt = existing?.started_at || existing?.date || nowIso;
+    const endedAt = nowIso;
+    const startedTime = new Date(startedAt).getTime();
+    const endedTime = new Date(endedAt).getTime();
+    const durationMinutes = startedTime > 0 && endedTime >= startedTime
+      ? Math.max(0, Math.round((endedTime - startedTime) / 60000))
+      : 0;
     const nextSession = {
       id: existing?.id || `reading-session-${todayKey}`,
-      date: nowIso,
-      from_pages: existing?.fromPages ?? currentRead,
+      date: endedAt,
+      from_pages: safeNumber(existing?.from_pages, currentRead),
       to_pages: nextRead,
       total_pages: nextTotal,
-      pages_read: Math.max(0, nextRead - (existing?.fromPages ?? currentRead)),
-      from_progress: existing?.fromProgress ?? currentProgress,
+      pages_read: Math.max(0, nextRead - safeNumber(existing?.from_pages, currentRead)),
+      from_progress: clamp(safeNumber(existing?.from_progress, currentProgress), 0, 100),
       to_progress: nextProgress,
-      progress_delta: Math.max(0, nextProgress - (existing?.fromProgress ?? currentProgress)),
+      progress_delta: Math.max(0, nextProgress - clamp(safeNumber(existing?.from_progress, currentProgress), 0, 100)),
+      started_at: startedAt,
+      ended_at: endedAt,
+      duration_minutes: durationMinutes,
     };
     if (existingIndex >= 0) sessions.splice(existingIndex, 1, nextSession);
     else sessions.unshift(nextSession);
@@ -281,7 +315,7 @@ export default function PrismLog() {
     const boundedRead = clamp(nextRead, 0, Math.max(nextTotal, 1));
     const nextProgress = nextTotal > 0 ? clamp(Math.round((boundedRead / nextTotal) * 100), 0, 100) : 0;
     const nextSessions = buildReadingSessionPatch(book, boundedRead, nextTotal, nextProgress);
-    const nextNotes = Array.isArray(book.readingNotes) ? [...book.readingNotes] : [];
+    const nextNotes = Array.isArray(book.readingNotes) ? book.readingNotes.map(serializeReadingNote) : [];
     if (isStructuredInput && typeof progressInput.note === "string" && progressInput.note.trim()) {
       nextNotes.unshift({
         id: `reading-note-${Date.now()}`,
@@ -327,7 +361,7 @@ export default function PrismLog() {
     const text = String(noteInput?.text || "").trim();
     if (!text) throw new Error("메모 내용을 입력해 주세요.");
     const page = Math.max(0, safeNumber(noteInput?.page, book.readPages));
-    const nextNotes = Array.isArray(book.readingNotes) ? [...book.readingNotes] : [];
+    const nextNotes = Array.isArray(book.readingNotes) ? book.readingNotes.map(serializeReadingNote) : [];
     nextNotes.unshift({
       id: `reading-note-${Date.now()}`,
       date: new Date().toISOString(),
@@ -354,7 +388,7 @@ export default function PrismLog() {
         progress: clamp(safeNumber(book.progress), 0, 100),
         rating: clamp(safeNumber(book.rating), 0, 5),
         review: book.review || "",
-        reading_sessions: Array.isArray(book.readingSessions) ? book.readingSessions : [],
+        reading_sessions: Array.isArray(book.readingSessions) ? book.readingSessions.map(serializeReadingSession) : [],
         reading_notes: nextNotes,
       },
     });

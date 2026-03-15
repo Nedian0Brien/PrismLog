@@ -11,7 +11,10 @@ import {
   getSeriesPlatformTheme,
   getSeriesProgressMetrics,
   SeriesPlatformIcon,
+  DAYS_KO,
   formatMonthDayLabel,
+  formatTimeLabel,
+  getDateKey,
   clamp,
   safeNumber,
   BookIcon,
@@ -1682,33 +1685,66 @@ export const ReadingProgressModal = ({
 const buildReadingTrendPoints = (book) => {
   const sessions = Array.isArray(book.readingSessions) ? [...book.readingSessions].sort((a, b) => new Date(a.date) - new Date(b.date)) : [];
   if (sessions.length === 0) {
-    return [{ label: "현재", value: clamp(safeNumber(book.progress), 0, 100) }];
+    return [{ label: "현재", progress: clamp(safeNumber(book.progress), 0, 100), dateKey: "reading-current" }];
   }
-  return sessions.map((session) => ({
-    label: formatMonthDayLabel(session.date),
-    value: clamp(safeNumber(session.toProgress), 0, 100),
-  }));
+  const points = [];
+  sessions.forEach((session, index) => {
+    const dateKey = getDateKey(session.endedAt || session.date) || `reading-session-${index}`;
+    const label = formatMonthDayLabel(session.endedAt || session.date) || "기록";
+    const startProgress = clamp(safeNumber(session.fromProgress), 0, 100);
+    const endProgress = clamp(safeNumber(session.toProgress), 0, 100);
+    const previousPoint = points[points.length - 1];
+    if (!previousPoint || Math.abs(previousPoint.progress - startProgress) > 0.5) {
+      points.push({ label, progress: startProgress, dateKey: `${dateKey}-start-${index}` });
+    }
+    points.push({ label, progress: endProgress, dateKey: `${dateKey}-end-${index}` });
+  });
+  return points;
+};
+
+const formatReadingDuration = (minutes) => {
+  const safeMinutes = Math.max(0, safeNumber(minutes, 0));
+  if (safeMinutes <= 0) return "독서 시간 기록 대기";
+  if (safeMinutes < 60) return `${safeMinutes}분 독서`;
+  const hours = Math.floor(safeMinutes / 60);
+  const restMinutes = safeMinutes % 60;
+  return restMinutes > 0 ? `${hours}시간 ${restMinutes}분 독서` : `${hours}시간 독서`;
 };
 
 const buildReadingTimelineGroups = (book) => {
   const groups = new Map();
   const ensureGroup = (dateKey, rawDate) => {
     if (!groups.has(dateKey)) {
-      groups.set(dateKey, { dateKey, dateLabel: formatMonthDayLabel(rawDate), session: null, notes: [] });
+      const date = new Date(rawDate);
+      groups.set(dateKey, {
+        dateKey,
+        rawDate,
+        dateLabel: formatMonthDayLabel(rawDate),
+        dayNumber: Number.isNaN(date.getTime()) ? "" : String(date.getDate()).padStart(2, "0"),
+        sideLabel: Number.isNaN(date.getTime()) ? "" : `${date.getMonth() + 1}월 · ${DAYS_KO[date.getDay()]}요일`,
+        session: null,
+        notes: [],
+      });
     }
     return groups.get(dateKey);
   };
   (Array.isArray(book.readingSessions) ? book.readingSessions : []).forEach((session) => {
-    const dateKey = String(session.date || "").slice(0, 10);
+    const rawDate = session.endedAt || session.date;
+    const dateKey = getDateKey(rawDate);
     if (!dateKey) return;
-    ensureGroup(dateKey, session.date).session = session;
+    ensureGroup(dateKey, rawDate).session = session;
   });
   (Array.isArray(book.readingNotes) ? book.readingNotes : []).forEach((note) => {
-    const dateKey = String(note.date || "").slice(0, 10);
+    const dateKey = getDateKey(note.date);
     if (!dateKey) return;
     ensureGroup(dateKey, note.date).notes.push(note);
   });
-  return [...groups.values()].sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey));
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      notes: [...group.notes].sort((a, b) => new Date(b.date) - new Date(a.date)),
+    }))
+    .sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey));
 };
 
 const ReadingNoteModal = ({ book, layout, saving, error, page, note, onPageChange, onNoteChange, onClose, onSubmit }) => {
@@ -1739,8 +1775,14 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
   const tags = Array.isArray(book.tags) ? book.tags : [];
   const publishedLabel = book.publishedDate ? formatMonthDayLabel(book.publishedDate) : "";
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [collapsedNoteDates, setCollapsedNoteDates] = useState({});
   const trendPoints = useMemo(() => buildReadingTrendPoints(book), [book]);
   const timelineGroups = useMemo(() => buildReadingTimelineGroups(book), [book]);
+
+  useEffect(() => {
+    setCollapsedNoteDates({});
+  }, [book.id]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn 0.32s ease-out" }}>
       <button
@@ -1919,27 +1961,112 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
           </div>
           {timelineGroups.length === 0 ? (
             <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>아직 독서 기록이나 메모가 없습니다.</p>
-          ) : timelineGroups.map((group) => (
-            <div key={`reading-timeline-${group.dateKey}`} style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "92px minmax(0, 1fr)", gap: 14 }}>
-              <div><p style={{ margin: 0, fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>{group.dateLabel}</p></div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {group.session && (
-                  <div style={{ padding: "14px 16px", borderRadius: 18, border: `1px solid ${accent}22`, background: `${accent}12` }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Reading Record</p>
-                    <strong style={{ display: "block", marginBottom: 6, fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{`+${group.session.pagesRead}p 읽음`}</strong>
-                    <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>{`${group.session.fromPages}p → ${group.session.toPages}p · 진행률 +${group.session.progressDelta}%`}</p>
-                  </div>
-                )}
-                {group.notes.map((note) => (
-                  <div key={note.id} style={{ padding: "14px 16px", borderRadius: 18, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.03)" }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 1, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Reading Note</p>
-                    <strong style={{ display: "block", marginBottom: 6, fontSize: 13, color: COLORS.dark.text }}>{note.page > 0 ? `${note.page}p 메모` : "독서 메모"}</strong>
-                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{note.text}</p>
-                  </div>
-                ))}
+          ) : (
+            <div style={{ position: "relative", paddingLeft: layout.isPhone ? 0 : 8 }}>
+              <div style={{
+                position: "absolute",
+                top: 0,
+                bottom: 0,
+                left: layout.isPhone ? 17 : 118,
+                width: 2,
+                borderRadius: 999,
+                background: `linear-gradient(180deg, ${accent}cc, ${accent}44)`,
+                boxShadow: `0 0 18px ${accent}22`,
+              }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                {timelineGroups.map((group, index) => {
+                  const notesCollapsed = collapsedNoteDates[group.dateKey] ?? group.notes.length > 1;
+                  const sessionTimeLabel = group.session
+                    ? [formatTimeLabel(group.session.startedAt), formatTimeLabel(group.session.endedAt)]
+                      .filter(Boolean)
+                      .join(" - ")
+                    : "";
+                  return (
+                    <div
+                      key={`reading-timeline-${group.dateKey}`}
+                      style={{
+                        position: "relative",
+                        display: "grid",
+                        gridTemplateColumns: layout.isPhone ? "1fr" : "88px minmax(0, 1fr)",
+                        gap: layout.isPhone ? 10 : 20,
+                        paddingLeft: layout.isPhone ? 38 : 0,
+                        paddingBottom: index === timelineGroups.length - 1 ? 0 : 6,
+                      }}
+                    >
+                      <div style={{
+                        position: "absolute",
+                        left: layout.isPhone ? 11 : 111,
+                        top: layout.isPhone ? 18 : 22,
+                        width: 14,
+                        height: 14,
+                        borderRadius: "50%",
+                        background: `linear-gradient(135deg, ${COLORS.reading.progressSoft}, ${accent})`,
+                        border: `2px solid ${COLORS.dark.bg}`,
+                        boxShadow: `0 0 0 6px ${accent}12, 0 0 18px ${accent}22`,
+                        zIndex: 1,
+                      }} />
+                      <div style={{ display: "flex", flexDirection: layout.isPhone ? "row" : "column", alignItems: layout.isPhone ? "baseline" : "flex-end", gap: layout.isPhone ? 8 : 0, paddingTop: layout.isPhone ? 6 : 2, paddingRight: layout.isPhone ? 0 : 10 }}>
+                        <span style={{ fontSize: layout.isPhone ? 34 : 54, lineHeight: 1, fontWeight: 800, letterSpacing: -2, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{group.dayNumber}</span>
+                        <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{group.sideLabel}</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {group.session && (
+                          <div style={{ borderRadius: 22, border: `1px solid ${accent}2c`, background: `linear-gradient(180deg, rgba(255,255,255,0.03), ${accent}12)`, padding: layout.isPhone ? "16px" : "18px 20px", boxShadow: "0 18px 34px rgba(0,0,0,0.14)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+                              <Badge text="독서 기록" color={accent} />
+                              <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>
+                                {[sessionTimeLabel, formatReadingDuration(group.session.durationMinutes)].filter(Boolean).join(" · ")}
+                              </span>
+                            </div>
+                            <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{`+${group.session.pagesRead}p 읽음`}</h3>
+                            <p style={{ margin: "0 0 8px", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>
+                              {`${group.session.fromPages}p → ${group.session.toPages}p · 진행률 +${group.session.progressDelta}%`}
+                            </p>
+                            <p style={{ margin: 0, fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>
+                              {group.session.totalPages > 0 ? `${group.session.toPages}/${group.session.totalPages}p` : `${group.session.toPages}p`}
+                            </p>
+                          </div>
+                        )}
+                        {group.notes.length > 0 && (
+                          <div style={{ borderRadius: 22, border: `1px solid ${COLORS.dark.border}`, background: "linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02))", padding: layout.isPhone ? "16px" : "18px 20px", boxShadow: "0 18px 34px rgba(0,0,0,0.12)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <Badge text="독서 메모" color={COLORS.reading.progressSoft} />
+                                <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{`${group.notes.length}개 메모`}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setCollapsedNoteDates((prev) => ({ ...prev, [group.dateKey]: !notesCollapsed }))}
+                                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: 0, border: "none", background: "none", color: COLORS.dark.textMuted, cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}
+                              >
+                                <span style={{ transform: notesCollapsed ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 0.2s ease" }}>
+                                  <ChevronDown size={14} color={COLORS.reading.progressSoft} />
+                                </span>
+                                {notesCollapsed ? "메모 펼치기" : "메모 접기"}
+                              </button>
+                            </div>
+                            {!notesCollapsed && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+                                {group.notes.map((note) => (
+                                  <div key={note.id} style={{ padding: "13px 14px", borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.03)" }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
+                                      <strong style={{ fontSize: 13, color: COLORS.dark.text }}>{note.page > 0 ? `${note.page}p 메모` : "독서 메모"}</strong>
+                                      <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{formatTimeLabel(note.date)}</span>
+                                    </div>
+                                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{note.text}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          ))}
+          )}
         </div>
       </GlassCard>
     </div>

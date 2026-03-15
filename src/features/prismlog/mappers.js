@@ -11,19 +11,24 @@ import {
 
 const normalizeReadingSession = (entry) => {
   if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
-  const date = String(entry.date || entry.updated_at || "").trim();
+  const date = String(entry.ended_at || entry.endedAt || entry.date || entry.updated_at || "").trim();
   if (!date) return null;
+  const startedAt = String(entry.started_at || entry.startedAt || date).trim();
+  const endedAt = String(entry.ended_at || entry.endedAt || date).trim();
   return {
     id: String(entry.id || `${date}-${safeNumber(entry.to_pages, 0)}`),
     date,
     dateLabel: formatMonthDayLabel(date),
-    fromPages: safeNumber(entry.from_pages, 0),
-    toPages: safeNumber(entry.to_pages, 0),
-    totalPages: safeNumber(entry.total_pages, 0),
-    pagesRead: safeNumber(entry.pages_read, 0),
-    fromProgress: clamp(safeNumber(entry.from_progress, 0), 0, 100),
-    toProgress: clamp(safeNumber(entry.to_progress, 0), 0, 100),
-    progressDelta: safeNumber(entry.progress_delta, 0),
+    fromPages: safeNumber(entry.from_pages ?? entry.fromPages, 0),
+    toPages: safeNumber(entry.to_pages ?? entry.toPages, 0),
+    totalPages: safeNumber(entry.total_pages ?? entry.totalPages, 0),
+    pagesRead: safeNumber(entry.pages_read ?? entry.pagesRead, 0),
+    fromProgress: clamp(safeNumber(entry.from_progress ?? entry.fromProgress, 0), 0, 100),
+    toProgress: clamp(safeNumber(entry.to_progress ?? entry.toProgress, 0), 0, 100),
+    progressDelta: safeNumber(entry.progress_delta ?? entry.progressDelta, 0),
+    startedAt,
+    endedAt,
+    durationMinutes: safeNumber(entry.duration_minutes ?? entry.durationMinutes, 0),
   };
 };
 

@@ -84,6 +84,36 @@ describe("PrismLog feature smoke", () => {
       publisher: "테스트 출판사",
       publishedDate: "2025-01-10",
       description: "상세 설명입니다.",
+      readingSessions: [
+        {
+          id: "reading-session-1",
+          date: "2026-03-15T10:40:00.000Z",
+          startedAt: "2026-03-15T10:10:00.000Z",
+          endedAt: "2026-03-15T10:40:00.000Z",
+          fromPages: 0,
+          toPages: 32,
+          totalPages: 200,
+          pagesRead: 32,
+          fromProgress: 0,
+          toProgress: 16,
+          progressDelta: 16,
+          durationMinutes: 30,
+        },
+      ],
+      readingNotes: [
+        {
+          id: "reading-note-1",
+          date: "2026-03-15T10:45:00.000Z",
+          page: 32,
+          text: "기억할 문장",
+        },
+        {
+          id: "reading-note-2",
+          date: "2026-03-15T10:50:00.000Z",
+          page: 34,
+          text: "두 번째 메모",
+        },
+      ],
     };
 
     const detailHtml = renderToStaticMarkup(
@@ -116,6 +146,10 @@ describe("PrismLog feature smoke", () => {
 
     expect(detailHtml).toContain("Reading Detail");
     expect(detailHtml).toContain("상세 독서 테스트");
+    expect(detailHtml).toContain("+32p 읽음");
+    expect(detailHtml).toContain("30분 독서");
+    expect(detailHtml).toContain("메모 펼치기");
+    expect(detailHtml).not.toContain("NaN");
     expect(modalHtml).toContain("읽은 페이지 추가");
     expect(modalHtml).toContain("페이지 정보");
     expect(modalHtml).toContain("p.");
