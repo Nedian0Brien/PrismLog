@@ -1088,10 +1088,27 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                   >
                     <div style={{
                       position: "absolute",
-                      top: 10,
-                      left: 10,
-                      opacity: active ? 0.22 : 0.12,
-                      transform: "scale(2.2)",
+                      top: 12,
+                      left: 12,
+                      width: 42,
+                      height: 42,
+                      borderRadius: 14,
+                      border: `1px solid ${active ? theme.borderActive : theme.border}`,
+                      background: `linear-gradient(145deg, rgba(18,18,18,0.68), ${theme.surfaceStrong})`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: `0 12px 24px ${theme.glow}`,
+                      zIndex: 1,
+                    }}>
+                      <SeriesPlatformIcon platformKey={option.key} size={22} color={theme.accent} />
+                    </div>
+                    <div style={{
+                      position: "absolute",
+                      top: 18,
+                      left: 18,
+                      opacity: active ? 0.14 : 0.08,
+                      transform: "scale(2.7)",
                       transformOrigin: "top left",
                       filter: active ? "none" : "grayscale(0.1)",
                       pointerEvents: "none",
