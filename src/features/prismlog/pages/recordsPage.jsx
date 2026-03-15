@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import {
   API_BASE_URL,
   buildCulturePayload,
@@ -503,7 +503,109 @@ const SeriesProgressTrendChart = ({ points }) => {
   );
 };
 
-const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress }) => {
+const getElementRectSnapshot = (node) => {
+  if (!node) return null;
+  const rect = node.getBoundingClientRect();
+  return {
+    top: rect.top,
+    left: rect.left,
+    width: rect.width,
+    height: rect.height,
+  };
+};
+
+const buildFixedRectStyle = (rect, extra = {}) => {
+  if (!rect) return { opacity: 0, pointerEvents: "none", ...extra };
+  return {
+    position: "fixed",
+    top: rect.top,
+    left: rect.left,
+    width: rect.width,
+    height: rect.height,
+    ...extra,
+  };
+};
+
+const SeriesSharedElementOverlay = ({ transition, onComplete }) => {
+  const [phase, setPhase] = useState("from");
+
+  useEffect(() => {
+    if (!transition?.target) return undefined;
+    let frameId = 0;
+    let timeoutId = 0;
+    frameId = window.requestAnimationFrame(() => {
+      setPhase("to");
+      timeoutId = window.setTimeout(() => {
+        onComplete?.();
+      }, 520);
+    });
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [onComplete, transition]);
+
+  if (!transition?.source || !transition?.target) return null;
+
+  const cardRect = phase === "to" ? transition.target.card : transition.source.card;
+  const posterRect = phase === "to" ? transition.target.poster : transition.source.poster;
+  const titleRect = phase === "to" ? transition.target.title : transition.source.title;
+  const accent = transition.accent || COLORS.series.main;
+  const isAnimatingTo = phase === "to";
+
+  return (
+    <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 80 }}>
+      <div
+        style={buildFixedRectStyle(cardRect, {
+          borderRadius: isAnimatingTo ? 26 : 24,
+          border: `1px solid ${accent}26`,
+          background: "linear-gradient(180deg, rgba(24,21,20,0.94), rgba(18,16,15,0.92))",
+          boxShadow: "0 28px 60px rgba(0,0,0,0.34)",
+          transition: "top 520ms cubic-bezier(.2,.9,.24,1), left 520ms cubic-bezier(.2,.9,.24,1), width 520ms cubic-bezier(.2,.9,.24,1), height 520ms cubic-bezier(.2,.9,.24,1), border-radius 520ms cubic-bezier(.2,.9,.24,1), opacity 320ms ease",
+          overflow: "hidden",
+          opacity: 1,
+        })}
+      />
+      <div
+        style={buildFixedRectStyle(posterRect, {
+          borderRadius: isAnimatingTo ? 22 : 18,
+          overflow: "hidden",
+          background: transition.poster ? COLORS.dark.surfaceSolid : `linear-gradient(150deg, ${accent}28, rgba(255,255,255,0.04))`,
+          boxShadow: "0 18px 36px rgba(0,0,0,0.22)",
+          transition: "top 520ms cubic-bezier(.2,.9,.24,1), left 520ms cubic-bezier(.2,.9,.24,1), width 520ms cubic-bezier(.2,.9,.24,1), height 520ms cubic-bezier(.2,.9,.24,1), border-radius 520ms cubic-bezier(.2,.9,.24,1)",
+        })}
+      >
+        {transition.poster ? (
+          <img src={transition.poster} alt={`${transition.title} 포스터`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+        ) : (
+          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <FilmIcon size={32} color={`${accent}aa`} />
+          </div>
+        )}
+      </div>
+      <div
+        style={buildFixedRectStyle(titleRect, {
+          color: COLORS.dark.text,
+          display: "flex",
+          alignItems: "flex-start",
+          fontFamily: "'Outfit', sans-serif",
+          fontWeight: 800,
+          fontSize: isAnimatingTo ? 30 : 18,
+          lineHeight: isAnimatingTo ? 1.15 : 1.2,
+          letterSpacing: isAnimatingTo ? "-0.02em" : "-0.01em",
+          transition: "top 520ms cubic-bezier(.2,.9,.24,1), left 520ms cubic-bezier(.2,.9,.24,1), width 520ms cubic-bezier(.2,.9,.24,1), height 520ms cubic-bezier(.2,.9,.24,1), font-size 520ms cubic-bezier(.2,.9,.24,1), line-height 520ms cubic-bezier(.2,.9,.24,1), letter-spacing 520ms cubic-bezier(.2,.9,.24,1), opacity 240ms ease",
+          textShadow: "0 8px 24px rgba(0,0,0,0.22)",
+        })}
+      >
+        <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {transition.title}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress, heroRefs = null, hideHeroElements = false }) => {
   const [remoteSeriesData, setRemoteSeriesData] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -856,9 +958,10 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
         ← 시리즈 목록
       </button>
 
+      <div ref={heroRefs?.card || null}>
       <GlassCard glow={COLORS.series.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px", overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "180px minmax(0, 1fr) 158px", gap: 18, alignItems: "start" }}>
-          <div style={{
+          <div ref={heroRefs?.poster || null} style={{
             minHeight: 252,
             borderRadius: 22,
             overflow: "hidden",
@@ -867,6 +970,8 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
               ? COLORS.dark.surfaceSolid
               : `linear-gradient(155deg, ${accent}2a, rgba(255,255,255,0.04))`,
             boxShadow: "0 20px 40px rgba(0,0,0,0.22)",
+            opacity: hideHeroElements ? 0 : 1,
+            transition: "opacity 220ms ease",
           }}>
             {effectiveItem.poster ? (
               <img src={effectiveItem.poster} alt={`${effectiveItem.title} 포스터`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -883,7 +988,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                 <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
                   Series Detail
                 </p>
-                <h3 style={{ margin: "0 0 8px", fontSize: layout.isPhone ? 24 : 30, lineHeight: 1.15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                <h3 ref={heroRefs?.title || null} style={{ margin: "0 0 8px", fontSize: layout.isPhone ? 24 : 30, lineHeight: 1.15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", opacity: hideHeroElements ? 0 : 1, transition: "opacity 220ms ease" }}>
                   {effectiveItem.title}
                 </h3>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -1056,6 +1161,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
           </div>
         </div>
       </GlassCard>
+      </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div>
@@ -1814,7 +1920,12 @@ export const StudyPage = ({ studies, loading, onEdit, layout }) => {
 export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, layout, title = "문화생활", fixedType = null }) => {
   const [filter, setFilter] = useState(fixedType || "전체");
   const [detailId, setDetailId] = useState(null);
+  const [seriesTransition, setSeriesTransition] = useState(null);
   const filters = ["전체", ...CULTURE_TYPES];
+  const seriesCardRefs = useRef({});
+  const seriesPosterRefs = useRef({});
+  const seriesTitleRefs = useRef({});
+  const detailHeroRefs = useRef({ card: null, poster: null, title: null });
 
   useEffect(() => {
     if (fixedType) setFilter(fixedType);
@@ -1822,6 +1933,7 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
 
   useEffect(() => {
     setDetailId(null);
+    setSeriesTransition(null);
   }, [fixedType]);
 
   const filtered = useMemo(() => {
@@ -1834,8 +1946,79 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
     [detailId, filtered]
   );
 
+  const handleSeriesDetailOpen = useCallback((seriesItem) => {
+    const cardNode = seriesCardRefs.current[seriesItem.id];
+    const posterNode = seriesPosterRefs.current[seriesItem.id];
+    const titleNode = seriesTitleRefs.current[seriesItem.id];
+    const sourceCard = getElementRectSnapshot(cardNode);
+    const sourcePoster = getElementRectSnapshot(posterNode);
+    const sourceTitle = getElementRectSnapshot(titleNode);
+
+    if (!sourceCard || !sourcePoster || !sourceTitle) {
+      setDetailId(seriesItem.id);
+      return;
+    }
+
+    setSeriesTransition({
+      itemId: seriesItem.id,
+      title: seriesItem.title,
+      poster: seriesItem.poster,
+      accent: getCultureTone(seriesItem.type).main,
+      source: {
+        card: sourceCard,
+        poster: sourcePoster,
+        title: sourceTitle,
+      },
+      target: null,
+    });
+    setDetailId(seriesItem.id);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!detailItem || detailItem.type !== "시리즈") return;
+    if (!seriesTransition || seriesTransition.itemId !== detailItem.id || seriesTransition.target) return;
+
+    const targetCard = getElementRectSnapshot(detailHeroRefs.current.card);
+    const targetPoster = getElementRectSnapshot(detailHeroRefs.current.poster);
+    const targetTitle = getElementRectSnapshot(detailHeroRefs.current.title);
+    if (!targetCard || !targetPoster || !targetTitle) return;
+
+    setSeriesTransition((current) => {
+      if (!current || current.itemId !== detailItem.id || current.target) return current;
+      return {
+        ...current,
+        target: {
+          card: targetCard,
+          poster: targetPoster,
+          title: targetTitle,
+        },
+      };
+    });
+  }, [detailItem, seriesTransition]);
+
   if (detailItem?.type === "시리즈") {
-    return <SeriesDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} onUpdateSeriesProgress={onUpdateSeriesProgress} />;
+    return (
+      <>
+        <SeriesDetailPage
+          item={detailItem}
+          layout={layout}
+          onBack={() => {
+            setSeriesTransition(null);
+            setDetailId(null);
+          }}
+          onEdit={onEdit}
+          onUpdateSeriesProgress={onUpdateSeriesProgress}
+          heroRefs={detailHeroRefs.current}
+          hideHeroElements={seriesTransition?.itemId === detailItem.id}
+        />
+        {seriesTransition?.itemId === detailItem.id && (
+          <SeriesSharedElementOverlay
+            transition={seriesTransition}
+            onComplete={() => setSeriesTransition(null)}
+          />
+        )}
+      </>
+    );
   }
 
   return (
@@ -1887,13 +2070,29 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
           <GlassCard
             key={c.id}
             glow={glow}
-            style={{ padding: 0, overflow: "hidden", cursor: isSeries ? "pointer" : "default" }}
-            onClick={isSeries ? () => setDetailId(c.id) : undefined}
+            style={{
+              padding: 0,
+              overflow: "hidden",
+              cursor: isSeries ? "pointer" : "default",
+              opacity: seriesTransition?.itemId === c.id ? 0 : 1,
+              transform: seriesTransition?.itemId === c.id ? "scale(0.985)" : "scale(1)",
+              transition: "opacity 180ms ease, transform 180ms ease",
+            }}
+            onClick={isSeries ? () => handleSeriesDetailOpen(c) : undefined}
           >
             {isSeries ? (
-              <div style={{ padding: "16px 16px 14px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <div
+                ref={(node) => {
+                  seriesCardRefs.current[c.id] = node;
+                }}
+                style={{ padding: "16px 16px 14px", display: "flex", flexDirection: "column", gap: 14 }}
+              >
                 <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "96px minmax(0, 1fr)" : "110px minmax(0, 1fr)", gap: 14, alignItems: "start" }}>
-                  <div style={{
+                  <div
+                    ref={(node) => {
+                      seriesPosterRefs.current[c.id] = node;
+                    }}
+                    style={{
                     position: "relative",
                     aspectRatio: "2 / 3",
                     borderRadius: 18,
@@ -1915,7 +2114,11 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
                       <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(c); }} />
                     </div>
                     <div style={{ minWidth: 0 }}>
-                      <h4 style={{
+                      <h4
+                        ref={(node) => {
+                          seriesTitleRefs.current[c.id] = node;
+                        }}
+                        style={{
                         fontSize: 18,
                         fontWeight: 800,
                         lineHeight: 1.2,
