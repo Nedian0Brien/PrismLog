@@ -1537,7 +1537,7 @@ const ReadingProgressModal = ({
   onClose,
   onSubmit,
 }) => {
-  if (!book || typeof document === "undefined") return null;
+  if (!book || typeof document === "undefined" || !document.body || !(document.body instanceof HTMLElement)) return null;
   const accent = COLORS.reading.main;
   const parsedTotalPages = Math.max(0, safeNumber(totalPages));
   const parsedCurrentPages = clamp(safeNumber(currentPages), 0, Math.max(parsedTotalPages, 1));
