@@ -622,6 +622,7 @@ export const applyMediaEnrichmentToCultureForm = (form, enrichment) => {
 
 export const buildCulturePayload = (form) => {
   const normalizedType = normalizeCultureType(form.type);
+  const overviewValue = String(form.overview ?? form.summary ?? "").trim();
   const metrics = normalizedType === "시리즈"
     ? getSeriesProgressMetrics({
       episodeCount: form.episodeCount,
@@ -642,7 +643,7 @@ export const buildCulturePayload = (form) => {
     rating: clamp(safeNumber(form.rating), 0, 5),
     poster: form.poster || null,
     release_date: form.releaseDate || null,
-    overview: form.overview.trim() || null,
+    overview: overviewValue || null,
     tmdb_id: form.tmdbId || null,
     igdb_id: form.igdbId || null,
     episode_count: form.episodeCount ?? null,

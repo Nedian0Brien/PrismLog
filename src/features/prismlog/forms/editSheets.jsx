@@ -438,7 +438,7 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
         title: form.title.trim(),
         summary: form.summary.trim(),
         tags: parseTags(form.tags),
-        payload: buildCulturePayload(form),
+        payload: buildCulturePayload({ ...form, overview: form.summary }),
       });
       setMessage("저장 완료");
     } catch (error) {
