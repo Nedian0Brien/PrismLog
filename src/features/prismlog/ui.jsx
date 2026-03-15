@@ -174,7 +174,6 @@ export const ReadingProgressEditor = ({
 }) => {
   const currentLabel = currentLabelOverride || (isPercentMode ? "현재 진행률" : "현재 페이지");
   const totalLabel = totalLabelOverride || "전체 페이지";
-  const pageUnit = !isPercentMode ? "p." : "";
   return (
     <>
       {!compact && (
@@ -272,28 +271,25 @@ export const ReadingProgressEditor = ({
           <div style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: `1px solid ${COLORS.dark.border}` }}>
             <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>{currentLabel}</p>
             {compact ? (
-              <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                <input
-                  value={currentValue}
-                  onChange={(event) => onCurrentChange?.(event.target.value)}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  disabled={disabled}
-                  style={{
-                    width: "100%",
-                    padding: 0,
-                    border: "none",
-                    background: "transparent",
-                    color: COLORS.dark.text,
-                    fontSize: 16,
-                    fontWeight: 700,
-                    outline: "none",
-                    fontFamily: "'Outfit', sans-serif",
-                  }}
-                />
-                {pageUnit ? <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>{pageUnit}</span> : null}
-              </div>
+              <input
+                value={currentValue}
+                onChange={(event) => onCurrentChange?.(event.target.value)}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                disabled={disabled}
+                style={{
+                  width: "100%",
+                  padding: 0,
+                  border: "none",
+                  background: "transparent",
+                  color: COLORS.dark.text,
+                  fontSize: 16,
+                  fontWeight: 700,
+                  outline: "none",
+                  fontFamily: "'Outfit', sans-serif",
+                }}
+              />
             ) : (
               <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{isPercentMode ? `${currentValue}%` : `${derivedReadPages}p`}</strong>
             )}
@@ -301,28 +297,25 @@ export const ReadingProgressEditor = ({
           <div style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: `1px solid ${COLORS.dark.border}` }}>
             <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>{totalLabel}</p>
             {compact ? (
-              <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                <input
-                  value={totalPages}
-                  onChange={(event) => onTotalChange?.(event.target.value)}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  disabled={disabled}
-                  style={{
-                    width: "100%",
-                    padding: 0,
-                    border: "none",
-                    background: "transparent",
-                    color: COLORS.dark.text,
-                    fontSize: 16,
-                    fontWeight: 700,
-                    outline: "none",
-                    fontFamily: "'Outfit', sans-serif",
-                  }}
-                />
-                {pageUnit ? <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>{pageUnit}</span> : null}
-              </div>
+              <input
+                value={totalPages}
+                onChange={(event) => onTotalChange?.(event.target.value)}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                disabled={disabled}
+                style={{
+                  width: "100%",
+                  padding: 0,
+                  border: "none",
+                  background: "transparent",
+                  color: COLORS.dark.text,
+                  fontSize: 16,
+                  fontWeight: 700,
+                  outline: "none",
+                  fontFamily: "'Outfit', sans-serif",
+                }}
+              />
             ) : (
               <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{safeNumber(totalPages) > 0 ? `${safeNumber(totalPages)}p` : "미입력"}</strong>
             )}

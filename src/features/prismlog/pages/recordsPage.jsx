@@ -1525,9 +1525,13 @@ export const ReadingProgressModal = ({
   error,
   currentPages,
   totalPages,
+  startTime,
+  endTime,
   note,
   onCurrentPagesChange,
   onTotalPagesChange,
+  onStartTimeChange,
+  onEndTimeChange,
   onNoteChange,
   onClose,
   onSubmit,
@@ -1602,8 +1606,6 @@ export const ReadingProgressModal = ({
             layout={layout}
             accent={accent}
             compact
-            currentLabelOverride="페이지 정보 · 현재"
-            totalLabelOverride="페이지 정보 · 전체"
             currentValue={String(parsedCurrentPages)}
             totalPages={String(parsedTotalPages)}
             derivedProgress={parsedTotalPages > 0 ? Math.round((parsedCurrentPages / parsedTotalPages) * 100) : 0}
@@ -1614,6 +1616,51 @@ export const ReadingProgressModal = ({
           {error && (
             <p style={{ margin: "-2px 0 0", fontSize: 12, color: "#f19aa4" }}>{error}</p>
           )}
+
+          <div style={{ display: "grid", gridTemplateColumns: layout.isTabletUp ? "repeat(2, minmax(0, 1fr))" : "1fr", gap: 12 }}>
+            <div>
+              <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>독서 시작 시각</label>
+              <input
+                value={startTime}
+                onChange={(event) => onStartTimeChange?.(event.target.value)}
+                type="time"
+                disabled={saving}
+                style={{
+                  width: "100%",
+                  minHeight: 52,
+                  borderRadius: 16,
+                  border: `1px solid ${accent}28`,
+                  background: "rgba(255,255,255,0.04)",
+                  color: COLORS.dark.text,
+                  padding: "0 16px",
+                  fontSize: 15,
+                  outline: "none",
+                  fontFamily: "'Outfit', sans-serif",
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>독서 종료 시각</label>
+              <input
+                value={endTime}
+                onChange={(event) => onEndTimeChange?.(event.target.value)}
+                type="time"
+                disabled={saving}
+                style={{
+                  width: "100%",
+                  minHeight: 52,
+                  borderRadius: 16,
+                  border: `1px solid ${accent}28`,
+                  background: "rgba(255,255,255,0.04)",
+                  color: COLORS.dark.text,
+                  padding: "0 16px",
+                  fontSize: 15,
+                  outline: "none",
+                  fontFamily: "'Outfit', sans-serif",
+                }}
+              />
+            </div>
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>메모</label>
@@ -1711,6 +1758,22 @@ const formatReadingDuration = (minutes) => {
   return restMinutes > 0 ? `${hours}시간 ${restMinutes}분 독서` : `${hours}시간 독서`;
 };
 
+const toTimeInputValue = (isoLike) => {
+  const date = new Date(isoLike);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+};
+
+const combineDateAndTime = (baseIsoLike, timeValue) => {
+  if (!timeValue) return "";
+  const baseDate = new Date(baseIsoLike || new Date().toISOString());
+  if (Number.isNaN(baseDate.getTime())) return "";
+  const [hours, minutes] = String(timeValue).split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return "";
+  baseDate.setHours(hours, minutes, 0, 0);
+  return baseDate.toISOString();
+};
+
 const buildReadingTimelineGroups = (book) => {
   const groups = new Map();
   const ensureGroup = (dateKey, rawDate) => {
@@ -1747,7 +1810,7 @@ const buildReadingTimelineGroups = (book) => {
     .sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey));
 };
 
-const ReadingNoteModal = ({ book, layout, saving, error, page, note, onPageChange, onNoteChange, onClose, onSubmit }) => {
+export const ReadingNoteModal = ({ book, layout, saving, error, page, note, onPageChange, onNoteChange, onClose, onSubmit }) => {
   if (!book) return null;
   const accent = COLORS.reading.main;
   return (
@@ -1757,7 +1820,21 @@ const ReadingNoteModal = ({ book, layout, saving, error, page, note, onPageChang
           <p style={{ margin: "0 0 6px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Reading Note</p>
           <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>독서 메모 남기기</h4>
         </div>
-        <input value={page} onChange={(event) => onPageChange(event.target.value.replace(/\D/g, ""))} type="text" inputMode="numeric" pattern="[0-9]*" placeholder="페이지" style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none" }} />
+        <div>
+          <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>페이지 정보</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", padding: "0 16px" }}>
+            <input
+              value={page}
+              onChange={(event) => onPageChange(event.target.value.replace(/\D/g, ""))}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="메모한 페이지"
+              style={{ width: "100%", border: "none", background: "transparent", color: COLORS.dark.text, fontSize: 15, outline: "none", fontFamily: "'Outfit', sans-serif" }}
+            />
+            <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>p.</span>
+          </div>
+        </div>
         <textarea value={note} onChange={(event) => onNoteChange(event.target.value)} rows={5} placeholder="문장, 생각, 질문을 남겨보세요." style={{ width: "100%", borderRadius: 16, border: `1px solid ${accent}24`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "14px 16px", fontSize: 13, lineHeight: 1.65, resize: "vertical", outline: "none", fontFamily: "'Pretendard', sans-serif" }} />
         {error && <p style={{ margin: 0, fontSize: 12, color: "#f19aa4" }}>{error}</p>}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -2194,6 +2271,8 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout }
   const [progressModalBook, setProgressModalBook] = useState(null);
   const [currentPageInput, setCurrentPageInput] = useState("0");
   const [totalPageInput, setTotalPageInput] = useState("0");
+  const [startTimeInput, setStartTimeInput] = useState("");
+  const [endTimeInput, setEndTimeInput] = useState("");
   const [noteInput, setNoteInput] = useState("");
   const [noteModalBook, setNoteModalBook] = useState(null);
   const [notePageInput, setNotePageInput] = useState("0");
@@ -2210,9 +2289,15 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout }
   }, [books.length, detailBook, detailId]);
 
   const openProgressModal = useCallback((book) => {
+    const latestSession = Array.isArray(book.readingSessions) && book.readingSessions.length > 0
+      ? [...book.readingSessions].sort((a, b) => new Date(b.endedAt || b.date) - new Date(a.endedAt || a.date))[0]
+      : null;
+    const nowIso = new Date().toISOString();
     setProgressModalBook(book);
     setCurrentPageInput(String(safeNumber(book.readPages)));
     setTotalPageInput(String(Math.max(safeNumber(book.pages), safeNumber(book.readPages))));
+    setStartTimeInput(toTimeInputValue(latestSession?.startedAt || nowIso));
+    setEndTimeInput(toTimeInputValue(latestSession?.endedAt || nowIso));
     setNoteInput(book.review || "");
     setProgressError("");
   }, []);
@@ -2229,6 +2314,8 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout }
     setProgressModalBook(null);
     setCurrentPageInput("0");
     setTotalPageInput("0");
+    setStartTimeInput("");
+    setEndTimeInput("");
     setNoteInput("");
     setProgressError("");
   }, [savingProgress]);
@@ -2257,24 +2344,42 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout }
       setProgressError("현재 페이지는 전체 페이지를 넘을 수 없습니다.");
       return;
     }
+    if (!startTimeInput || !endTimeInput) {
+      setProgressError("독서 시작 시각과 종료 시각을 입력해 주세요.");
+      return;
+    }
+    const startedAt = combineDateAndTime(progressModalBook.date || new Date().toISOString(), startTimeInput);
+    const endedAt = combineDateAndTime(progressModalBook.date || new Date().toISOString(), endTimeInput);
+    if (!startedAt || !endedAt) {
+      setProgressError("독서 시각 형식이 올바르지 않습니다.");
+      return;
+    }
+    if (new Date(endedAt).getTime() < new Date(startedAt).getTime()) {
+      setProgressError("독서 종료 시각은 시작 시각보다 빠를 수 없습니다.");
+      return;
+    }
     try {
       setSavingProgress(true);
       setProgressError("");
       await onAdd(progressModalBook, {
         currentPages,
         totalPages,
+        startedAt,
+        endedAt,
         note: noteInput,
       });
       setProgressModalBook(null);
       setCurrentPageInput("0");
       setTotalPageInput("0");
+      setStartTimeInput("");
+      setEndTimeInput("");
       setNoteInput("");
     } catch (error) {
       setProgressError(error instanceof Error ? error.message : "페이지 업데이트 중 오류가 발생했습니다.");
     } finally {
       setSavingProgress(false);
     }
-  }, [currentPageInput, noteInput, onAdd, progressModalBook, totalPageInput]);
+  }, [currentPageInput, endTimeInput, noteInput, onAdd, progressModalBook, startTimeInput, totalPageInput]);
 
   const submitNoteModal = useCallback(async () => {
     if (!noteModalBook) return;
@@ -2314,6 +2419,8 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout }
           error={progressError}
           currentPages={currentPageInput}
           totalPages={totalPageInput}
+          startTime={startTimeInput}
+          endTime={endTimeInput}
           note={noteInput}
           onCurrentPagesChange={(value) => {
             setCurrentPageInput(value);
@@ -2321,6 +2428,14 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout }
           }}
           onTotalPagesChange={(value) => {
             setTotalPageInput(value);
+            setProgressError("");
+          }}
+          onStartTimeChange={(value) => {
+            setStartTimeInput(value);
+            setProgressError("");
+          }}
+          onEndTimeChange={(value) => {
+            setEndTimeInput(value);
             setProgressError("");
           }}
           onNoteChange={(value) => {
@@ -2495,6 +2610,8 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout }
       error={progressError}
       currentPages={currentPageInput}
       totalPages={totalPageInput}
+      startTime={startTimeInput}
+      endTime={endTimeInput}
       note={noteInput}
       onCurrentPagesChange={(value) => {
         setCurrentPageInput(value);
@@ -2502,6 +2619,14 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout }
       }}
       onTotalPagesChange={(value) => {
         setTotalPageInput(value);
+        setProgressError("");
+      }}
+      onStartTimeChange={(value) => {
+        setStartTimeInput(value);
+        setProgressError("");
+      }}
+      onEndTimeChange={(value) => {
+        setEndTimeInput(value);
         setProgressError("");
       }}
       onNoteChange={(value) => {

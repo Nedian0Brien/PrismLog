@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NewLogForm } from "../forms";
 import { DashboardPage, ReadingGridCard, SettingsPage, TimelinePage } from "../pages";
-import { ReadingDetailPage, ReadingProgressModal } from "../pages/recordsPage";
+import { ReadingDetailPage, ReadingNoteModal, ReadingProgressModal } from "../pages/recordsPage";
 
 const phoneLayout = {
   width: 390,
@@ -135,9 +135,28 @@ describe("PrismLog feature smoke", () => {
         error=""
         currentPages="110"
         totalPages="200"
+        startTime="10:10"
+        endTime="10:40"
         note="메모 테스트"
         onCurrentPagesChange={() => {}}
         onTotalPagesChange={() => {}}
+        onStartTimeChange={() => {}}
+        onEndTimeChange={() => {}}
+        onNoteChange={() => {}}
+        onClose={() => {}}
+        onSubmit={() => {}}
+      />
+    );
+
+    const noteModalHtml = renderToStaticMarkup(
+      <ReadingNoteModal
+        book={book}
+        layout={phoneLayout}
+        saving={false}
+        error=""
+        page="32"
+        note="기억할 문장"
+        onPageChange={() => {}}
         onNoteChange={() => {}}
         onClose={() => {}}
         onSubmit={() => {}}
@@ -151,8 +170,10 @@ describe("PrismLog feature smoke", () => {
     expect(detailHtml).toContain("메모 펼치기");
     expect(detailHtml).not.toContain("NaN");
     expect(modalHtml).toContain("읽은 페이지 추가");
-    expect(modalHtml).toContain("페이지 정보");
-    expect(modalHtml).toContain("p.");
+    expect(modalHtml).toContain("독서 시작 시각");
+    expect(modalHtml).toContain("독서 종료 시각");
+    expect(noteModalHtml).toContain("페이지 정보");
+    expect(noteModalHtml).toContain("p.");
   });
 
   it("renders timeline and settings pages", () => {

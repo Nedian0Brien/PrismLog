@@ -253,16 +253,19 @@ export default function PrismLog() {
 
   const buildReadingSessionPatch = useCallback((book, nextRead, nextTotal, nextProgress) => {
     const nowIso = new Date().toISOString();
-    const todayKey = nowIso.slice(0, 10);
     const currentRead = Math.max(0, safeNumber(book.readPages));
     const currentProgress = clamp(safeNumber(book.progress), 0, 100);
     const sessions = Array.isArray(book.readingSessions)
       ? book.readingSessions.map(serializeReadingSession)
       : [];
+    const providedStartedAt = String(book._nextReadingSessionTiming?.startedAt || "").trim();
+    const providedEndedAt = String(book._nextReadingSessionTiming?.endedAt || "").trim();
+    const sessionEndedAt = providedEndedAt || nowIso;
+    const todayKey = sessionEndedAt.slice(0, 10);
     const existingIndex = sessions.findIndex((entry) => String(entry.date || "").slice(0, 10) === todayKey);
     const existing = existingIndex >= 0 ? sessions[existingIndex] : null;
-    const startedAt = existing?.started_at || existing?.date || nowIso;
-    const endedAt = nowIso;
+    const startedAt = providedStartedAt || existing?.started_at || existing?.date || sessionEndedAt;
+    const endedAt = sessionEndedAt;
     const startedTime = new Date(startedAt).getTime();
     const endedTime = new Date(endedAt).getTime();
     const durationMinutes = startedTime > 0 && endedTime >= startedTime
@@ -314,7 +317,17 @@ export default function PrismLog() {
 
     const boundedRead = clamp(nextRead, 0, Math.max(nextTotal, 1));
     const nextProgress = nextTotal > 0 ? clamp(Math.round((boundedRead / nextTotal) * 100), 0, 100) : 0;
-    const nextSessions = buildReadingSessionPatch(book, boundedRead, nextTotal, nextProgress);
+    const nextSessions = buildReadingSessionPatch(
+      {
+        ...book,
+        _nextReadingSessionTiming: isStructuredInput
+          ? { startedAt: progressInput.startedAt, endedAt: progressInput.endedAt }
+          : null,
+      },
+      boundedRead,
+      nextTotal,
+      nextProgress,
+    );
     const nextNotes = Array.isArray(book.readingNotes) ? book.readingNotes.map(serializeReadingNote) : [];
     if (isStructuredInput && typeof progressInput.note === "string" && progressInput.note.trim()) {
       nextNotes.unshift({
