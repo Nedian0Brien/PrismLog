@@ -709,7 +709,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn 0.34s cubic-bezier(.22,.9,.24,1)" }}>
       <FloatingSeriesProgressToast toast={toast} visible={toastVisible} animatedProgress={animatedToastProgress} />
       {pendingUnwatchEpisode && (
         <div style={{
