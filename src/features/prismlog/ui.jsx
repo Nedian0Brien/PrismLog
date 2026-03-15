@@ -167,10 +167,13 @@ export const ReadingProgressEditor = ({
   derivedReadPages,
   disabled = false,
   compact = false,
+  currentLabelOverride = "",
+  totalLabelOverride = "",
   onCurrentChange,
   onTotalChange,
 }) => {
-  const currentLabel = isPercentMode ? "현재 진행률" : "현재 페이지";
+  const currentLabel = currentLabelOverride || (isPercentMode ? "현재 진행률" : "현재 페이지");
+  const totalLabel = totalLabelOverride || "전체 페이지";
   return (
     <>
       {!compact && (
@@ -203,7 +206,7 @@ export const ReadingProgressEditor = ({
             />
           </div>
           <div>
-            <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>전체 페이지</label>
+            <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>{totalLabel}</label>
             <input
               value={totalPages}
               onChange={(event) => onTotalChange?.(event.target.value)}
@@ -292,7 +295,7 @@ export const ReadingProgressEditor = ({
             )}
           </div>
           <div style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: `1px solid ${COLORS.dark.border}` }}>
-            <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>전체 페이지</p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>{totalLabel}</p>
             {compact ? (
               <input
                 value={totalPages}

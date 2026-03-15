@@ -398,7 +398,7 @@ const FloatingSeriesProgressToast = ({ toast, visible, animatedProgress }) => {
   );
 };
 
-const SeriesProgressTrendChart = ({ points }) => {
+const SeriesProgressTrendChart = ({ points, color = COLORS.series.main }) => {
   const [displayedProgress, setDisplayedProgress] = useState(points[points.length - 1]?.progress ?? 0);
   const displayedProgressRef = useRef(points[points.length - 1]?.progress ?? 0);
   if (!points.length) return null;
@@ -455,14 +455,14 @@ const SeriesProgressTrendChart = ({ points }) => {
     <div style={{
       padding: "12px 14px",
       borderRadius: 18,
-      border: `1px solid ${COLORS.series.main}22`,
+      border: `1px solid ${color}22`,
       background: "rgba(255,255,255,0.03)",
       display: "flex",
       flexDirection: "column",
       gap: 8,
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-        <p style={{ margin: 0, fontSize: 11, letterSpacing: 1, color: COLORS.series.main, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+        <p style={{ margin: 0, fontSize: 11, letterSpacing: 1, color: color, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
           Progress Trend
         </p>
         <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>
@@ -472,8 +472,8 @@ const SeriesProgressTrendChart = ({ points }) => {
       <svg width="100%" viewBox={`0 0 ${width} ${height}`} style={{ display: "block", overflow: "visible" }}>
         <defs>
           <linearGradient id="seriesTrendFill" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(255,138,101,0.28)" />
-            <stop offset="100%" stopColor="rgba(255,138,101,0.02)" />
+            <stop offset="0%" stopColor={`${color}55`} />
+            <stop offset="100%" stopColor={`${color}05`} />
           </linearGradient>
         </defs>
         {[0, 50, 100].map((value) => {
@@ -491,10 +491,10 @@ const SeriesProgressTrendChart = ({ points }) => {
           );
         })}
         <path d={areaPath} fill="url(#seriesTrendFill)" />
-        <path d={linePath} fill="none" stroke={COLORS.series.main} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={linePath} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
         {coordinates.map((point) => (
           <g key={`trend-point-${point.dateKey}`}>
-            <circle cx={point.x} cy={point.y} r="4.5" fill={COLORS.dark.bg} stroke={COLORS.series.main} strokeWidth="2" />
+            <circle cx={point.x} cy={point.y} r="4.5" fill={COLORS.dark.bg} stroke={color} strokeWidth="2" />
           </g>
         ))}
       </svg>
@@ -1594,6 +1594,8 @@ export const ReadingProgressModal = ({
             layout={layout}
             accent={accent}
             compact
+            currentLabelOverride="기록 현재 페이지"
+            totalLabelOverride="책 전체 페이지"
             currentValue={String(parsedCurrentPages)}
             totalPages={String(parsedTotalPages)}
             derivedProgress={parsedTotalPages > 0 ? Math.round((parsedCurrentPages / parsedTotalPages) * 100) : 0}
@@ -1884,7 +1886,7 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
       <GlassCard glow={COLORS.reading.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px" }}>
         <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "minmax(0, 1fr) 158px", gap: 18, alignItems: "center" }}>
           <div style={{ width: "100%" }}>
-            <SeriesProgressTrendChart points={trendPoints} />
+            <SeriesProgressTrendChart points={trendPoints} color={accent} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
             <div style={{ position: "relative", width: layout.isPhone ? 118 : 132, height: layout.isPhone ? 118 : 132 }}>
