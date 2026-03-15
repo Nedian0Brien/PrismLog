@@ -116,7 +116,7 @@ describe("PrismLog feature smoke", () => {
     expect(detailHtml).toContain("Reading Detail");
     expect(detailHtml).toContain("상세 독서 테스트");
     expect(modalHtml).toContain("읽은 페이지 추가");
-    expect(modalHtml).toContain("진행 슬라이더");
+    expect(modalHtml).toContain("현재 페이지");
   });
 
   it("renders timeline and settings pages", () => {

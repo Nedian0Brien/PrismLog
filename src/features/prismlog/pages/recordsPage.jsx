@@ -27,7 +27,9 @@ import {
 import {
   HalfDonutChart,
   GlassCard,
+  ModalShell,
   ProgressBar,
+  ReadingProgressEditor,
   IconActionButton,
   Badge,
   StatusBadge,
@@ -735,20 +737,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
     >
       <FloatingSeriesProgressToast toast={toast} visible={toastVisible} animatedProgress={animatedToastProgress} />
       {pendingUnwatchEpisode && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 255,
-          background: "rgba(15, 14, 13, 0.46)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 20,
-          animation: "fadeIn 0.22s ease-out",
-        }}>
-          <GlassCard glow={COLORS.series.glow} style={{ width: "min(92vw, 420px)", padding: "22px 20px" }}>
+        <ModalShell glow={COLORS.series.glow} width="min(92vw, 420px)" padding="22px 20px" onBackdropClick={() => setPendingUnwatchEpisode(null)} onClose={() => setPendingUnwatchEpisode(null)}>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
                 <p style={{ margin: "0 0 6px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
@@ -855,8 +844,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                 </button>
               </div>
             </div>
-          </GlassCard>
-        </div>
+        </ModalShell>
       )}
 
       <button
@@ -1542,29 +1530,15 @@ export const ReadingProgressModal = ({
   const parsedCurrentPages = clamp(safeNumber(currentPages), 0, Math.max(parsedTotalPages, 1));
   const remainingPages = Math.max(0, parsedTotalPages - parsedCurrentPages);
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 260,
-        background: "rgba(15, 14, 13, 0.54)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-        animation: "fadeIn 0.22s ease-out",
-      }}
-      onClick={onClose}
+    <ModalShell
+      glow={COLORS.reading.glow}
+      width="min(92vw, 430px)"
+      padding={layout.isPhone ? "22px 18px" : "24px 22px"}
+      onBackdropClick={onClose}
+      onClose={onClose}
     >
-      <GlassCard
-        glow={COLORS.reading.glow}
-        style={{ width: "min(92vw, 430px)", padding: layout.isPhone ? "22px 18px" : "24px 22px" }}
-        onClick={(event) => event.stopPropagation()}
-      >
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", paddingRight: 44 }}>
             <div>
               <p style={{ margin: "0 0 6px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
                 Reading Update
@@ -1573,22 +1547,6 @@ export const ReadingProgressModal = ({
                 읽은 페이지 추가
               </h4>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 12,
-                border: `1px solid ${COLORS.dark.border}`,
-                background: "rgba(255,255,255,0.04)",
-                color: COLORS.dark.textMuted,
-                cursor: "pointer",
-                fontSize: 16,
-              }}
-            >
-              ×
-            </button>
           </div>
 
           <div style={{
@@ -1632,79 +1590,19 @@ export const ReadingProgressModal = ({
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>현재 페이지</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={currentPages}
-                onChange={(event) => onCurrentPagesChange(event.target.value.replace(/\D/g, ""))}
-                style={{
-                  width: "100%",
-                  minHeight: 52,
-                  borderRadius: 16,
-                  border: `1px solid ${error ? "#f19aa4" : `${accent}28`}`,
-                  background: "rgba(255,255,255,0.04)",
-                  color: COLORS.dark.text,
-                  padding: "0 16px",
-                  fontSize: 16,
-                  fontFamily: "'Outfit', sans-serif",
-                  outline: "none",
-                }}
-                placeholder="현재"
-              />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>전체 페이지</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={totalPages}
-                onChange={(event) => onTotalPagesChange(event.target.value.replace(/\D/g, ""))}
-                style={{
-                  width: "100%",
-                  minHeight: 52,
-                  borderRadius: 16,
-                  border: `1px solid ${error ? "#f19aa4" : `${accent}28`}`,
-                  background: "rgba(255,255,255,0.04)",
-                  color: COLORS.dark.text,
-                  padding: "0 16px",
-                  fontSize: 16,
-                  fontFamily: "'Outfit', sans-serif",
-                  outline: "none",
-                }}
-                placeholder="전체"
-              />
-            </div>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-              <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>진행 슬라이더</label>
-              <span style={{ fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>
-                {parsedTotalPages > 0 ? `${Math.round((parsedCurrentPages / parsedTotalPages) * 100)}%` : "0%"}
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max={Math.max(parsedTotalPages, 1)}
-              step="1"
-              value={Math.min(parsedCurrentPages, Math.max(parsedTotalPages, 1))}
-              onChange={(event) => onCurrentPagesChange(event.target.value)}
-              style={{ width: "100%", accentColor: accent }}
-            />
-            {error ? (
-              <p style={{ margin: 0, fontSize: 12, color: "#f19aa4" }}>{error}</p>
-            ) : (
-              <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
-                절대 페이지 기준으로 현재 위치를 바로 업데이트합니다.
-              </p>
-            )}
-          </div>
+          <ReadingProgressEditor
+            layout={layout}
+            accent={accent}
+            currentValue={String(parsedCurrentPages)}
+            totalPages={String(parsedTotalPages)}
+            derivedProgress={parsedTotalPages > 0 ? Math.round((parsedCurrentPages / parsedTotalPages) * 100) : 0}
+            derivedReadPages={parsedCurrentPages}
+            onCurrentChange={(value) => onCurrentPagesChange(value.replace(/\D/g, ""))}
+            onTotalChange={(value) => onTotalPagesChange(value.replace(/\D/g, ""))}
+          />
+          {error && (
+            <p style={{ margin: "-2px 0 0", fontSize: 12, color: "#f19aa4" }}>{error}</p>
+          )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>메모</label>
@@ -1769,8 +1667,7 @@ export const ReadingProgressModal = ({
             </button>
           </div>
         </div>
-      </GlassCard>
-    </div>
+    </ModalShell>
   );
 };
 

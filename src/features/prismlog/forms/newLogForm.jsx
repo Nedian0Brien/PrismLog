@@ -33,7 +33,7 @@ import {
   ClockIcon,
   CheckIcon,
 } from "../core";
-import { Badge } from "../ui";
+import { Badge, ReadingProgressEditor } from "../ui";
 import {
   FORM_LABEL_STYLE,
   getFormInputStyle,
@@ -650,47 +650,30 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
               {readingEnrichingPages ? "자동 입력 중..." : "전체 페이지 자동 입력"}
             </button>
           </div>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: layout?.isTabletUp ? "repeat(2, minmax(0, 1fr))" : "1fr",
-            gap: 12,
-          }}>
-            <div>
-              <label style={labelStyle}>{isPercentMode ? "현재 진행률" : "현재 페이지"}</label>
-              <input
-                value={currentValue}
-                onChange={(e) => setReadingForm((prev) => (
-                  isPercentMode
-                    ? { ...prev, progressValue: e.target.value }
-                    : { ...prev, readPages: e.target.value }
-                ))}
-                style={inputStyle}
-                type="number"
-                min="0"
-                max={isPercentMode ? 100 : undefined}
-                placeholder={isPercentMode ? "0~100" : "현재 페이지"}
-                disabled={readingForm.readingStatus !== "reading"}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>전체 페이지</label>
-              <input
-                value={readingForm.pages}
-                onChange={(e) => {
-                  const nextValue = e.target.value;
-                  setReadingPageMessage("");
-                  setReadingForm((prev) => ({
-                    ...prev,
-                    pages: nextValue,
-                    readPages: prev.readingStatus === "finished" ? nextValue : prev.readPages,
-                  }));
-                }}
-                style={inputStyle}
-                type="number"
-                placeholder="0"
-              />
-            </div>
-          </div>
+          <ReadingProgressEditor
+            layout={layout}
+            accent={accent}
+            isPercentMode={isPercentMode}
+            currentValue={currentValue}
+            totalPages={readingForm.pages}
+            derivedProgress={derivedProgress}
+            derivedReadPages={derivedReadPages}
+            disabled={readingForm.readingStatus !== "reading"}
+            onCurrentChange={(value) => setReadingForm((prev) => (
+              isPercentMode
+                ? { ...prev, progressValue: value.replace(/\D/g, "") }
+                : { ...prev, readPages: value.replace(/\D/g, "") }
+            ))}
+            onTotalChange={(value) => {
+              const nextValue = value.replace(/\D/g, "");
+              setReadingPageMessage("");
+              setReadingForm((prev) => ({
+                ...prev,
+                pages: nextValue,
+                readPages: prev.readingStatus === "finished" ? nextValue : prev.readPages,
+              }));
+            }}
+          />
           {readingPageMessage && (
             <p style={{
               margin: "10px 0 0",
@@ -700,65 +683,6 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
             }}>
               {readingPageMessage}
             </p>
-          )}
-
-          {readingForm.readingStatus === "reading" && (
-            <div style={{
-              marginTop: 16,
-              padding: layout?.isPhone ? 14 : 16,
-              borderRadius: 18,
-              background: `linear-gradient(180deg, ${accent}14, rgba(255,255,255,0.02))`,
-              border: `1px solid ${accent}22`,
-              display: "flex",
-              flexDirection: "column",
-              gap: 14,
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-                <div>
-                  <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.dark.textMuted }}>
-                    {isPercentMode ? "현재 진행률" : "현재 페이지"}
-                  </p>
-                  <span style={{ fontSize: 28, fontWeight: 800, color: accent, fontFamily: "'Outfit', sans-serif" }}>
-                    {isPercentMode ? `${currentValue}%` : `${currentValue}p`}
-                  </span>
-                </div>
-                <div style={{ textAlign: layout?.isPhone ? "left" : "right" }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.dark.textMuted }}>진행률</p>
-                  <span style={{ fontSize: 34, fontWeight: 800, lineHeight: 1, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
-                    {derivedProgress}%
-                  </span>
-                </div>
-              </div>
-
-              <input
-                type="range"
-                min="0"
-                max={isPercentMode ? 100 : Math.max(totalPages, 1)}
-                step="1"
-                value={currentValue}
-                onChange={(e) => setReadingForm((prev) => (
-                  isPercentMode
-                    ? { ...prev, progressValue: e.target.value }
-                    : { ...prev, readPages: e.target.value }
-                ))}
-                style={{ width: "100%", accentColor: accent }}
-              />
-
-              <div style={{ display: "grid", gridTemplateColumns: layout?.isPhone ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-                <div style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: `1px solid ${COLORS.dark.border}` }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>{isPercentMode ? "현재 진행률" : "현재 페이지"}</p>
-                  <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{isPercentMode ? `${currentValue}%` : `${derivedReadPages}p`}</strong>
-                </div>
-                <div style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: `1px solid ${COLORS.dark.border}` }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>전체 페이지</p>
-                  <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{totalPages > 0 ? `${totalPages}p` : "미입력"}</strong>
-                </div>
-                <div style={{ padding: "12px 14px", borderRadius: 14, background: `${accent}18`, border: `1px solid ${accent}30` }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>진행률</p>
-                  <strong style={{ fontSize: 18, color: accent, fontFamily: "'Outfit', sans-serif" }}>{derivedProgress}%</strong>
-                </div>
-              </div>
-            </div>
           )}
 
           {readingForm.readingStatus !== "reading" && (

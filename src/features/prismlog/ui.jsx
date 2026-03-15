@@ -88,6 +88,184 @@ export const ProgressBar = ({ value, color, height = 6 }) => (
   </div>
 );
 
+export const ModalShell = ({
+  children,
+  glow,
+  width = "min(92vw, 420px)",
+  padding = "22px 20px",
+  onBackdropClick,
+  onClose,
+}) => (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 255,
+      background: "rgba(15, 14, 13, 0.5)",
+      backdropFilter: "blur(10px)",
+      WebkitBackdropFilter: "blur(10px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 20,
+      animation: "fadeIn 0.22s ease-out",
+    }}
+    onClick={onBackdropClick}
+  >
+    <GlassCard
+      glow={glow}
+      style={{ width, padding, position: "relative" }}
+      onClick={(event) => event.stopPropagation()}
+    >
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 14,
+            right: 14,
+            width: 34,
+            height: 34,
+            borderRadius: 12,
+            border: `1px solid ${COLORS.dark.border}`,
+            background: "rgba(255,255,255,0.04)",
+            color: COLORS.dark.textMuted,
+            cursor: "pointer",
+            fontSize: 16,
+          }}
+        >
+          ×
+        </button>
+      )}
+      {children}
+    </GlassCard>
+  </div>
+);
+
+export const ReadingProgressEditor = ({
+  layout,
+  accent = COLORS.reading.main,
+  isPercentMode = false,
+  currentValue,
+  totalPages,
+  derivedProgress,
+  derivedReadPages,
+  disabled = false,
+  onCurrentChange,
+  onTotalChange,
+}) => {
+  const currentLabel = isPercentMode ? "현재 진행률" : "현재 페이지";
+  return (
+    <>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: layout?.isTabletUp ? "repeat(2, minmax(0, 1fr))" : "1fr",
+        gap: 12,
+      }}>
+        <div>
+          <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>{currentLabel}</label>
+          <input
+            value={currentValue}
+            onChange={(event) => onCurrentChange?.(event.target.value)}
+            style={{
+              width: "100%",
+              minHeight: 52,
+              borderRadius: 16,
+              border: `1px solid ${accent}28`,
+              background: "rgba(255,255,255,0.04)",
+              color: COLORS.dark.text,
+              padding: "0 16px",
+              fontSize: 15,
+              outline: "none",
+            }}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder={isPercentMode ? "0~100" : "현재 페이지"}
+            disabled={disabled}
+          />
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>전체 페이지</label>
+          <input
+            value={totalPages}
+            onChange={(event) => onTotalChange?.(event.target.value)}
+            style={{
+              width: "100%",
+              minHeight: 52,
+              borderRadius: 16,
+              border: `1px solid ${accent}28`,
+              background: "rgba(255,255,255,0.04)",
+              color: COLORS.dark.text,
+              padding: "0 16px",
+              fontSize: 15,
+              outline: "none",
+            }}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="0"
+            disabled={disabled}
+          />
+        </div>
+      </div>
+
+      <div style={{
+        marginTop: 16,
+        padding: layout?.isPhone ? 14 : 16,
+        borderRadius: 18,
+        background: `linear-gradient(180deg, ${accent}14, rgba(255,255,255,0.02))`,
+        border: `1px solid ${accent}22`,
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.dark.textMuted }}>{currentLabel}</p>
+            <span style={{ fontSize: 28, fontWeight: 800, color: accent, fontFamily: "'Outfit', sans-serif" }}>
+              {isPercentMode ? `${currentValue}%` : `${derivedReadPages}p`}
+            </span>
+          </div>
+          <div style={{ textAlign: layout?.isPhone ? "left" : "right" }}>
+            <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.dark.textMuted }}>진행률</p>
+            <span style={{ fontSize: 34, fontWeight: 800, lineHeight: 1, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+              {derivedProgress}%
+            </span>
+          </div>
+        </div>
+
+        <input
+          type="range"
+          min="0"
+          max={isPercentMode ? 100 : Math.max(safeNumber(totalPages), 1)}
+          step="1"
+          value={currentValue}
+          onChange={(event) => onCurrentChange?.(event.target.value)}
+          style={{ width: "100%", accentColor: accent }}
+          disabled={disabled}
+        />
+
+        <div style={{ display: "grid", gridTemplateColumns: layout?.isPhone ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+          <div style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: `1px solid ${COLORS.dark.border}` }}>
+            <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>{currentLabel}</p>
+            <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{isPercentMode ? `${currentValue}%` : `${derivedReadPages}p`}</strong>
+          </div>
+          <div style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: `1px solid ${COLORS.dark.border}` }}>
+            <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>전체 페이지</p>
+            <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{safeNumber(totalPages) > 0 ? `${safeNumber(totalPages)}p` : "미입력"}</strong>
+          </div>
+          <div style={{ padding: "12px 14px", borderRadius: 14, background: `${accent}18`, border: `1px solid ${accent}30` }}>
+            <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>진행률</p>
+            <strong style={{ fontSize: 18, color: accent, fontFamily: "'Outfit', sans-serif" }}>{derivedProgress}%</strong>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
 export const IconActionButton = ({ onClick, label = "수정" }) => (
   <button
     type="button"
