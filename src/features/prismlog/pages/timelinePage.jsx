@@ -5,6 +5,7 @@ import {
   clamp,
   formatTimeLabel,
   getDateKey,
+  normalizeEpisodeWatchDates,
   getSeriesProgressMetrics,
   safeNumber,
   normalizeCultureType,
@@ -51,6 +52,19 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           progress: payload.progress,
         })
         : null;
+      const seriesWatchDates = type === "시리즈" ? normalizeEpisodeWatchDates(payload.episode_watch_dates) : {};
+      const watchedEpisodesToday = type === "시리즈"
+        ? (seriesMetrics?.seasons || []).flatMap((season) => (
+          season.episodes
+            .filter((episode) => seriesWatchDates[`${season.seasonNumber}-${episode.episodeNumber}`]?.slice(0, 10) === key)
+            .map((episode) => ({
+              id: `${log.id}-${season.seasonNumber}-${episode.episodeNumber}`,
+              title: episode.name || `EP ${episode.episodeNumber}`,
+              code: `S${season.seasonNumber} · E${episode.episodeNumber}`,
+              stillUrl: episode.stillUrl,
+            }))
+        ))
+        : [];
       const progress = log.category === "reading"
         ? clamp(
           safeNumber(
@@ -103,6 +117,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         progress,
         progressStart,
         progressEnd,
+        watchedEpisodesToday,
         status: log.category === "culture" ? (payload.status || (type === "게임" ? "플레이 중" : "시청 중")) : "",
         poster: log.category === "reading"
           ? (payload.cover || null)
@@ -328,7 +343,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                               alt=""
                               style={{ width: layout.isPhone ? 58 : 72, height: layout.isPhone ? 84 : 104, borderRadius: 10, objectFit: "cover", flexShrink: 0, boxShadow: "0 8px 18px rgba(0,0,0,0.3)" }}
                             />
-                            <div style={{ minWidth: 0 }}>
+                            <div style={{ minWidth: 0, flex: 1 }}>
                               <h3 style={{ margin: "0 0 6px", fontSize: 18, lineHeight: 1.3, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
                               {item.progress !== null ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -337,15 +352,36 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                     {progressDelta > 0 ? (
                                       <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, rgba(245,240,235,0.9), ${item.accent})`, boxShadow: `0 0 18px ${item.accent}66`, transition: "width 0.94s cubic-bezier(.16,1,.3,1)" }} />
                                     ) : null}
+                                    {progressValue >= 100 ? (
+                                      <div style={{ position: "absolute", right: 2, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 4 }}>
+                                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f5f0eb", boxShadow: `0 0 12px ${item.accent}88` }} />
+                                      </div>
+                                    ) : null}
                                   </div>
                                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                                     <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: COLORS.dark.textMuted, flex: 1 }}>{item.summary || "진행 정보 없음"}</p>
-                                    <span style={{ fontSize: 12, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                      {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
+                                      <span style={{ fontSize: 12, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
+                                    </div>
                                   </div>
                                   {item.snippet ? (
                                     <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                                       {item.snippet}
                                     </p>
+                                  ) : null}
+                                  {item.watchedEpisodesToday?.length > 0 ? (
+                                    <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 2 }}>
+                                      {item.watchedEpisodesToday.map((episode) => (
+                                        <div key={episode.id} style={{ minWidth: 120, maxWidth: 120, display: "flex", flexDirection: "column", gap: 6 }}>
+                                          <div style={{ width: 120, height: 68, borderRadius: 10, overflow: "hidden", background: `linear-gradient(135deg, ${item.accent}24, rgba(255,255,255,0.05))`, border: `1px solid ${item.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                            {episode.stillUrl ? <img src={episode.stillUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{episode.code}</span>}
+                                          </div>
+                                          <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{episode.code}</p>
+                                          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.text, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{episode.title}</p>
+                                        </div>
+                                      ))}
+                                    </div>
                                   ) : null}
                                 </div>
                               ) : (
@@ -363,15 +399,36 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                   {progressDelta > 0 ? (
                                     <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, rgba(245,240,235,0.9), ${item.accent})`, boxShadow: `0 0 18px ${item.accent}66`, transition: "width 0.94s cubic-bezier(.16,1,.3,1)" }} />
                                   ) : null}
+                                  {progressValue >= 100 ? (
+                                    <div style={{ position: "absolute", right: 2, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 4 }}>
+                                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f5f0eb", boxShadow: `0 0 12px ${item.accent}88` }} />
+                                    </div>
+                                  ) : null}
                                 </div>
                                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                                   <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: COLORS.dark.textMuted, flex: 1 }}>{item.summary || "진행 정보 없음"}</p>
-                                  <span style={{ fontSize: 12, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
+                                    <span style={{ fontSize: 12, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
+                                  </div>
                                 </div>
                                 {item.snippet ? (
                                   <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                                     {item.snippet}
                                   </p>
+                                ) : null}
+                                {item.watchedEpisodesToday?.length > 0 ? (
+                                  <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 2 }}>
+                                    {item.watchedEpisodesToday.map((episode) => (
+                                      <div key={episode.id} style={{ minWidth: 120, maxWidth: 120, display: "flex", flexDirection: "column", gap: 6 }}>
+                                        <div style={{ width: 120, height: 68, borderRadius: 10, overflow: "hidden", background: `linear-gradient(135deg, ${item.accent}24, rgba(255,255,255,0.05))`, border: `1px solid ${item.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                          {episode.stillUrl ? <img src={episode.stillUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{episode.code}</span>}
+                                        </div>
+                                        <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{episode.code}</p>
+                                        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.text, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{episode.title}</p>
+                                      </div>
+                                    ))}
+                                  </div>
                                 ) : null}
                               </div>
                             ) : (
