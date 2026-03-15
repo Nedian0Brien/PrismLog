@@ -277,17 +277,7 @@ const SeriesPlatformBadge = ({ platformKey, platformLabel, accent = COLORS.serie
       fontFamily: "'Pretendard', sans-serif",
       lineHeight: 1,
     }}>
-      <span style={{
-        width: 18,
-        height: 18,
-        borderRadius: 6,
-        background: "rgba(18,18,18,0.52)",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
-        <SeriesPlatformIcon platformKey={platformKey} size={13} color={theme.accent || accent} />
-      </span>
+      <SeriesPlatformIcon platformKey={platformKey} size={16} color={theme.accent || accent} />
       <span>{getSeriesPlatformLabel(platformKey, platformLabel)}</span>
     </span>
   );
