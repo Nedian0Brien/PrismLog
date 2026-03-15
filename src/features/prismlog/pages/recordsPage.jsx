@@ -1136,8 +1136,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                     const isSaving = savingEpisode === episodeKey;
                     const isAnimating = animatedEpisodeKey === episodeKey;
                     return (
-                    <button
-                      type="button"
+                    <div
                       key={`${item.id}-season-${season.seasonNumber}-episode-${episode.episodeNumber}`}
                       ref={(node) => {
                         episodeRefs.current[episodeKey] = node;
@@ -1145,7 +1144,16 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                       onClick={() => {
                         if (!episode.watched) handleEpisodeSelect(episode);
                       }}
-                      disabled={Boolean(savingEpisode)}
+                      onKeyDown={(event) => {
+                        if (savingEpisode) return;
+                        if ((event.key === "Enter" || event.key === " ") && !episode.watched) {
+                          event.preventDefault();
+                          handleEpisodeSelect(episode);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={savingEpisode ? -1 : 0}
+                      aria-disabled={Boolean(savingEpisode)}
                       style={{
                         padding: "12px 14px",
                         borderRadius: 16,
@@ -1281,7 +1289,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                           </span>
                         )}
                       </div>
-                    </button>
+                    </div>
                   )})}
                 </div>
               </div>
