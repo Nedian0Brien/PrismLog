@@ -1521,11 +1521,317 @@ export const DashboardPage = ({ logs, stats, recentLogs, todayLabel, ringValues,
 };
 
 /* ──────────── Reading: Grid Card ──────────── */
-export const ReadingGridCard = ({ book, onEdit, onAdd, layout }) => {
+const ReadingProgressModal = ({ book, layout, saving, error, value, onChange, onClose, onSubmit }) => {
+  if (!book) return null;
+  const accent = COLORS.reading.main;
+  const remainingPages = Math.max(0, safeNumber(book.pages) - safeNumber(book.readPages));
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 260,
+        background: "rgba(15, 14, 13, 0.54)",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+        animation: "fadeIn 0.22s ease-out",
+      }}
+      onClick={onClose}
+    >
+      <GlassCard
+        glow={COLORS.reading.glow}
+        style={{ width: "min(92vw, 430px)", padding: layout.isPhone ? "22px 18px" : "24px 22px" }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+            <div>
+              <p style={{ margin: "0 0 6px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+                Reading Update
+              </p>
+              <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                읽은 페이지 추가
+              </h4>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 12,
+                border: `1px solid ${COLORS.dark.border}`,
+                background: "rgba(255,255,255,0.04)",
+                color: COLORS.dark.textMuted,
+                cursor: "pointer",
+                fontSize: 16,
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: layout.isPhone ? "84px minmax(0, 1fr)" : "96px minmax(0, 1fr)",
+            gap: 14,
+            alignItems: "center",
+            padding: "12px 14px",
+            borderRadius: 18,
+            border: `1px solid ${accent}24`,
+            background: "rgba(255,255,255,0.03)",
+          }}>
+            <div style={{
+              width: layout.isPhone ? 84 : 96,
+              aspectRatio: "2 / 3",
+              borderRadius: 14,
+              overflow: "hidden",
+              border: `1px solid ${accent}24`,
+              background: book.cover ? COLORS.dark.surfaceSolid : `linear-gradient(145deg, ${accent}22, rgba(255,255,255,0.04))`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}>
+              {book.cover ? (
+                <img src={book.cover} alt={`${book.title} 표지`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              ) : (
+                <BookIcon size={24} color={accent} />
+              )}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <strong style={{ display: "block", marginBottom: 6, fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                {book.title}
+              </strong>
+              <p style={{ margin: "0 0 6px", fontSize: 12, color: COLORS.dark.textMuted }}>
+                {book.author || "저자 정보 없음"}
+              </p>
+              <p style={{ margin: 0, fontSize: 12, color: accent }}>
+                {`${book.readPages}/${book.pages}p 읽음`}
+                {remainingPages > 0 ? ` · ${remainingPages}p 남음` : ""}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>이번에 읽은 페이지</label>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              style={{
+                width: "100%",
+                minHeight: 54,
+                borderRadius: 16,
+                border: `1px solid ${error ? "#f19aa4" : `${accent}28`}`,
+                background: "rgba(255,255,255,0.04)",
+                color: COLORS.dark.text,
+                padding: "0 16px",
+                fontSize: 16,
+                fontFamily: "'Outfit', sans-serif",
+                outline: "none",
+              }}
+              placeholder="예: 18"
+            />
+            {error ? (
+              <p style={{ margin: 0, fontSize: 12, color: "#f19aa4" }}>{error}</p>
+            ) : (
+              <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
+                입력한 페이지 수만큼 누적 독서량과 진행률이 업데이트됩니다.
+              </p>
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              style={{
+                minHeight: 44,
+                padding: "0 16px",
+                borderRadius: 14,
+                border: `1px solid ${COLORS.dark.border}`,
+                background: "rgba(255,255,255,0.04)",
+                color: COLORS.dark.textMuted,
+                cursor: saving ? "wait" : "pointer",
+                fontWeight: 700,
+                fontFamily: "'Pretendard', sans-serif",
+              }}
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={saving}
+              style={{
+                minHeight: 44,
+                padding: "0 18px",
+                borderRadius: 14,
+                border: "none",
+                background: accent,
+                color: "#122018",
+                cursor: saving ? "wait" : "pointer",
+                fontWeight: 800,
+                fontFamily: "'Pretendard', sans-serif",
+                boxShadow: `0 14px 30px ${accent}30`,
+              }}
+            >
+              {saving ? "업데이트 중..." : "독서 기록 반영"}
+            </button>
+          </div>
+        </div>
+      </GlassCard>
+    </div>
+  );
+};
+
+const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd }) => {
+  const accent = COLORS.reading.main;
+  const progress = clamp(safeNumber(book.progress), 0, 100);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn 0.32s ease-out" }}>
+      <button
+        type="button"
+        onClick={onBack}
+        style={{
+          alignSelf: "flex-start",
+          minHeight: 40,
+          padding: "0 14px",
+          borderRadius: 999,
+          border: `1px solid ${COLORS.dark.border}`,
+          background: "rgba(255,255,255,0.03)",
+          color: COLORS.dark.text,
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: "pointer",
+          fontFamily: "'Pretendard', sans-serif",
+        }}
+      >
+        ← 독서 목록
+      </button>
+
+      <GlassCard glow={COLORS.reading.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px", overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "156px minmax(0, 1fr)", gap: 18, alignItems: "start" }}>
+          <div style={{
+            minHeight: 228,
+            borderRadius: 22,
+            overflow: "hidden",
+            border: `1px solid ${accent}24`,
+            background: book.cover ? COLORS.dark.surfaceSolid : `linear-gradient(150deg, ${accent}24, rgba(255,255,255,0.04))`,
+            boxShadow: "0 20px 40px rgba(0,0,0,0.22)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}>
+            {book.cover ? (
+              <img src={book.cover} alt={`${book.title} 표지`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ) : (
+              <BookIcon size={42} color={accent} />
+            )}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+                  Reading Detail
+                </p>
+                <h3 style={{ margin: "0 0 6px", fontSize: layout.isPhone ? 24 : 30, lineHeight: 1.15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                  {book.title}
+                </h3>
+                <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>
+                  {book.author || "저자 정보 없음"}
+                </p>
+              </div>
+              <IconActionButton onClick={() => onEdit(book)} />
+            </div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {book.publisher && <Badge text={book.publisher} color={accent} />}
+              {book.publishedDate && <Badge text={formatMonthDayLabel(book.publishedDate)} color={accent} />}
+              {book.tags.map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
+            </div>
+
+            <div style={{
+              padding: "14px 16px",
+              borderRadius: 18,
+              border: `1px solid ${accent}22`,
+              background: `linear-gradient(135deg, ${accent}14, rgba(255,255,255,0.03))`,
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
+                <div>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>Reading progress</p>
+                  <strong style={{ fontSize: 26, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
+                    {progress}%
+                  </strong>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>Pages</p>
+                  <strong style={{ fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                    {`${book.readPages}/${book.pages}p`}
+                  </strong>
+                </div>
+              </div>
+              <ProgressBar value={progress} color={accent} height={8} />
+            </div>
+
+            {book.description && (
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.75, color: COLORS.dark.textMuted }}>
+                {book.description}
+              </p>
+            )}
+
+            {book.review && (
+              <GlassCard style={{ padding: "14px 16px" }}>
+                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: COLORS.dark.textMuted, fontStyle: "italic" }}>
+                  "{book.review}"
+                </p>
+              </GlassCard>
+            )}
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => onAdd(book)}
+                style={{
+                  minHeight: 44,
+                  padding: "0 16px",
+                  borderRadius: 14,
+                  border: `1px solid ${accent}66`,
+                  background: `${accent}18`,
+                  color: accent,
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  fontFamily: "'Pretendard', sans-serif",
+                }}
+              >
+                + 독서 기록 추가
+              </button>
+            </div>
+          </div>
+        </div>
+      </GlassCard>
+    </div>
+  );
+};
+
+export const ReadingGridCard = ({ book, onEdit, onAdd, onOpen, layout }) => {
   const chartSize = layout.isDesktop ? 188 : layout.isTablet ? 176 : 164;
   return (
     <GlassCard
       glow={COLORS.reading.glow}
+      onClick={() => onOpen(book)}
       style={{
         padding: "12px 12px 12px",
         minHeight: layout.isPhone ? 320 : 350,
@@ -1534,6 +1840,7 @@ export const ReadingGridCard = ({ book, onEdit, onAdd, layout }) => {
         gap: 8,
         overflow: "hidden",
         textAlign: "center",
+        cursor: "pointer",
       }}
   >
     <div style={{ position: "relative", width: chartSize, height: chartSize - 26, alignSelf: "center", marginTop: -2, maxWidth: "100%" }}>
@@ -1598,7 +1905,10 @@ export const ReadingGridCard = ({ book, onEdit, onAdd, layout }) => {
     <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
       <button
         type="button"
-        onClick={() => onAdd(book)}
+        onClick={(event) => {
+          event.stopPropagation();
+          onAdd(book);
+        }}
         style={{
           flex: 1, minHeight: 38, borderRadius: 12, border: `1px solid ${COLORS.reading.main}66`,
           background: `${COLORS.reading.main}18`, color: COLORS.reading.main, fontSize: 12, fontWeight: 700, cursor: "pointer",
@@ -1611,7 +1921,10 @@ export const ReadingGridCard = ({ book, onEdit, onAdd, layout }) => {
       </button>
       <button
         type="button"
-        onClick={() => onEdit(book)}
+        onClick={(event) => {
+          event.stopPropagation();
+          onEdit(book);
+        }}
         style={{
           flex: 1, minHeight: 38, borderRadius: 12, border: `1px solid ${COLORS.study.main}66`,
           background: `${COLORS.study.main}18`, color: COLORS.study.main, fontSize: 12, fontWeight: 700, cursor: "pointer",
@@ -1630,7 +1943,76 @@ export const ReadingGridCard = ({ book, onEdit, onAdd, layout }) => {
 /* ──────────── Page: Reading ──────────── */
 export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
   const [viewMode, setViewMode] = useState("list");
+  const [detailId, setDetailId] = useState(null);
+  const [progressModalBook, setProgressModalBook] = useState(null);
+  const [progressInput, setProgressInput] = useState("10");
+  const [progressError, setProgressError] = useState("");
+  const [savingProgress, setSavingProgress] = useState(false);
+  const detailBook = books.find((book) => book.id === detailId) || null;
+
+  const openProgressModal = useCallback((book) => {
+    const remainingPages = Math.max(0, safeNumber(book.pages) - safeNumber(book.readPages));
+    setProgressModalBook(book);
+    setProgressInput(String(remainingPages > 0 ? Math.min(remainingPages, 20) : 10));
+    setProgressError("");
+  }, []);
+
+  const closeProgressModal = useCallback(() => {
+    if (savingProgress) return;
+    setProgressModalBook(null);
+    setProgressInput("10");
+    setProgressError("");
+  }, [savingProgress]);
+
+  const submitProgressModal = useCallback(async () => {
+    if (!progressModalBook) return;
+    const addedPages = Number(progressInput);
+    if (!Number.isFinite(addedPages) || addedPages <= 0) {
+      setProgressError("1 이상의 숫자를 입력해 주세요.");
+      return;
+    }
+    try {
+      setSavingProgress(true);
+      setProgressError("");
+      await onAdd(progressModalBook, addedPages);
+      setProgressModalBook(null);
+      setProgressInput("10");
+    } catch (error) {
+      setProgressError(error instanceof Error ? error.message : "페이지 업데이트 중 오류가 발생했습니다.");
+    } finally {
+      setSavingProgress(false);
+    }
+  }, [onAdd, progressInput, progressModalBook]);
+
+  if (detailBook) {
+    return (
+      <>
+        <ReadingDetailPage
+          book={detailBook}
+          layout={layout}
+          onBack={() => setDetailId(null)}
+          onEdit={onEdit}
+          onAdd={openProgressModal}
+        />
+        <ReadingProgressModal
+          book={progressModalBook}
+          layout={layout}
+          saving={savingProgress}
+          error={progressError}
+          value={progressInput}
+          onChange={(value) => {
+            setProgressInput(value);
+            setProgressError("");
+          }}
+          onClose={closeProgressModal}
+          onSubmit={submitProgressModal}
+        />
+      </>
+    );
+  }
+
   return (
+    <>
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -1683,7 +2065,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
                 animationDelay: `${Math.min(idx * 45, 220)}ms`,
               }}
             >
-              <GlassCard glow={COLORS.reading.glow} style={{ padding: "18px 20px" }}>
+              <GlassCard glow={COLORS.reading.glow} style={{ padding: "18px 20px", cursor: "pointer" }} onClick={() => setDetailId(book.id)}>
                 <div style={{ display: "flex", flexDirection: layout.isPhone ? "column" : "row", gap: 16 }}>
                   <div style={{
                     width: 60, height: 84, borderRadius: 10, flexShrink: 0, overflow: "hidden",
@@ -1715,7 +2097,30 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
                         <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{book.readPages}/{book.pages}p</span>
                         {book.rating > 0 && <RatingStars rating={book.rating} size={12} />}
                       </div>
-                      <IconActionButton onClick={() => onEdit(book)} />
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openProgressModal(book);
+                          }}
+                          style={{
+                            minHeight: 34,
+                            padding: "0 12px",
+                            borderRadius: 12,
+                            border: `1px solid ${COLORS.reading.main}55`,
+                            background: `${COLORS.reading.main}16`,
+                            color: COLORS.reading.main,
+                            cursor: "pointer",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            fontFamily: "'Pretendard', sans-serif",
+                          }}
+                        >
+                          + 기록
+                        </button>
+                        <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(book); }} />
+                      </div>
                     </div>
                     {book.review && <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: "8px 0 0", fontStyle: "italic", lineHeight: 1.5 }}>"{book.review}"</p>}
                     <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
@@ -1738,13 +2143,27 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
                   animationDelay: `${Math.min(idx * 45, 220)}ms`,
                 }}
               >
-                <ReadingGridCard book={book} onEdit={onEdit} onAdd={onAdd} layout={layout} />
+                <ReadingGridCard book={book} onEdit={onEdit} onAdd={openProgressModal} onOpen={() => setDetailId(book.id)} layout={layout} />
               </div>
             ))}
           </div>
         </div>
       )}
     </div>
+    <ReadingProgressModal
+      book={progressModalBook}
+      layout={layout}
+      saving={savingProgress}
+      error={progressError}
+      value={progressInput}
+      onChange={(value) => {
+        setProgressInput(value);
+        setProgressError("");
+      }}
+      onClose={closeProgressModal}
+      onSubmit={submitProgressModal}
+    />
+    </>
   );
 };
 

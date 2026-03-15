@@ -229,13 +229,10 @@ export default function PrismLog() {
     setEditingReading(book);
   }, []);
 
-  const addReadingProgress = useCallback(async (book) => {
-    const addedRaw = window.prompt("이번에 추가로 읽은 페이지 수를 입력하세요", "10");
-    if (addedRaw === null) return;
-    const addedPages = Number(addedRaw);
+  const addReadingProgress = useCallback(async (book, rawAddedPages = 10) => {
+    const addedPages = Number(rawAddedPages);
     if (!Number.isFinite(addedPages) || addedPages <= 0) {
-      window.alert("1 이상의 숫자를 입력해 주세요.");
-      return;
+      throw new Error("1 이상의 숫자를 입력해 주세요.");
     }
 
     const currentRead = Math.max(0, safeNumber(book.readPages));
@@ -271,7 +268,7 @@ export default function PrismLog() {
       setGlowEffect(COLORS.reading.main);
       setTimeout(() => setGlowEffect(null), 1200);
     } catch (error) {
-      window.alert(`기록 추가 실패: ${error instanceof Error ? error.message : "unknown error"}`);
+      throw new Error(error instanceof Error ? error.message : "기록 추가 실패");
     }
   }, [updateLog]);
 
