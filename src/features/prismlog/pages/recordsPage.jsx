@@ -726,8 +726,9 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
         flexDirection: "column",
         gap: 16,
         opacity: detailEntering ? 1 : 0,
-        transform: detailEntering ? "translate3d(0, 0, 0)" : "translate3d(0, 18px, 0)",
-        transition: "opacity 320ms cubic-bezier(.22,.9,.24,1), transform 320ms cubic-bezier(.22,.9,.24,1)",
+        transform: detailEntering ? "translate3d(0, 0, 0) scale(1)" : "translate3d(0, 24px, 0) scale(0.992)",
+        transformOrigin: "center top",
+        transition: "opacity 460ms cubic-bezier(.16,1,.3,1), transform 520ms cubic-bezier(.16,1,.3,1)",
         willChange: "opacity, transform",
       }}
     >
