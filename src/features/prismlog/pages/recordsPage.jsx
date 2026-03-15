@@ -1593,6 +1593,7 @@ export const ReadingProgressModal = ({
           <ReadingProgressEditor
             layout={layout}
             accent={accent}
+            compact
             currentValue={String(parsedCurrentPages)}
             totalPages={String(parsedTotalPages)}
             derivedProgress={parsedTotalPages > 0 ? Math.round((parsedCurrentPages / parsedTotalPages) * 100) : 0}

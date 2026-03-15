@@ -95,53 +95,67 @@ export const ModalShell = ({
   padding = "22px 20px",
   onBackdropClick,
   onClose,
-}) => (
-  <div
-    style={{
-      position: "fixed",
-      inset: 0,
-      zIndex: 255,
-      background: "rgba(15, 14, 13, 0.5)",
-      backdropFilter: "blur(10px)",
-      WebkitBackdropFilter: "blur(10px)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 20,
-      animation: "fadeIn 0.22s ease-out",
-    }}
-    onClick={onBackdropClick}
-  >
-    <GlassCard
-      glow={glow}
-      style={{ width, padding, position: "relative" }}
-      onClick={(event) => event.stopPropagation()}
+}) => {
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, []);
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 255,
+        background: "rgba(15, 14, 13, 0.5)",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+        overflowY: "auto",
+        animation: "fadeIn 0.22s ease-out",
+      }}
+      onClick={onBackdropClick}
     >
-      {onClose && (
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            position: "absolute",
-            top: 14,
-            right: 14,
-            width: 34,
-            height: 34,
-            borderRadius: 12,
-            border: `1px solid ${COLORS.dark.border}`,
-            background: "rgba(255,255,255,0.04)",
-            color: COLORS.dark.textMuted,
-            cursor: "pointer",
-            fontSize: 16,
-          }}
-        >
-          ×
-        </button>
-      )}
-      {children}
-    </GlassCard>
-  </div>
-);
+      <GlassCard
+        glow={glow}
+        style={{ width, padding, position: "relative", maxHeight: "min(86vh, 760px)", overflowY: "auto" }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              position: "absolute",
+              top: 14,
+              right: 14,
+              width: 34,
+              height: 34,
+              borderRadius: 12,
+              border: `1px solid ${COLORS.dark.border}`,
+              background: "rgba(255,255,255,0.04)",
+              color: COLORS.dark.textMuted,
+              cursor: "pointer",
+              fontSize: 16,
+            }}
+          >
+            ×
+          </button>
+        )}
+        {children}
+      </GlassCard>
+    </div>
+  );
+};
 
 export const ReadingProgressEditor = ({
   layout,
@@ -152,64 +166,67 @@ export const ReadingProgressEditor = ({
   derivedProgress,
   derivedReadPages,
   disabled = false,
+  compact = false,
   onCurrentChange,
   onTotalChange,
 }) => {
   const currentLabel = isPercentMode ? "현재 진행률" : "현재 페이지";
   return (
     <>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: layout?.isTabletUp ? "repeat(2, minmax(0, 1fr))" : "1fr",
-        gap: 12,
-      }}>
-        <div>
-          <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>{currentLabel}</label>
-          <input
-            value={currentValue}
-            onChange={(event) => onCurrentChange?.(event.target.value)}
-            style={{
-              width: "100%",
-              minHeight: 52,
-              borderRadius: 16,
-              border: `1px solid ${accent}28`,
-              background: "rgba(255,255,255,0.04)",
-              color: COLORS.dark.text,
-              padding: "0 16px",
-              fontSize: 15,
-              outline: "none",
-            }}
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            placeholder={isPercentMode ? "0~100" : "현재 페이지"}
-            disabled={disabled}
-          />
+      {!compact && (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: layout?.isTabletUp ? "repeat(2, minmax(0, 1fr))" : "1fr",
+          gap: 12,
+        }}>
+          <div>
+            <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>{currentLabel}</label>
+            <input
+              value={currentValue}
+              onChange={(event) => onCurrentChange?.(event.target.value)}
+              style={{
+                width: "100%",
+                minHeight: 52,
+                borderRadius: 16,
+                border: `1px solid ${accent}28`,
+                background: "rgba(255,255,255,0.04)",
+                color: COLORS.dark.text,
+                padding: "0 16px",
+                fontSize: 15,
+                outline: "none",
+              }}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder={isPercentMode ? "0~100" : "현재 페이지"}
+              disabled={disabled}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>전체 페이지</label>
+            <input
+              value={totalPages}
+              onChange={(event) => onTotalChange?.(event.target.value)}
+              style={{
+                width: "100%",
+                minHeight: 52,
+                borderRadius: 16,
+                border: `1px solid ${accent}28`,
+                background: "rgba(255,255,255,0.04)",
+                color: COLORS.dark.text,
+                padding: "0 16px",
+                fontSize: 15,
+                outline: "none",
+              }}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="0"
+              disabled={disabled}
+            />
+          </div>
         </div>
-        <div>
-          <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>전체 페이지</label>
-          <input
-            value={totalPages}
-            onChange={(event) => onTotalChange?.(event.target.value)}
-            style={{
-              width: "100%",
-              minHeight: 52,
-              borderRadius: 16,
-              border: `1px solid ${accent}28`,
-              background: "rgba(255,255,255,0.04)",
-              color: COLORS.dark.text,
-              padding: "0 16px",
-              fontSize: 15,
-              outline: "none",
-            }}
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            placeholder="0"
-            disabled={disabled}
-          />
-        </div>
-      </div>
+      )}
 
       <div style={{
         marginTop: 16,
@@ -250,11 +267,55 @@ export const ReadingProgressEditor = ({
         <div style={{ display: "grid", gridTemplateColumns: layout?.isPhone ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 10 }}>
           <div style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: `1px solid ${COLORS.dark.border}` }}>
             <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>{currentLabel}</p>
-            <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{isPercentMode ? `${currentValue}%` : `${derivedReadPages}p`}</strong>
+            {compact ? (
+              <input
+                value={currentValue}
+                onChange={(event) => onCurrentChange?.(event.target.value)}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                disabled={disabled}
+                style={{
+                  width: "100%",
+                  padding: 0,
+                  border: "none",
+                  background: "transparent",
+                  color: COLORS.dark.text,
+                  fontSize: 16,
+                  fontWeight: 700,
+                  outline: "none",
+                  fontFamily: "'Outfit', sans-serif",
+                }}
+              />
+            ) : (
+              <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{isPercentMode ? `${currentValue}%` : `${derivedReadPages}p`}</strong>
+            )}
           </div>
           <div style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: `1px solid ${COLORS.dark.border}` }}>
             <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>전체 페이지</p>
-            <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{safeNumber(totalPages) > 0 ? `${safeNumber(totalPages)}p` : "미입력"}</strong>
+            {compact ? (
+              <input
+                value={totalPages}
+                onChange={(event) => onTotalChange?.(event.target.value)}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                disabled={disabled}
+                style={{
+                  width: "100%",
+                  padding: 0,
+                  border: "none",
+                  background: "transparent",
+                  color: COLORS.dark.text,
+                  fontSize: 16,
+                  fontWeight: 700,
+                  outline: "none",
+                  fontFamily: "'Outfit', sans-serif",
+                }}
+              />
+            ) : (
+              <strong style={{ fontSize: 16, color: COLORS.dark.text }}>{safeNumber(totalPages) > 0 ? `${safeNumber(totalPages)}p` : "미입력"}</strong>
+            )}
           </div>
           <div style={{ padding: "12px 14px", borderRadius: 14, background: `${accent}18`, border: `1px solid ${accent}30` }}>
             <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>진행률</p>
