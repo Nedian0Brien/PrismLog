@@ -19,6 +19,10 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
   const [view, setView] = useState("feed");
   const [visibleKeys, setVisibleKeys] = useState({});
   const itemRefs = useRef({});
+  const formatPercentDelta = (value) => {
+    const rounded = Math.round(value * 10) / 10;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  };
 
   const groups = useMemo(() => {
     const sorted = [...logs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -65,6 +69,10 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
             }))
         ))
         : [];
+      const seriesEpisodeCountToday = type === "시리즈" ? watchedEpisodesToday.length : 0;
+      const seriesProgressDelta = type === "시리즈" && safeNumber(seriesMetrics?.totalEpisodes, 0) > 0
+        ? Math.min(100, (seriesEpisodeCountToday / safeNumber(seriesMetrics?.totalEpisodes, 0)) * 100)
+        : 0;
       const progress = log.category === "reading"
         ? clamp(
           safeNumber(
@@ -90,6 +98,8 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           0,
           100,
         )
+        : type === "시리즈"
+          ? clamp(safeNumber(progress, 0) - seriesProgressDelta, 0, 100)
         : progress;
       const progressEnd = progress ?? 0;
       const sectionKey = log.category === "reading"
@@ -107,6 +117,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         time: formatTimeLabel(log.created_at),
         accent,
         sectionKey,
+        type,
         categoryLabel: log.category === "reading" ? "독서" : log.category === "study" ? "공부" : type,
         summary: log.summary || (log.category === "reading"
           ? `${safeNumber(payload.pages_read)} / ${safeNumber(payload.pages_total)}p`
@@ -117,6 +128,8 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         progress,
         progressStart,
         progressEnd,
+        seriesEpisodeCountToday,
+        seriesProgressDelta,
         watchedEpisodesToday,
         status: log.category === "culture" ? (payload.status || (type === "게임" ? "플레이 중" : "시청 중")) : "",
         poster: log.category === "reading"
@@ -175,6 +188,29 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
     });
     return () => observer.disconnect();
   }, [groups, view]);
+
+  const renderSeriesStats = (item) => (
+    item.type === "시리즈" ? (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+        <div style={{ padding: "10px 12px", borderRadius: 14, border: `1px solid ${item.accent}22`, background: `linear-gradient(180deg, ${item.accent}16, rgba(255,255,255,0.03))` }}>
+          <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted, letterSpacing: 0.2 }}>오늘 본 에피소드</p>
+          <p style={{ margin: 0, fontSize: 22, lineHeight: 1, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+            {item.seriesEpisodeCountToday}
+            <span style={{ marginLeft: 4, fontSize: 12, color: COLORS.dark.textMuted }}>화</span>
+          </p>
+        </div>
+        <div style={{ padding: "10px 12px", borderRadius: 14, border: `1px solid ${item.accent}22`, background: `linear-gradient(180deg, rgba(255,255,255,0.03), ${item.accent}12)` }}>
+          <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted, letterSpacing: 0.2 }}>오늘 오른 진행률</p>
+          <p style={{ margin: 0, fontSize: 22, lineHeight: 1, fontWeight: 800, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>
+            +{formatPercentDelta(item.seriesProgressDelta)}
+            <span style={{ marginLeft: 2, fontSize: 12, color: COLORS.dark.textMuted }}>%</span>
+          </p>
+        </div>
+      </div>
+    ) : (
+      <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: COLORS.dark.textMuted, flex: 1 }}>{item.summary || "진행 정보 없음"}</p>
+    )
+  );
 
   const calendarMonths = useMemo(() => {
     const counts = logs.reduce((acc, log) => {
@@ -362,7 +398,9 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                     ) : null}
                                   </div>
                                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: COLORS.dark.textMuted, flex: 1 }}>{item.summary || "진행 정보 없음"}</p>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      {renderSeriesStats(item)}
+                                    </div>
                                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                       {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
                                       <span style={{ fontSize: 12, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
@@ -411,7 +449,9 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                   ) : null}
                                 </div>
                                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                                  <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: COLORS.dark.textMuted, flex: 1 }}>{item.summary || "진행 정보 없음"}</p>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    {renderSeriesStats(item)}
+                                  </div>
                                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                     {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
                                     <span style={{ fontSize: 12, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
