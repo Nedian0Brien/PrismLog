@@ -709,7 +709,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "viewSwitch 0.34s cubic-bezier(.22,.9,.24,1)" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <FloatingSeriesProgressToast toast={toast} visible={toastVisible} animatedProgress={animatedToastProgress} />
       {pendingUnwatchEpisode && (
         <div style={{
@@ -1814,9 +1814,7 @@ export const StudyPage = ({ studies, loading, onEdit, layout }) => {
 export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, layout, title = "문화생활", fixedType = null }) => {
   const [filter, setFilter] = useState(fixedType || "전체");
   const [detailId, setDetailId] = useState(null);
-  const [openingSeriesId, setOpeningSeriesId] = useState(null);
   const filters = ["전체", ...CULTURE_TYPES];
-  const openingSeriesTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (fixedType) setFilter(fixedType);
@@ -1824,17 +1822,7 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
 
   useEffect(() => {
     setDetailId(null);
-    setOpeningSeriesId(null);
   }, [fixedType]);
-
-  useEffect(() => {
-    return () => {
-      if (openingSeriesTimeoutRef.current) {
-        clearTimeout(openingSeriesTimeoutRef.current);
-        openingSeriesTimeoutRef.current = null;
-      }
-    };
-  }, []);
 
   const filtered = useMemo(() => {
     if (fixedType) return items.filter((item) => item.type === fixedType);
@@ -1845,19 +1833,6 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
     () => filtered.find((item) => item.id === detailId) || null,
     [detailId, filtered]
   );
-
-  const handleSeriesDetailOpen = useCallback((seriesItem) => {
-    if (openingSeriesTimeoutRef.current) {
-      clearTimeout(openingSeriesTimeoutRef.current);
-      openingSeriesTimeoutRef.current = null;
-    }
-    setOpeningSeriesId(seriesItem.id);
-    openingSeriesTimeoutRef.current = window.setTimeout(() => {
-      setDetailId(seriesItem.id);
-      setOpeningSeriesId(null);
-      openingSeriesTimeoutRef.current = null;
-    }, 120);
-  }, []);
 
   if (detailItem?.type === "시리즈") {
     return <SeriesDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} onUpdateSeriesProgress={onUpdateSeriesProgress} />;
@@ -1912,16 +1887,8 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
           <GlassCard
             key={c.id}
             glow={glow}
-            style={{
-              padding: 0,
-              overflow: "hidden",
-              cursor: isSeries ? "pointer" : "default",
-              transform: openingSeriesId === c.id ? "scale(0.978)" : "scale(1)",
-              filter: openingSeriesId === c.id ? "brightness(1.06)" : "none",
-              boxShadow: openingSeriesId === c.id ? `0 22px 44px ${accent}18` : undefined,
-              transition: "transform 180ms cubic-bezier(.22,.9,.24,1), filter 180ms ease, box-shadow 180ms ease",
-            }}
-            onClick={isSeries ? () => handleSeriesDetailOpen(c) : undefined}
+            style={{ padding: 0, overflow: "hidden", cursor: isSeries ? "pointer" : "default" }}
+            onClick={isSeries ? () => setDetailId(c.id) : undefined}
           >
             {isSeries ? (
               <div style={{ padding: "16px 16px 14px", display: "flex", flexDirection: "column", gap: 14 }}>
