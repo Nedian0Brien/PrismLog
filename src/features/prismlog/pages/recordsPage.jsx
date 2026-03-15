@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
   API_BASE_URL,
   buildCulturePayload,
@@ -2191,10 +2191,55 @@ export const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
 export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, initialSection = null, onSectionChange, layout }) => {
   const [selectedSection, setSelectedSection] = useState(initialSection);
   const [mobileColumns, setMobileColumns] = useState(1);
+  const [transitionDirection, setTransitionDirection] = useState(initialSection ? "forward" : "back");
+  const [transitionPhase, setTransitionPhase] = useState("idle");
+  const transitionTimeoutRef = useRef(null);
+  const transitionFrameRef = useRef(null);
+  const requestedSectionRef = useRef(initialSection || null);
+
+  const clearSectionTransition = useCallback(() => {
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current);
+      transitionTimeoutRef.current = null;
+    }
+    if (transitionFrameRef.current) {
+      cancelAnimationFrame(transitionFrameRef.current);
+      transitionFrameRef.current = null;
+    }
+  }, []);
+
+  const startSectionTransition = useCallback((nextSection) => {
+    const normalizedSection = nextSection || null;
+    if (normalizedSection === selectedSection && transitionPhase === "idle") return;
+
+    clearSectionTransition();
+    const direction = normalizedSection ? "forward" : "back";
+    setTransitionDirection(direction);
+    setTransitionPhase("exit");
+
+    transitionTimeoutRef.current = window.setTimeout(() => {
+      setSelectedSection(normalizedSection);
+      setTransitionPhase("enter-pre");
+      transitionFrameRef.current = window.requestAnimationFrame(() => {
+        setTransitionPhase("enter");
+        transitionTimeoutRef.current = window.setTimeout(() => {
+          setTransitionPhase("idle");
+          transitionTimeoutRef.current = null;
+        }, 280);
+      });
+    }, 170);
+  }, [clearSectionTransition, selectedSection, transitionPhase]);
 
   useEffect(() => {
-    setSelectedSection(initialSection || null);
-  }, [initialSection]);
+    return () => clearSectionTransition();
+  }, [clearSectionTransition]);
+
+  useEffect(() => {
+    const normalizedSection = initialSection || null;
+    if (normalizedSection === requestedSectionRef.current) return;
+    requestedSectionRef.current = normalizedSection;
+    startSectionTransition(normalizedSection);
+  }, [initialSection, startSectionTransition]);
 
   useEffect(() => {
     if (!layout.isPhone) return;
@@ -2309,8 +2354,40 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
   ];
 
   const handleSectionChange = (nextSection) => {
-    setSelectedSection(nextSection);
-    onSectionChange?.(nextSection || null);
+    const normalizedSection = nextSection || null;
+    requestedSectionRef.current = normalizedSection;
+    startSectionTransition(normalizedSection);
+    onSectionChange?.(normalizedSection);
+  };
+
+  const getSectionPaneStyle = () => {
+    const easing = "280ms cubic-bezier(.22,.9,.24,1)";
+    if (transitionPhase === "exit") {
+      return {
+        opacity: 0,
+        transform: `translate3d(${transitionDirection === "forward" ? "-26px" : "26px"}, 0, 0) scale(0.988)`,
+        pointerEvents: "none",
+        transition: `opacity ${easing}, transform ${easing}`,
+      };
+    }
+    if (transitionPhase === "enter-pre") {
+      return {
+        opacity: 0,
+        transform: `translate3d(${transitionDirection === "forward" ? "30px" : "-30px"}, 0, 0) scale(0.992)`,
+        pointerEvents: "none",
+      };
+    }
+    if (transitionPhase === "enter") {
+      return {
+        opacity: 1,
+        transform: "translate3d(0, 0, 0) scale(1)",
+        transition: `opacity ${easing}, transform ${easing}`,
+      };
+    }
+    return {
+      opacity: 1,
+      transform: "translate3d(0, 0, 0) scale(1)",
+    };
   };
 
   const renderSectionPage = () => {
@@ -2332,7 +2409,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
 
   if (selectedSection) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 18, willChange: transitionPhase === "idle" ? "auto" : "transform, opacity", ...getSectionPaneStyle() }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button
             type="button"
@@ -2364,7 +2441,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 18, willChange: transitionPhase === "idle" ? "auto" : "transform, opacity", ...getSectionPaneStyle() }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
         <div style={{ minWidth: 0 }}>
           <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Records</p>
