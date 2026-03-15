@@ -958,10 +958,10 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
         ← 시리즈 목록
       </button>
 
-      <div ref={heroRefs?.cardRef || null}>
+      <div ref={heroRefs?.card || null}>
       <GlassCard glow={COLORS.series.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px", overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "180px minmax(0, 1fr) 158px", gap: 18, alignItems: "start" }}>
-          <div ref={heroRefs?.posterRef || null} style={{
+          <div ref={heroRefs?.poster || null} style={{
             minHeight: 252,
             borderRadius: 22,
             overflow: "hidden",
@@ -988,7 +988,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
                 <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
                   Series Detail
                 </p>
-                <h3 ref={heroRefs?.titleRef || null} style={{ margin: "0 0 8px", fontSize: layout.isPhone ? 24 : 30, lineHeight: 1.15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", opacity: hideHeroElements ? 0 : 1, transition: "opacity 220ms ease" }}>
+                <h3 ref={heroRefs?.title || null} style={{ margin: "0 0 8px", fontSize: layout.isPhone ? 24 : 30, lineHeight: 1.15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", opacity: hideHeroElements ? 0 : 1, transition: "opacity 220ms ease" }}>
                   {effectiveItem.title}
                 </h3>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -1925,9 +1925,7 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
   const seriesCardRefs = useRef({});
   const seriesPosterRefs = useRef({});
   const seriesTitleRefs = useRef({});
-  const detailCardRef = useRef(null);
-  const detailPosterRef = useRef(null);
-  const detailTitleRef = useRef(null);
+  const detailHeroRefs = useRef({ card: null, poster: null, title: null });
 
   useEffect(() => {
     if (fixedType) setFilter(fixedType);
@@ -1980,9 +1978,9 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
     if (!detailItem || detailItem.type !== "시리즈") return;
     if (!seriesTransition || seriesTransition.itemId !== detailItem.id || seriesTransition.target) return;
 
-    const targetCard = getElementRectSnapshot(detailCardRef.current);
-    const targetPoster = getElementRectSnapshot(detailPosterRef.current);
-    const targetTitle = getElementRectSnapshot(detailTitleRef.current);
+    const targetCard = getElementRectSnapshot(detailHeroRefs.current.card);
+    const targetPoster = getElementRectSnapshot(detailHeroRefs.current.poster);
+    const targetTitle = getElementRectSnapshot(detailHeroRefs.current.title);
     if (!targetCard || !targetPoster || !targetTitle) return;
 
     setSeriesTransition((current) => {
@@ -2010,8 +2008,8 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
           }}
           onEdit={onEdit}
           onUpdateSeriesProgress={onUpdateSeriesProgress}
-          heroRefs={{ cardRef: detailCardRef, posterRef: detailPosterRef, titleRef: detailTitleRef }}
-          hideHeroElements={Boolean(seriesTransition?.itemId === detailItem.id && seriesTransition?.target)}
+          heroRefs={detailHeroRefs.current}
+          hideHeroElements={seriesTransition?.itemId === detailItem.id}
         />
         {seriesTransition?.itemId === detailItem.id && (
           <SeriesSharedElementOverlay
