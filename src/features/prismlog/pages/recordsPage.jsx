@@ -13,6 +13,7 @@ import {
   getSeriesProgressMetrics,
   SeriesPlatformIcon,
   formatMonthDayLabel,
+  clamp,
   safeNumber,
   BookIcon,
   PenIcon,
