@@ -267,17 +267,17 @@ const SeriesPlatformBadge = ({ platformKey, platformLabel, accent = COLORS.serie
       display: "inline-flex",
       alignItems: "center",
       gap: 6,
-      padding: "5px 9px",
+      padding: "4px 8px",
       borderRadius: 999,
       border: `1px solid ${theme.border}`,
       background: theme.surface,
       color: COLORS.dark.textMuted,
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: 700,
       fontFamily: "'Pretendard', sans-serif",
       lineHeight: 1,
     }}>
-      <SeriesPlatformIcon platformKey={platformKey} size={16} color={theme.accent || accent} />
+      <SeriesPlatformIcon platformKey={platformKey} size={14} color={theme.accent || accent} />
       <span>{getSeriesPlatformLabel(platformKey, platformLabel)}</span>
     </span>
   );
@@ -1923,7 +1923,6 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
                       </h4>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <SeriesPlatformBadge platformKey={c.platformKey} platformLabel={c.platformLabel} accent={accent} />
-                        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{c.type}</span>
                         {c.rating > 0 && <RatingStars rating={c.rating} size={12} />}
                       </div>
                     </div>
