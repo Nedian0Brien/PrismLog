@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NewLogForm } from "../forms";
 import { DashboardPage, ReadingGridCard, SettingsPage, TimelinePage } from "../pages";
+import { ReadingDetailPage, ReadingProgressModal } from "../pages/recordsPage";
 
 const phoneLayout = {
   width: 390,
@@ -66,6 +67,56 @@ describe("PrismLog feature smoke", () => {
     );
 
     expect(html).toContain("그리드 카드 테스트");
+  });
+
+  it("renders reading detail page and progress modal", () => {
+    const book = {
+      id: "reading-detail-1",
+      title: "상세 독서 테스트",
+      author: "테스트 저자",
+      progress: 55,
+      readPages: 110,
+      pages: 200,
+      rating: 4,
+      review: "메모 테스트",
+      tags: ["독서", "상세"],
+      cover: "",
+      publisher: "테스트 출판사",
+      publishedDate: "2025-01-10",
+      description: "상세 설명입니다.",
+    };
+
+    const detailHtml = renderToStaticMarkup(
+      <ReadingDetailPage
+        book={book}
+        layout={phoneLayout}
+        onBack={() => {}}
+        onEdit={() => {}}
+        onAdd={() => {}}
+      />
+    );
+
+    const modalHtml = renderToStaticMarkup(
+      <ReadingProgressModal
+        book={book}
+        layout={phoneLayout}
+        saving={false}
+        error=""
+        currentPages="110"
+        totalPages="200"
+        note="메모 테스트"
+        onCurrentPagesChange={() => {}}
+        onTotalPagesChange={() => {}}
+        onNoteChange={() => {}}
+        onClose={() => {}}
+        onSubmit={() => {}}
+      />
+    );
+
+    expect(detailHtml).toContain("Reading Detail");
+    expect(detailHtml).toContain("상세 독서 테스트");
+    expect(modalHtml).toContain("읽은 페이지 추가");
+    expect(modalHtml).toContain("진행 슬라이더");
   });
 
   it("renders timeline and settings pages", () => {

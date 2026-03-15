@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
 import {
   API_BASE_URL,
   buildCulturePayload,
@@ -1523,7 +1522,7 @@ export const DashboardPage = ({ logs, stats, recentLogs, todayLabel, ringValues,
 };
 
 /* ──────────── Reading: Grid Card ──────────── */
-const ReadingProgressModal = ({
+export const ReadingProgressModal = ({
   book,
   layout,
   saving,
@@ -1537,12 +1536,12 @@ const ReadingProgressModal = ({
   onClose,
   onSubmit,
 }) => {
-  if (!book || typeof document === "undefined" || !document.body || !(document.body instanceof HTMLElement)) return null;
+  if (!book) return null;
   const accent = COLORS.reading.main;
   const parsedTotalPages = Math.max(0, safeNumber(totalPages));
   const parsedCurrentPages = clamp(safeNumber(currentPages), 0, Math.max(parsedTotalPages, 1));
   const remainingPages = Math.max(0, parsedTotalPages - parsedCurrentPages);
-  return createPortal((
+  return (
     <div
       style={{
         position: "fixed",
@@ -1771,12 +1770,11 @@ const ReadingProgressModal = ({
           </div>
         </div>
       </GlassCard>
-    </div>,
-    document.body
-  ));
+    </div>
+  );
 };
 
-const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd }) => {
+export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd }) => {
   const accent = COLORS.reading.main;
   const progress = clamp(safeNumber(book.progress), 0, 100);
   const tags = Array.isArray(book.tags) ? book.tags : [];
@@ -2959,7 +2957,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
     }
     return {
       opacity: 1,
-      transform: "translate3d(0, 0, 0) scale(1)",
+      transform: "none",
     };
   };
 
