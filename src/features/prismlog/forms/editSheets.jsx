@@ -559,9 +559,9 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
                       position: "absolute",
                       top: 12,
                       left: 12,
-                      width: 42,
-                      height: 42,
-                      borderRadius: 14,
+                      width: 58,
+                      height: 58,
+                      borderRadius: 18,
                       border: `1px solid ${active ? theme.borderActive : theme.border}`,
                       background: `linear-gradient(145deg, rgba(18,18,18,0.68), ${theme.surfaceStrong})`,
                       display: "flex",
@@ -570,28 +570,8 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
                       boxShadow: `0 12px 24px ${theme.glow}`,
                       zIndex: 1,
                     }}>
-                      <SeriesPlatformIcon platformKey={option.key} size={22} color={theme.accent} />
+                      <SeriesPlatformIcon platformKey={option.key} size={36} color={theme.accent} />
                     </div>
-                    <div style={{
-                      position: "absolute",
-                      top: 18,
-                      left: 18,
-                      opacity: active ? 0.14 : 0.08,
-                      transform: "scale(2.7)",
-                      transformOrigin: "top left",
-                      filter: active ? "none" : "grayscale(0.1)",
-                      pointerEvents: "none",
-                    }}>
-                      <SeriesPlatformIcon platformKey={option.key} size={24} color={theme.accent} />
-                    </div>
-                    <div style={{
-                      position: "absolute",
-                      inset: 0,
-                      background: active
-                        ? `radial-gradient(circle at 18% 16%, ${theme.accent}16, transparent 44%)`
-                        : "none",
-                      pointerEvents: "none",
-                    }} />
                     <span style={{ position: "relative", zIndex: 1 }}>{option.label}</span>
                   </button>
                 );

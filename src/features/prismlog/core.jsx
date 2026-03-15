@@ -208,9 +208,9 @@ export const SERIES_PLATFORM_OPTIONS = [
   { key: "other", label: "기타" },
 ];
 export const SERIES_PLATFORM_LOGOS = {
-  netflix: "/platforms/netflix.svg",
-  apple_tv_plus: "/platforms/apple-tv-plus.svg",
-  disney_plus: "/platforms/disney-plus.svg",
+  netflix: "/platforms/netflix-app.webp",
+  apple_tv_plus: "/platforms/apple-tv-plus-app.webp",
+  disney_plus: "/platforms/disney-plus-app.webp",
 };
 export const SERIES_PLATFORM_THEMES = {
   netflix: {
@@ -276,7 +276,7 @@ export const getSeriesPlatformTheme = (platformKey) => SERIES_PLATFORM_THEMES[pl
 export const SeriesPlatformIcon = ({ platformKey, size = 16, color = "currentColor" }) => {
   const logoSrc = SERIES_PLATFORM_LOGOS[platformKey];
   if (logoSrc) {
-    return <img src={logoSrc} alt="" aria-hidden="true" style={{ width: size, height: size, objectFit: "contain", display: "block" }} />;
+    return <img src={logoSrc} alt="" aria-hidden="true" style={{ width: size, height: size, objectFit: "cover", display: "block", borderRadius: size * 0.24 }} />;
   }
   if (platformKey === "tv") {
     return <TvIcon size={size} color={color} />;

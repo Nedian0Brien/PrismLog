@@ -267,29 +267,27 @@ const SeriesPlatformBadge = ({ platformKey, platformLabel, accent = COLORS.serie
       display: "inline-flex",
       alignItems: "center",
       gap: 6,
-      padding: "6px 10px",
+      padding: "5px 9px",
       borderRadius: 999,
       border: `1px solid ${theme.border}`,
-      background: `linear-gradient(145deg, ${theme.surfaceStrong}, ${theme.surface})`,
-      color: theme.text,
-      fontSize: 11,
+      background: theme.surface,
+      color: COLORS.dark.textMuted,
+      fontSize: 10,
       fontWeight: 700,
       fontFamily: "'Pretendard', sans-serif",
       lineHeight: 1,
-      boxShadow: `0 8px 18px ${theme.glow}`,
     }}>
       <span style={{
-        width: 20,
-        height: 20,
-        borderRadius: 7,
-        border: `1px solid ${theme.borderActive}`,
-        background: `linear-gradient(145deg, rgba(18,18,18,0.7), ${theme.surfaceStrong})`,
+        width: 18,
+        height: 18,
+        borderRadius: 6,
+        border: `1px solid ${theme.border}`,
+        background: "rgba(18,18,18,0.52)",
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        boxShadow: `0 6px 14px ${theme.glow}`,
       }}>
-        <SeriesPlatformIcon platformKey={platformKey} size={12} color={theme.accent || accent} />
+        <SeriesPlatformIcon platformKey={platformKey} size={11} color={theme.accent || accent} />
       </span>
       <span>{getSeriesPlatformLabel(platformKey, platformLabel)}</span>
     </span>
