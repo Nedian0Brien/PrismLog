@@ -371,9 +371,9 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                     </p>
                                   ) : null}
                                   {item.watchedEpisodesToday?.length > 0 ? (
-                                    <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 2 }}>
+                                    <div style={{ width: "100%", maxWidth: "100%", display: "grid", gridAutoFlow: "column", gridAutoColumns: "120px", gap: 10, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", paddingBottom: 2 }}>
                                       {item.watchedEpisodesToday.map((episode) => (
-                                        <div key={episode.id} style={{ minWidth: 120, maxWidth: 120, display: "flex", flexDirection: "column", gap: 6 }}>
+                                        <div key={episode.id} style={{ width: 120, display: "flex", flexDirection: "column", gap: 6 }}>
                                           <div style={{ width: 120, height: 68, borderRadius: 10, overflow: "hidden", background: `linear-gradient(135deg, ${item.accent}24, rgba(255,255,255,0.05))`, border: `1px solid ${item.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                                             {episode.stillUrl ? <img src={episode.stillUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{episode.code}</span>}
                                           </div>
@@ -418,9 +418,9 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                   </p>
                                 ) : null}
                                 {item.watchedEpisodesToday?.length > 0 ? (
-                                  <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 2 }}>
+                                  <div style={{ width: "100%", maxWidth: "100%", display: "grid", gridAutoFlow: "column", gridAutoColumns: "120px", gap: 10, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", paddingBottom: 2 }}>
                                     {item.watchedEpisodesToday.map((episode) => (
-                                      <div key={episode.id} style={{ minWidth: 120, maxWidth: 120, display: "flex", flexDirection: "column", gap: 6 }}>
+                                      <div key={episode.id} style={{ width: 120, display: "flex", flexDirection: "column", gap: 6 }}>
                                         <div style={{ width: 120, height: 68, borderRadius: 10, overflow: "hidden", background: `linear-gradient(135deg, ${item.accent}24, rgba(255,255,255,0.05))`, border: `1px solid ${item.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                                           {episode.stillUrl ? <img src={episode.stillUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{episode.code}</span>}
                                         </div>
