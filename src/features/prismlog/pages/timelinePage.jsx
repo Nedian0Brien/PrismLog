@@ -299,7 +299,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                     <span style={{ fontSize: layout.isPhone ? 34 : 54, lineHeight: 1, fontWeight: 800, letterSpacing: -2, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{group.dayNumber}</span>
                     <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{group.sideLabel}</span>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
                     {group.items.map((item) => {
                       const visible = visibleKeys[item.id] ?? false;
                       const progressValue = item.progressEnd ?? item.progress ?? 0;
@@ -316,6 +316,8 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                         onClick={() => onOpenDetail?.({ section: item.sectionKey, id: item.id })}
                         style={{
                           width: "100%",
+                          maxWidth: "100%",
+                          minWidth: 0,
                           border: `1px solid ${item.accent}2c`,
                           color: COLORS.dark.text,
                           borderRadius: 22,
@@ -324,6 +326,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                           boxShadow: "0 18px 34px rgba(0,0,0,0.14)",
                           textAlign: "left",
                           cursor: "pointer",
+                          overflow: "hidden",
                           opacity: visible ? 1 : 0.42,
                           transform: visible ? "translateY(0)" : "translateY(18px)",
                           transition: "opacity 0.5s ease, transform 0.72s cubic-bezier(.16,1,.3,1)",
