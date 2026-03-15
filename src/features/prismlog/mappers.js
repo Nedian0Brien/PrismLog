@@ -1,5 +1,6 @@
 import {
   clamp,
+  formatMonthDayLabel,
   getSeriesPlatformLabel,
   getSeriesProgressMetrics,
   normalizeCultureType,
@@ -7,6 +8,38 @@ import {
   normalizeMetadataObject,
   safeNumber,
 } from "./core";
+
+const normalizeReadingSession = (entry) => {
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
+  const date = String(entry.date || entry.updated_at || "").trim();
+  if (!date) return null;
+  return {
+    id: String(entry.id || `${date}-${safeNumber(entry.to_pages, 0)}`),
+    date,
+    dateLabel: formatMonthDayLabel(date),
+    fromPages: safeNumber(entry.from_pages, 0),
+    toPages: safeNumber(entry.to_pages, 0),
+    totalPages: safeNumber(entry.total_pages, 0),
+    pagesRead: safeNumber(entry.pages_read, 0),
+    fromProgress: clamp(safeNumber(entry.from_progress, 0), 0, 100),
+    toProgress: clamp(safeNumber(entry.to_progress, 0), 0, 100),
+    progressDelta: safeNumber(entry.progress_delta, 0),
+  };
+};
+
+const normalizeReadingNote = (entry) => {
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
+  const date = String(entry.date || "").trim();
+  const text = String(entry.text || "").trim();
+  if (!date || !text) return null;
+  return {
+    id: String(entry.id || `${date}-${text.slice(0, 12)}`),
+    date,
+    dateLabel: formatMonthDayLabel(date),
+    page: safeNumber(entry.page, 0),
+    text,
+  };
+};
 
 export const mapReadingLog = (log) => {
   const payload = log.payload || {};
@@ -36,6 +69,12 @@ export const mapReadingLog = (log) => {
     progress,
     pages,
     readPages,
+    readingSessions: Array.isArray(payload.reading_sessions)
+      ? payload.reading_sessions.map(normalizeReadingSession).filter(Boolean).sort((a, b) => new Date(b.date) - new Date(a.date))
+      : [],
+    readingNotes: Array.isArray(payload.reading_notes)
+      ? payload.reading_notes.map(normalizeReadingNote).filter(Boolean).sort((a, b) => new Date(b.date) - new Date(a.date))
+      : [],
     rating: clamp(safeNumber(payload.rating), 0, 5),
     review: payload.review || log.summary || "",
     tags: Array.isArray(log.tags) ? log.tags : [],

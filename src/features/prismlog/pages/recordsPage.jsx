@@ -1672,11 +1672,68 @@ export const ReadingProgressModal = ({
   );
 };
 
-export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd }) => {
+const buildReadingTrendPoints = (book) => {
+  const sessions = Array.isArray(book.readingSessions) ? [...book.readingSessions].sort((a, b) => new Date(a.date) - new Date(b.date)) : [];
+  if (sessions.length === 0) {
+    return [{ label: "현재", value: clamp(safeNumber(book.progress), 0, 100) }];
+  }
+  return sessions.map((session) => ({
+    label: formatMonthDayLabel(session.date),
+    value: clamp(safeNumber(session.toProgress), 0, 100),
+  }));
+};
+
+const buildReadingTimelineGroups = (book) => {
+  const groups = new Map();
+  const ensureGroup = (dateKey, rawDate) => {
+    if (!groups.has(dateKey)) {
+      groups.set(dateKey, { dateKey, dateLabel: formatMonthDayLabel(rawDate), session: null, notes: [] });
+    }
+    return groups.get(dateKey);
+  };
+  (Array.isArray(book.readingSessions) ? book.readingSessions : []).forEach((session) => {
+    const dateKey = String(session.date || "").slice(0, 10);
+    if (!dateKey) return;
+    ensureGroup(dateKey, session.date).session = session;
+  });
+  (Array.isArray(book.readingNotes) ? book.readingNotes : []).forEach((note) => {
+    const dateKey = String(note.date || "").slice(0, 10);
+    if (!dateKey) return;
+    ensureGroup(dateKey, note.date).notes.push(note);
+  });
+  return [...groups.values()].sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey));
+};
+
+const ReadingNoteModal = ({ book, layout, saving, error, page, note, onPageChange, onNoteChange, onClose, onSubmit }) => {
+  if (!book) return null;
+  const accent = COLORS.reading.main;
+  return (
+    <ModalShell glow={COLORS.reading.glow} width="min(92vw, 430px)" padding={layout.isPhone ? "22px 18px" : "24px 22px"} onBackdropClick={onClose} onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ paddingRight: 44 }}>
+          <p style={{ margin: "0 0 6px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Reading Note</p>
+          <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>독서 메모 남기기</h4>
+        </div>
+        <input value={page} onChange={(event) => onPageChange(event.target.value.replace(/\D/g, ""))} type="text" inputMode="numeric" pattern="[0-9]*" placeholder="페이지" style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none" }} />
+        <textarea value={note} onChange={(event) => onNoteChange(event.target.value)} rows={5} placeholder="문장, 생각, 질문을 남겨보세요." style={{ width: "100%", borderRadius: 16, border: `1px solid ${accent}24`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "14px 16px", fontSize: 13, lineHeight: 1.65, resize: "vertical", outline: "none", fontFamily: "'Pretendard', sans-serif" }} />
+        {error && <p style={{ margin: 0, fontSize: 12, color: "#f19aa4" }}>{error}</p>}
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button type="button" onClick={onClose} disabled={saving} style={{ minHeight: 44, padding: "0 16px", borderRadius: 14, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.textMuted, cursor: saving ? "wait" : "pointer", fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}>취소</button>
+          <button type="button" onClick={onSubmit} disabled={saving} style={{ minHeight: 44, padding: "0 18px", borderRadius: 14, border: "none", background: accent, color: "#122018", cursor: saving ? "wait" : "pointer", fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{saving ? "저장 중..." : "메모 저장"}</button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+};
+
+export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNote }) => {
   const accent = COLORS.reading.main;
   const progress = clamp(safeNumber(book.progress), 0, 100);
   const tags = Array.isArray(book.tags) ? book.tags : [];
   const publishedLabel = book.publishedDate ? formatMonthDayLabel(book.publishedDate) : "";
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const trendPoints = useMemo(() => buildReadingTrendPoints(book), [book]);
+  const timelineGroups = useMemo(() => buildReadingTimelineGroups(book), [book]);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn 0.32s ease-out" }}>
       <button
@@ -1768,9 +1825,21 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd }) => {
             </div>
 
             {book.description && (
-              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.75, color: COLORS.dark.textMuted }}>
-                {book.description}
-              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.75, color: COLORS.dark.textMuted, display: descriptionExpanded ? "block" : "-webkit-box", WebkitLineClamp: descriptionExpanded ? "unset" : 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  {book.description}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setDescriptionExpanded((prev) => !prev)}
+                  style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, padding: 0, border: "none", background: "none", color: accent, cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}
+                >
+                  <span style={{ transform: descriptionExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>
+                    <ChevronDown size={14} color={accent} />
+                  </span>
+                  {descriptionExpanded ? "접기" : "펼치기"}
+                </button>
+              </div>
             )}
 
             {book.review && (
@@ -1800,8 +1869,65 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd }) => {
               >
                 + 독서 기록 추가
               </button>
+              <button
+                type="button"
+                onClick={() => onAddNote(book)}
+                style={{ minHeight: 44, padding: "0 16px", borderRadius: 14, border: `1px solid ${accent}44`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Pretendard', sans-serif" }}
+              >
+                + 독서 메모
+              </button>
             </div>
           </div>
+        </div>
+      </GlassCard>
+
+      <GlassCard glow={COLORS.reading.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "minmax(0, 1fr) 158px", gap: 18, alignItems: "center" }}>
+          <div style={{ width: "100%" }}>
+            <SeriesProgressTrendChart points={trendPoints} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <div style={{ position: "relative", width: layout.isPhone ? 118 : 132, height: layout.isPhone ? 118 : 132 }}>
+              <SeriesProgressDonut value={progress} size={layout.isPhone ? 118 : 132} strokeWidth={11} color={accent} />
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>TOTAL</span>
+                <strong style={{ fontSize: layout.isPhone ? 28 : 32, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>{progress}%</strong>
+              </div>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>{`${book.readPages}/${book.pages}p`}</p>
+          </div>
+        </div>
+      </GlassCard>
+
+      <GlassCard glow={COLORS.reading.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Reading Timeline</p>
+            <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>독서 기록 & 메모</h4>
+          </div>
+          {timelineGroups.length === 0 ? (
+            <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>아직 독서 기록이나 메모가 없습니다.</p>
+          ) : timelineGroups.map((group) => (
+            <div key={`reading-timeline-${group.dateKey}`} style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "92px minmax(0, 1fr)", gap: 14 }}>
+              <div><p style={{ margin: 0, fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>{group.dateLabel}</p></div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {group.session && (
+                  <div style={{ padding: "14px 16px", borderRadius: 18, border: `1px solid ${accent}22`, background: `${accent}12` }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Reading Record</p>
+                    <strong style={{ display: "block", marginBottom: 6, fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{`+${group.session.pagesRead}p 읽음`}</strong>
+                    <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>{`${group.session.fromPages}p → ${group.session.toPages}p · 진행률 +${group.session.progressDelta}%`}</p>
+                  </div>
+                )}
+                {group.notes.map((note) => (
+                  <div key={note.id} style={{ padding: "14px 16px", borderRadius: 18, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.03)" }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 1, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Reading Note</p>
+                    <strong style={{ display: "block", marginBottom: 6, fontSize: 13, color: COLORS.dark.text }}>{note.page > 0 ? `${note.page}p 메모` : "독서 메모"}</strong>
+                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{note.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </GlassCard>
     </div>
@@ -1923,15 +2049,19 @@ export const ReadingGridCard = ({ book, onEdit, onAdd, onOpen, layout }) => {
 };
 
 /* ──────────── Page: Reading ──────────── */
-export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
+export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout }) => {
   const [viewMode, setViewMode] = useState("list");
   const [detailId, setDetailId] = useState(null);
   const [progressModalBook, setProgressModalBook] = useState(null);
   const [currentPageInput, setCurrentPageInput] = useState("0");
   const [totalPageInput, setTotalPageInput] = useState("0");
   const [noteInput, setNoteInput] = useState("");
+  const [noteModalBook, setNoteModalBook] = useState(null);
+  const [notePageInput, setNotePageInput] = useState("0");
   const [progressError, setProgressError] = useState("");
   const [savingProgress, setSavingProgress] = useState(false);
+  const [noteError, setNoteError] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
   const detailBook = books.find((book) => book.id === detailId) || null;
 
   useEffect(() => {
@@ -1948,6 +2078,13 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
     setProgressError("");
   }, []);
 
+  const openNoteModal = useCallback((book) => {
+    setNoteModalBook(book);
+    setNotePageInput(String(safeNumber(book.readPages)));
+    setNoteInput("");
+    setNoteError("");
+  }, []);
+
   const closeProgressModal = useCallback(() => {
     if (savingProgress) return;
     setProgressModalBook(null);
@@ -1956,6 +2093,14 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
     setNoteInput("");
     setProgressError("");
   }, [savingProgress]);
+
+  const closeNoteModal = useCallback(() => {
+    if (savingNote) return;
+    setNoteModalBook(null);
+    setNotePageInput("0");
+    setNoteInput("");
+    setNoteError("");
+  }, [savingNote]);
 
   const submitProgressModal = useCallback(async () => {
     if (!progressModalBook) return;
@@ -1992,6 +2137,26 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
     }
   }, [currentPageInput, noteInput, onAdd, progressModalBook, totalPageInput]);
 
+  const submitNoteModal = useCallback(async () => {
+    if (!noteModalBook) return;
+    if (!noteInput.trim()) {
+      setNoteError("메모 내용을 입력해 주세요.");
+      return;
+    }
+    try {
+      setSavingNote(true);
+      setNoteError("");
+      await onAddNote(noteModalBook, { page: notePageInput, text: noteInput });
+      setNoteModalBook(null);
+      setNotePageInput("0");
+      setNoteInput("");
+    } catch (error) {
+      setNoteError(error instanceof Error ? error.message : "메모 저장 중 오류가 발생했습니다.");
+    } finally {
+      setSavingNote(false);
+    }
+  }, [noteInput, noteModalBook, notePageInput, onAddNote]);
+
   if (detailBook) {
     return (
       <>
@@ -2001,6 +2166,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
           onBack={() => setDetailId(null)}
           onEdit={onEdit}
           onAdd={openProgressModal}
+          onAddNote={openNoteModal}
         />
         <ReadingProgressModal
           book={progressModalBook}
@@ -2024,6 +2190,21 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
           }}
           onClose={closeProgressModal}
           onSubmit={submitProgressModal}
+        />
+        <ReadingNoteModal
+          book={noteModalBook}
+          layout={layout}
+          saving={savingNote}
+          error={noteError}
+          page={notePageInput}
+          note={noteInput}
+          onPageChange={setNotePageInput}
+          onNoteChange={(value) => {
+            setNoteInput(value);
+            setNoteError("");
+          }}
+          onClose={closeNoteModal}
+          onSubmit={submitNoteModal}
         />
       </>
     );
@@ -2190,6 +2371,21 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
       }}
       onClose={closeProgressModal}
       onSubmit={submitProgressModal}
+    />
+    <ReadingNoteModal
+      book={noteModalBook}
+      layout={layout}
+      saving={savingNote}
+      error={noteError}
+      page={notePageInput}
+      note={noteInput}
+      onPageChange={setNotePageInput}
+      onNoteChange={(value) => {
+        setNoteInput(value);
+        setNoteError("");
+      }}
+      onClose={closeNoteModal}
+      onSubmit={submitNoteModal}
     />
     </>
   );
@@ -2657,7 +2853,7 @@ export const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
   );
 };
 
-export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, initialSection = null, onSectionChange, layout }) => {
+export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, onAddReadingNote, initialSection = null, onSectionChange, layout }) => {
   const [selectedSection, setSelectedSection] = useState(initialSection);
   const [mobileColumns, setMobileColumns] = useState(1);
   const [transitionDirection, setTransitionDirection] = useState(initialSection ? "forward" : "back");
@@ -2862,7 +3058,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
   const renderSectionPage = () => {
     switch (selectedSection) {
       case "reading":
-        return <ReadingPage books={sortedReading} loading={loading} onEdit={onEditReading} onAdd={onAddReading} layout={layout} />;
+        return <ReadingPage books={sortedReading} loading={loading} onEdit={onEditReading} onAdd={onAddReading} onAddNote={onAddReadingNote} layout={layout} />;
       case "study":
         return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} layout={layout} />;
       case "movie":

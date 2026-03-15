@@ -93,6 +93,7 @@ describe("PrismLog feature smoke", () => {
         onBack={() => {}}
         onEdit={() => {}}
         onAdd={() => {}}
+        onAddNote={() => {}}
       />
     );
 

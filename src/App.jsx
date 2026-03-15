@@ -229,6 +229,30 @@ export default function PrismLog() {
     setEditingReading(book);
   }, []);
 
+  const buildReadingSessionPatch = useCallback((book, nextRead, nextTotal, nextProgress) => {
+    const nowIso = new Date().toISOString();
+    const todayKey = nowIso.slice(0, 10);
+    const currentRead = Math.max(0, safeNumber(book.readPages));
+    const currentProgress = clamp(safeNumber(book.progress), 0, 100);
+    const sessions = Array.isArray(book.readingSessions) ? [...book.readingSessions] : [];
+    const existingIndex = sessions.findIndex((entry) => String(entry.date || "").slice(0, 10) === todayKey);
+    const existing = existingIndex >= 0 ? sessions[existingIndex] : null;
+    const nextSession = {
+      id: existing?.id || `reading-session-${todayKey}`,
+      date: nowIso,
+      from_pages: existing?.fromPages ?? currentRead,
+      to_pages: nextRead,
+      total_pages: nextTotal,
+      pages_read: Math.max(0, nextRead - (existing?.fromPages ?? currentRead)),
+      from_progress: existing?.fromProgress ?? currentProgress,
+      to_progress: nextProgress,
+      progress_delta: Math.max(0, nextProgress - (existing?.fromProgress ?? currentProgress)),
+    };
+    if (existingIndex >= 0) sessions.splice(existingIndex, 1, nextSession);
+    else sessions.unshift(nextSession);
+    return sessions;
+  }, []);
+
   const addReadingProgress = useCallback(async (book, progressInput = 10) => {
     const currentRead = Math.max(0, safeNumber(book.readPages));
     const currentTotal = Math.max(0, safeNumber(book.pages));
@@ -256,6 +280,16 @@ export default function PrismLog() {
 
     const boundedRead = clamp(nextRead, 0, Math.max(nextTotal, 1));
     const nextProgress = nextTotal > 0 ? clamp(Math.round((boundedRead / nextTotal) * 100), 0, 100) : 0;
+    const nextSessions = buildReadingSessionPatch(book, boundedRead, nextTotal, nextProgress);
+    const nextNotes = Array.isArray(book.readingNotes) ? [...book.readingNotes] : [];
+    if (isStructuredInput && typeof progressInput.note === "string" && progressInput.note.trim()) {
+      nextNotes.unshift({
+        id: `reading-note-${Date.now()}`,
+        date: new Date().toISOString(),
+        page: boundedRead,
+        text: progressInput.note.trim(),
+      });
+    }
 
     try {
       await updateLog(book.id, {
@@ -278,6 +312,8 @@ export default function PrismLog() {
           progress: nextProgress,
           rating: clamp(safeNumber(book.rating), 0, 5),
           review: nextReview,
+          reading_sessions: nextSessions,
+          reading_notes: nextNotes,
         },
       });
       setGlowEffect(COLORS.reading.main);
@@ -285,6 +321,45 @@ export default function PrismLog() {
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : "기록 추가 실패");
     }
+  }, [buildReadingSessionPatch, updateLog]);
+
+  const addReadingNote = useCallback(async (book, noteInput) => {
+    const text = String(noteInput?.text || "").trim();
+    if (!text) throw new Error("메모 내용을 입력해 주세요.");
+    const page = Math.max(0, safeNumber(noteInput?.page, book.readPages));
+    const nextNotes = Array.isArray(book.readingNotes) ? [...book.readingNotes] : [];
+    nextNotes.unshift({
+      id: `reading-note-${Date.now()}`,
+      date: new Date().toISOString(),
+      page,
+      text,
+    });
+    await updateLog(book.id, {
+      payload: {
+        author: book.author || "",
+        publisher: book.publisher || null,
+        isbn: book.isbn || null,
+        isbn13: extractIsbn13(book.isbn) || null,
+        published_date: book.publishedDate || null,
+        description: book.description || null,
+        cover: book.cover || null,
+        source_provider: book.sourceProvider || null,
+        source_id: book.sourceId || null,
+        enrichment_provider: book.enrichmentProvider || null,
+        source_metadata: Object.keys(normalizeMetadataObject(book.sourceMetadata)).length > 0
+          ? normalizeMetadataObject(book.sourceMetadata)
+          : null,
+        pages_read: Math.max(0, safeNumber(book.readPages)),
+        pages_total: Math.max(0, safeNumber(book.pages)),
+        progress: clamp(safeNumber(book.progress), 0, 100),
+        rating: clamp(safeNumber(book.rating), 0, 5),
+        review: book.review || "",
+        reading_sessions: Array.isArray(book.readingSessions) ? book.readingSessions : [],
+        reading_notes: nextNotes,
+      },
+    });
+    setGlowEffect(COLORS.reading.main);
+    setTimeout(() => setGlowEffect(null), 1200);
   }, [updateLog]);
 
   const saveReadingEdit = useCallback(async (logId, patch) => {
@@ -341,6 +416,7 @@ export default function PrismLog() {
         onEditCulture={openCultureEdit}
         onUpdateSeriesProgress={updateSeriesProgress}
         onAddReading={addReadingProgress}
+        onAddReadingNote={addReadingNote}
         initialSection={recordsSection}
         onSectionChange={(section) => navigateTo("records", section)}
         layout={layout}
