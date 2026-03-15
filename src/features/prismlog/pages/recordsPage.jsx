@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   API_BASE_URL,
   buildCulturePayload,
@@ -1521,11 +1522,26 @@ export const DashboardPage = ({ logs, stats, recentLogs, todayLabel, ringValues,
 };
 
 /* ──────────── Reading: Grid Card ──────────── */
-const ReadingProgressModal = ({ book, layout, saving, error, value, onChange, onClose, onSubmit }) => {
-  if (!book) return null;
+const ReadingProgressModal = ({
+  book,
+  layout,
+  saving,
+  error,
+  currentPages,
+  totalPages,
+  note,
+  onCurrentPagesChange,
+  onTotalPagesChange,
+  onNoteChange,
+  onClose,
+  onSubmit,
+}) => {
+  if (!book || typeof document === "undefined") return null;
   const accent = COLORS.reading.main;
-  const remainingPages = Math.max(0, safeNumber(book.pages) - safeNumber(book.readPages));
-  return (
+  const parsedTotalPages = Math.max(0, safeNumber(totalPages));
+  const parsedCurrentPages = clamp(safeNumber(currentPages), 0, Math.max(parsedTotalPages, 1));
+  const remainingPages = Math.max(0, parsedTotalPages - parsedCurrentPages);
+  return createPortal((
     <div
       style={{
         position: "fixed",
@@ -1610,41 +1626,107 @@ const ReadingProgressModal = ({ book, layout, saving, error, value, onChange, on
                 {book.author || "저자 정보 없음"}
               </p>
               <p style={{ margin: 0, fontSize: 12, color: accent }}>
-                {`${book.readPages}/${book.pages}p 읽음`}
+                {`${parsedCurrentPages}/${parsedTotalPages || safeNumber(book.pages)}p 읽음`}
                 {remainingPages > 0 ? ` · ${remainingPages}p 남음` : ""}
               </p>
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>이번에 읽은 페이지</label>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>현재 페이지</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={currentPages}
+                onChange={(event) => onCurrentPagesChange(event.target.value.replace(/\D/g, ""))}
+                style={{
+                  width: "100%",
+                  minHeight: 52,
+                  borderRadius: 16,
+                  border: `1px solid ${error ? "#f19aa4" : `${accent}28`}`,
+                  background: "rgba(255,255,255,0.04)",
+                  color: COLORS.dark.text,
+                  padding: "0 16px",
+                  fontSize: 16,
+                  fontFamily: "'Outfit', sans-serif",
+                  outline: "none",
+                }}
+                placeholder="현재"
+              />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>전체 페이지</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={totalPages}
+                onChange={(event) => onTotalPagesChange(event.target.value.replace(/\D/g, ""))}
+                style={{
+                  width: "100%",
+                  minHeight: 52,
+                  borderRadius: 16,
+                  border: `1px solid ${error ? "#f19aa4" : `${accent}28`}`,
+                  background: "rgba(255,255,255,0.04)",
+                  color: COLORS.dark.text,
+                  padding: "0 16px",
+                  fontSize: 16,
+                  fontFamily: "'Outfit', sans-serif",
+                  outline: "none",
+                }}
+                placeholder="전체"
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+              <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>진행 슬라이더</label>
+              <span style={{ fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>
+                {parsedTotalPages > 0 ? `${Math.round((parsedCurrentPages / parsedTotalPages) * 100)}%` : "0%"}
+              </span>
+            </div>
             <input
-              type="number"
-              min="1"
+              type="range"
+              min="0"
+              max={Math.max(parsedTotalPages, 1)}
               step="1"
-              value={value}
-              onChange={(event) => onChange(event.target.value)}
-              style={{
-                width: "100%",
-                minHeight: 54,
-                borderRadius: 16,
-                border: `1px solid ${error ? "#f19aa4" : `${accent}28`}`,
-                background: "rgba(255,255,255,0.04)",
-                color: COLORS.dark.text,
-                padding: "0 16px",
-                fontSize: 16,
-                fontFamily: "'Outfit', sans-serif",
-                outline: "none",
-              }}
-              placeholder="예: 18"
+              value={Math.min(parsedCurrentPages, Math.max(parsedTotalPages, 1))}
+              onChange={(event) => onCurrentPagesChange(event.target.value)}
+              style={{ width: "100%", accentColor: accent }}
             />
             {error ? (
               <p style={{ margin: 0, fontSize: 12, color: "#f19aa4" }}>{error}</p>
             ) : (
               <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
-                입력한 페이지 수만큼 누적 독서량과 진행률이 업데이트됩니다.
+                절대 페이지 기준으로 현재 위치를 바로 업데이트합니다.
               </p>
             )}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>메모</label>
+            <textarea
+              value={note}
+              onChange={(event) => onNoteChange(event.target.value)}
+              rows={4}
+              placeholder="오늘 읽은 내용이나 짧은 메모를 남겨보세요."
+              style={{
+                width: "100%",
+                borderRadius: 16,
+                border: `1px solid ${accent}24`,
+                background: "rgba(255,255,255,0.04)",
+                color: COLORS.dark.text,
+                padding: "14px 16px",
+                fontSize: 13,
+                lineHeight: 1.6,
+                resize: "vertical",
+                outline: "none",
+                fontFamily: "'Pretendard', sans-serif",
+              }}
+            />
           </div>
 
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -1688,13 +1770,16 @@ const ReadingProgressModal = ({ book, layout, saving, error, value, onChange, on
           </div>
         </div>
       </GlassCard>
-    </div>
-  );
+    </div>,
+    document.body
+  ));
 };
 
 const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd }) => {
   const accent = COLORS.reading.main;
   const progress = clamp(safeNumber(book.progress), 0, 100);
+  const tags = Array.isArray(book.tags) ? book.tags : [];
+  const publishedLabel = book.publishedDate ? formatMonthDayLabel(book.publishedDate) : "";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn 0.32s ease-out" }}>
       <button
@@ -1755,8 +1840,8 @@ const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd }) => {
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {book.publisher && <Badge text={book.publisher} color={accent} />}
-              {book.publishedDate && <Badge text={formatMonthDayLabel(book.publishedDate)} color={accent} />}
-              {book.tags.map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
+              {publishedLabel && <Badge text={publishedLabel} color={accent} />}
+              {tags.map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
             </div>
 
             <div style={{
@@ -1945,44 +2030,70 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
   const [viewMode, setViewMode] = useState("list");
   const [detailId, setDetailId] = useState(null);
   const [progressModalBook, setProgressModalBook] = useState(null);
-  const [progressInput, setProgressInput] = useState("10");
+  const [currentPageInput, setCurrentPageInput] = useState("0");
+  const [totalPageInput, setTotalPageInput] = useState("0");
+  const [noteInput, setNoteInput] = useState("");
   const [progressError, setProgressError] = useState("");
   const [savingProgress, setSavingProgress] = useState(false);
   const detailBook = books.find((book) => book.id === detailId) || null;
 
+  useEffect(() => {
+    if (detailId && !detailBook && books.length > 0) {
+      setDetailId(null);
+    }
+  }, [books.length, detailBook, detailId]);
+
   const openProgressModal = useCallback((book) => {
-    const remainingPages = Math.max(0, safeNumber(book.pages) - safeNumber(book.readPages));
     setProgressModalBook(book);
-    setProgressInput(String(remainingPages > 0 ? Math.min(remainingPages, 20) : 10));
+    setCurrentPageInput(String(safeNumber(book.readPages)));
+    setTotalPageInput(String(Math.max(safeNumber(book.pages), safeNumber(book.readPages))));
+    setNoteInput(book.review || "");
     setProgressError("");
   }, []);
 
   const closeProgressModal = useCallback(() => {
     if (savingProgress) return;
     setProgressModalBook(null);
-    setProgressInput("10");
+    setCurrentPageInput("0");
+    setTotalPageInput("0");
+    setNoteInput("");
     setProgressError("");
   }, [savingProgress]);
 
   const submitProgressModal = useCallback(async () => {
     if (!progressModalBook) return;
-    const addedPages = Number(progressInput);
-    if (!Number.isFinite(addedPages) || addedPages <= 0) {
-      setProgressError("1 이상의 숫자를 입력해 주세요.");
+    const currentPages = Number(currentPageInput);
+    const totalPages = Number(totalPageInput);
+    if (!Number.isFinite(currentPages) || currentPages < 0) {
+      setProgressError("현재 페이지는 0 이상의 숫자여야 합니다.");
+      return;
+    }
+    if (!Number.isFinite(totalPages) || totalPages <= 0) {
+      setProgressError("전체 페이지는 1 이상의 숫자여야 합니다.");
+      return;
+    }
+    if (currentPages > totalPages) {
+      setProgressError("현재 페이지는 전체 페이지를 넘을 수 없습니다.");
       return;
     }
     try {
       setSavingProgress(true);
       setProgressError("");
-      await onAdd(progressModalBook, addedPages);
+      await onAdd(progressModalBook, {
+        currentPages,
+        totalPages,
+        note: noteInput,
+      });
       setProgressModalBook(null);
-      setProgressInput("10");
+      setCurrentPageInput("0");
+      setTotalPageInput("0");
+      setNoteInput("");
     } catch (error) {
       setProgressError(error instanceof Error ? error.message : "페이지 업데이트 중 오류가 발생했습니다.");
     } finally {
       setSavingProgress(false);
     }
-  }, [onAdd, progressInput, progressModalBook]);
+  }, [currentPageInput, noteInput, onAdd, progressModalBook, totalPageInput]);
 
   if (detailBook) {
     return (
@@ -1999,9 +2110,19 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
           layout={layout}
           saving={savingProgress}
           error={progressError}
-          value={progressInput}
-          onChange={(value) => {
-            setProgressInput(value);
+          currentPages={currentPageInput}
+          totalPages={totalPageInput}
+          note={noteInput}
+          onCurrentPagesChange={(value) => {
+            setCurrentPageInput(value);
+            setProgressError("");
+          }}
+          onTotalPagesChange={(value) => {
+            setTotalPageInput(value);
+            setProgressError("");
+          }}
+          onNoteChange={(value) => {
+            setNoteInput(value);
             setProgressError("");
           }}
           onClose={closeProgressModal}
@@ -2155,9 +2276,19 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, layout }) => {
       layout={layout}
       saving={savingProgress}
       error={progressError}
-      value={progressInput}
-      onChange={(value) => {
-        setProgressInput(value);
+      currentPages={currentPageInput}
+      totalPages={totalPageInput}
+      note={noteInput}
+      onCurrentPagesChange={(value) => {
+        setCurrentPageInput(value);
+        setProgressError("");
+      }}
+      onTotalPagesChange={(value) => {
+        setTotalPageInput(value);
+        setProgressError("");
+      }}
+      onNoteChange={(value) => {
+        setNoteInput(value);
         setProgressError("");
       }}
       onClose={closeProgressModal}

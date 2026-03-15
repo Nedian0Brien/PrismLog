@@ -229,16 +229,31 @@ export default function PrismLog() {
     setEditingReading(book);
   }, []);
 
-  const addReadingProgress = useCallback(async (book, rawAddedPages = 10) => {
-    const addedPages = Number(rawAddedPages);
-    if (!Number.isFinite(addedPages) || addedPages <= 0) {
-      throw new Error("1 이상의 숫자를 입력해 주세요.");
-    }
-
+  const addReadingProgress = useCallback(async (book, progressInput = 10) => {
     const currentRead = Math.max(0, safeNumber(book.readPages));
     const currentTotal = Math.max(0, safeNumber(book.pages));
-    const nextRead = currentRead + Math.round(addedPages);
-    const nextTotal = currentTotal > 0 ? currentTotal : nextRead;
+    const isStructuredInput = typeof progressInput === "object" && progressInput !== null;
+    const nextRead = isStructuredInput
+      ? Math.max(0, Math.round(Number(progressInput.currentPages)))
+      : currentRead + Math.round(Number(progressInput));
+    const candidateTotal = isStructuredInput
+      ? Math.max(0, Math.round(Number(progressInput.totalPages)))
+      : currentTotal;
+    const nextTotal = candidateTotal > 0 ? candidateTotal : Math.max(currentTotal, nextRead);
+    const nextReview = isStructuredInput && typeof progressInput.note === "string"
+      ? progressInput.note.trim()
+      : (book.review || "");
+
+    if (!Number.isFinite(nextRead) || nextRead < 0) {
+      throw new Error("현재 페이지는 0 이상의 숫자여야 합니다.");
+    }
+    if (!Number.isFinite(nextTotal) || nextTotal <= 0) {
+      throw new Error("전체 페이지는 1 이상의 숫자여야 합니다.");
+    }
+    if (nextRead > nextTotal) {
+      throw new Error("현재 페이지는 전체 페이지를 넘을 수 없습니다.");
+    }
+
     const boundedRead = clamp(nextRead, 0, Math.max(nextTotal, 1));
     const nextProgress = nextTotal > 0 ? clamp(Math.round((boundedRead / nextTotal) * 100), 0, 100) : 0;
 
@@ -262,7 +277,7 @@ export default function PrismLog() {
           pages_total: nextTotal,
           progress: nextProgress,
           rating: clamp(safeNumber(book.rating), 0, 5),
-          review: book.review || "",
+          review: nextReview,
         },
       });
       setGlowEffect(COLORS.reading.main);
