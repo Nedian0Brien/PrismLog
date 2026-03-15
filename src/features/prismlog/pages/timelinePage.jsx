@@ -191,19 +191,26 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
 
   const renderSeriesStats = (item) => (
     item.type === "시리즈" ? (
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-        <div style={{ padding: "10px 12px", borderRadius: 14, border: `1px solid ${item.accent}22`, background: `linear-gradient(180deg, ${item.accent}16, rgba(255,255,255,0.03))` }}>
-          <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted, letterSpacing: 0.2 }}>오늘 본 에피소드</p>
-          <p style={{ margin: 0, fontSize: 22, lineHeight: 1, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 6 }}>
+        <div style={{ padding: "10px 8px", borderRadius: 14, border: `1px solid ${item.accent}22`, background: `linear-gradient(180deg, ${item.accent}16, rgba(255,255,255,0.03))` }}>
+          <p style={{ margin: "0 0 4px", fontSize: 10, color: COLORS.dark.textMuted, letterSpacing: 0.1, whiteSpace: "nowrap" }}>본 에피소드</p>
+          <p style={{ margin: 0, fontSize: 18, lineHeight: 1, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
             {item.seriesEpisodeCountToday}
-            <span style={{ marginLeft: 4, fontSize: 12, color: COLORS.dark.textMuted }}>화</span>
+            <span style={{ marginLeft: 2, fontSize: 11, color: COLORS.dark.textMuted, fontWeight: 400 }}>화</span>
           </p>
         </div>
-        <div style={{ padding: "10px 12px", borderRadius: 14, border: `1px solid ${item.accent}22`, background: `linear-gradient(180deg, rgba(255,255,255,0.03), ${item.accent}12)` }}>
-          <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted, letterSpacing: 0.2 }}>오늘 오른 진행률</p>
-          <p style={{ margin: 0, fontSize: 22, lineHeight: 1, fontWeight: 800, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>
+        <div style={{ padding: "10px 8px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
+          <p style={{ margin: "0 0 4px", fontSize: 10, color: COLORS.dark.textMuted, letterSpacing: 0.1, whiteSpace: "nowrap" }}>오늘 진행률</p>
+          <p style={{ margin: 0, fontSize: 18, lineHeight: 1, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
             +{formatPercentDelta(item.seriesProgressDelta)}
-            <span style={{ marginLeft: 2, fontSize: 12, color: COLORS.dark.textMuted }}>%</span>
+            <span style={{ marginLeft: 1, fontSize: 11, color: COLORS.dark.textMuted, fontWeight: 400 }}>%</span>
+          </p>
+        </div>
+        <div style={{ padding: "10px 8px", borderRadius: 14, border: `1px solid ${item.accent}22`, background: `linear-gradient(180deg, rgba(255,255,255,0.03), ${item.accent}12)` }}>
+          <p style={{ margin: "0 0 4px", fontSize: 10, color: COLORS.dark.textMuted, letterSpacing: 0.1, whiteSpace: "nowrap" }}>전체 진행률</p>
+          <p style={{ margin: 0, fontSize: 18, lineHeight: 1, fontWeight: 800, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>
+            {item.progress}
+            <span style={{ marginLeft: 1, fontSize: 11, color: COLORS.dark.textMuted, fontWeight: 400 }}>%</span>
           </p>
         </div>
       </div>
