@@ -371,16 +371,18 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                     </p>
                                   ) : null}
                                   {item.watchedEpisodesToday?.length > 0 ? (
-                                    <div style={{ width: "100%", maxWidth: "100%", display: "grid", gridAutoFlow: "column", gridAutoColumns: "120px", gap: 10, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", paddingBottom: 2 }}>
-                                      {item.watchedEpisodesToday.map((episode) => (
-                                        <div key={episode.id} style={{ width: 120, display: "flex", flexDirection: "column", gap: 6 }}>
-                                          <div style={{ width: 120, height: 68, borderRadius: 10, overflow: "hidden", background: `linear-gradient(135deg, ${item.accent}24, rgba(255,255,255,0.05))`, border: `1px solid ${item.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                            {episode.stillUrl ? <img src={episode.stillUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{episode.code}</span>}
+                                    <div style={{ minWidth: 0, width: "100%", maxWidth: "100%", overflow: "hidden" }}>
+                                      <div style={{ display: "flex", gap: 10, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", scrollSnapType: "x proximity", paddingBottom: 4 }}>
+                                        {item.watchedEpisodesToday.map((episode) => (
+                                          <div key={episode.id} style={{ width: 120, minWidth: 120, flexShrink: 0, display: "flex", flexDirection: "column", gap: 6, scrollSnapAlign: "start" }}>
+                                            <div style={{ width: 120, height: 68, borderRadius: 10, overflow: "hidden", background: `linear-gradient(135deg, ${item.accent}24, rgba(255,255,255,0.05))`, border: `1px solid ${item.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                              {episode.stillUrl ? <img src={episode.stillUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{episode.code}</span>}
+                                            </div>
+                                            <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{episode.code}</p>
+                                            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.text, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{episode.title}</p>
                                           </div>
-                                          <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{episode.code}</p>
-                                          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.text, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{episode.title}</p>
-                                        </div>
-                                      ))}
+                                        ))}
+                                      </div>
                                     </div>
                                   ) : null}
                                 </div>
@@ -418,16 +420,18 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                   </p>
                                 ) : null}
                                 {item.watchedEpisodesToday?.length > 0 ? (
-                                  <div style={{ width: "100%", maxWidth: "100%", display: "grid", gridAutoFlow: "column", gridAutoColumns: "120px", gap: 10, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", paddingBottom: 2 }}>
-                                    {item.watchedEpisodesToday.map((episode) => (
-                                      <div key={episode.id} style={{ width: 120, display: "flex", flexDirection: "column", gap: 6 }}>
-                                        <div style={{ width: 120, height: 68, borderRadius: 10, overflow: "hidden", background: `linear-gradient(135deg, ${item.accent}24, rgba(255,255,255,0.05))`, border: `1px solid ${item.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                          {episode.stillUrl ? <img src={episode.stillUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{episode.code}</span>}
+                                  <div style={{ minWidth: 0, width: "100%", maxWidth: "100%", overflow: "hidden" }}>
+                                    <div style={{ display: "flex", gap: 10, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", scrollSnapType: "x proximity", paddingBottom: 4 }}>
+                                      {item.watchedEpisodesToday.map((episode) => (
+                                        <div key={episode.id} style={{ width: 120, minWidth: 120, flexShrink: 0, display: "flex", flexDirection: "column", gap: 6, scrollSnapAlign: "start" }}>
+                                          <div style={{ width: 120, height: 68, borderRadius: 10, overflow: "hidden", background: `linear-gradient(135deg, ${item.accent}24, rgba(255,255,255,0.05))`, border: `1px solid ${item.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                            {episode.stillUrl ? <img src={episode.stillUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{episode.code}</span>}
+                                          </div>
+                                          <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{episode.code}</p>
+                                          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.text, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{episode.title}</p>
                                         </div>
-                                        <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{episode.code}</p>
-                                        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.text, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{episode.title}</p>
-                                      </div>
-                                    ))}
+                                      ))}
+                                    </div>
                                   </div>
                                 ) : null}
                               </div>
