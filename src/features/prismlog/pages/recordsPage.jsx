@@ -1618,7 +1618,7 @@ export const ReadingProgressModal = ({
           )}
 
           <div style={{ display: "grid", gridTemplateColumns: layout.isTabletUp ? "repeat(2, minmax(0, 1fr))" : "1fr", gap: 12 }}>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>독서 시작 시각</label>
               <input
                 value={startTime}
@@ -1635,11 +1635,14 @@ export const ReadingProgressModal = ({
                   padding: "0 16px",
                   fontSize: 15,
                   outline: "none",
+                  boxSizing: "border-box",
+                  display: "block",
+                  minWidth: 0,
                   fontFamily: "'Outfit', sans-serif",
                 }}
               />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>독서 종료 시각</label>
               <input
                 value={endTime}
@@ -1656,6 +1659,9 @@ export const ReadingProgressModal = ({
                   padding: "0 16px",
                   fontSize: 15,
                   outline: "none",
+                  boxSizing: "border-box",
+                  display: "block",
+                  minWidth: 0,
                   fontFamily: "'Outfit', sans-serif",
                 }}
               />
@@ -1853,12 +1859,39 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
   const publishedLabel = book.publishedDate ? formatMonthDayLabel(book.publishedDate) : "";
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [collapsedNoteDates, setCollapsedNoteDates] = useState({});
+  const [visibleTimelineKeys, setVisibleTimelineKeys] = useState({});
+  const timelineEntryRefs = useRef({});
   const trendPoints = useMemo(() => buildReadingTrendPoints(book), [book]);
   const timelineGroups = useMemo(() => buildReadingTimelineGroups(book), [book]);
 
   useEffect(() => {
     setCollapsedNoteDates({});
+    setVisibleTimelineKeys({});
   }, [book.id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || timelineGroups.length === 0) return undefined;
+    if (typeof window.IntersectionObserver === "undefined") {
+      setVisibleTimelineKeys(
+        timelineGroups.reduce((acc, group) => ({ ...acc, [group.dateKey]: true }), {}),
+      );
+      return undefined;
+    }
+    const observer = new window.IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const key = entry.target.getAttribute("data-timeline-key");
+        if (!key) return;
+        setVisibleTimelineKeys((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+      });
+    }, { threshold: 0.28, rootMargin: "0px 0px -10% 0px" });
+
+    timelineGroups.forEach((group) => {
+      const node = timelineEntryRefs.current[group.dateKey];
+      if (node) observer.observe(node);
+    });
+    return () => observer.disconnect();
+  }, [timelineGroups]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn 0.32s ease-out" }}>
@@ -2053,14 +2086,29 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 {timelineGroups.map((group, index) => {
                   const notesCollapsed = collapsedNoteDates[group.dateKey] ?? group.notes.length > 1;
-                  const sessionTimeLabel = group.session
-                    ? [formatTimeLabel(group.session.startedAt), formatTimeLabel(group.session.endedAt)]
-                      .filter(Boolean)
-                      .join(" - ")
+                  const timelineVisible = visibleTimelineKeys[group.dateKey] ?? false;
+                  const sessionStartLabel = group.session ? formatTimeLabel(group.session.startedAt) : "";
+                  const sessionEndLabel = group.session ? formatTimeLabel(group.session.endedAt) : "";
+                  const hasSessionTiming = Boolean(
+                    group.session
+                    && group.session.durationMinutes > 0
+                    && sessionStartLabel
+                    && sessionEndLabel
+                    && sessionStartLabel !== sessionEndLabel,
+                  );
+                  const sessionMetaLabel = hasSessionTiming
+                    ? `${sessionStartLabel} - ${sessionEndLabel} · ${formatReadingDuration(group.session.durationMinutes)}`
                     : "";
+                  const trackProgress = group.session ? clamp(safeNumber(group.session.toProgress), 0, 100) : 0;
+                  const deltaStart = group.session ? clamp(safeNumber(group.session.fromProgress), 0, 100) : 0;
+                  const deltaWidth = group.session ? Math.max(0, trackProgress - deltaStart) : 0;
                   return (
                     <div
                       key={`reading-timeline-${group.dateKey}`}
+                      ref={(node) => {
+                        timelineEntryRefs.current[group.dateKey] = node;
+                      }}
+                      data-timeline-key={group.dateKey}
                       style={{
                         position: "relative",
                         display: "grid",
@@ -2068,6 +2116,9 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                         gap: layout.isPhone ? 10 : 20,
                         paddingLeft: layout.isPhone ? 38 : 0,
                         paddingBottom: index === timelineGroups.length - 1 ? 0 : 6,
+                        opacity: timelineVisible ? 1 : 0.38,
+                        transform: timelineVisible ? "translateY(0)" : "translateY(18px)",
+                        transition: "opacity 0.5s ease, transform 0.7s cubic-bezier(.16,1,.3,1)",
                       }}
                     >
                       <div style={{
@@ -2091,17 +2142,48 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                           <div style={{ borderRadius: 22, border: `1px solid ${accent}2c`, background: `linear-gradient(180deg, rgba(255,255,255,0.03), ${accent}12)`, padding: layout.isPhone ? "16px" : "18px 20px", boxShadow: "0 18px 34px rgba(0,0,0,0.14)" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
                               <Badge text="독서 기록" color={accent} />
-                              <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>
-                                {[sessionTimeLabel, formatReadingDuration(group.session.durationMinutes)].filter(Boolean).join(" · ")}
-                              </span>
+                              {sessionMetaLabel ? (
+                                <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>
+                                  {sessionMetaLabel}
+                                </span>
+                              ) : null}
                             </div>
                             <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{`+${group.session.pagesRead}p 읽음`}</h3>
-                            <p style={{ margin: "0 0 8px", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>
-                              {`${group.session.fromPages}p → ${group.session.toPages}p · 진행률 +${group.session.progressDelta}%`}
-                            </p>
-                            <p style={{ margin: 0, fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>
-                              {group.session.totalPages > 0 ? `${group.session.toPages}/${group.session.totalPages}p` : `${group.session.toPages}p`}
-                            </p>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                              <div style={{ position: "relative", height: 16, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                                <div
+                                  style={{
+                                    position: "absolute",
+                                    inset: 0,
+                                    width: `${timelineVisible ? trackProgress : 0}%`,
+                                    borderRadius: 999,
+                                    background: `linear-gradient(90deg, ${accent}45, ${accent}85)`,
+                                    transition: "width 0.7s cubic-bezier(.16,1,.3,1)",
+                                  }}
+                                />
+                                <div
+                                  style={{
+                                    position: "absolute",
+                                    top: 0,
+                                    bottom: 0,
+                                    left: `${deltaStart}%`,
+                                    width: `${timelineVisible ? deltaWidth : 0}%`,
+                                    borderRadius: 999,
+                                    background: `linear-gradient(90deg, ${COLORS.reading.progressSoft}, ${accent})`,
+                                    boxShadow: `0 0 18px ${COLORS.reading.progressSoft}55`,
+                                    transition: "width 0.92s cubic-bezier(.16,1,.3,1)",
+                                  }}
+                                />
+                              </div>
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: COLORS.dark.textMuted }}>
+                                  {`${group.session.fromPages}p → ${group.session.toPages}p`}
+                                </p>
+                                <p style={{ margin: 0, fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>
+                                  {`+${group.session.progressDelta}%`}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         )}
                         {group.notes.length > 0 && (
