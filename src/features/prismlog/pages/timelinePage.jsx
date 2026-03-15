@@ -202,7 +202,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         <div style={{ padding: "10px 8px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
           <p style={{ margin: "0 0 4px", fontSize: 10, color: COLORS.dark.textMuted, letterSpacing: 0.1, whiteSpace: "nowrap" }}>오늘 진행률</p>
           <p style={{ margin: 0, fontSize: 18, lineHeight: 1, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
-            +{formatPercentDelta(item.seriesProgressDelta)}
+            +{Math.round(item.seriesProgressDelta)}
             <span style={{ marginLeft: 1, fontSize: 11, color: COLORS.dark.textMuted, fontWeight: 400 }}>%</span>
           </p>
         </div>
@@ -393,6 +393,10 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                               <h3 style={{ margin: "0 0 6px", fontSize: 18, lineHeight: 1.3, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
                               {item.progress !== null ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                  <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: -2 }}>
+                                    {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
+                                    <span style={{ fontSize: 13, fontWeight: 700, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
+                                  </div>
                                   <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
                                     {/* 1. 기존 진행률 (Solid) */}
                                     <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${visible ? progressStart : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 12px ${item.accent}33`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.1s" }} />
@@ -414,10 +418,6 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       {renderSeriesStats(item)}
-                                    </div>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                      {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
-                                      <span style={{ fontSize: 12, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
                                     </div>
                                   </div>
                                   {item.snippet ? (
@@ -451,6 +451,10 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                             <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
                             {item.progress !== null ? (
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: -2 }}>
+                                  {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
+                                </div>
                                 <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
                                   {/* 1. 기존 진행률 (Solid) */}
                                   <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${visible ? progressStart : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 12px ${item.accent}33`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.1s" }} />
@@ -472,10 +476,6 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                                   <div style={{ flex: 1, minWidth: 0 }}>
                                     {renderSeriesStats(item)}
-                                  </div>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                    {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
-                                    <span style={{ fontSize: 12, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
                                   </div>
                                 </div>
                                 {item.snippet ? (
