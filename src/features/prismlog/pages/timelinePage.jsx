@@ -104,7 +104,11 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         progressStart,
         progressEnd,
         status: log.category === "culture" ? (payload.status || (type === "게임" ? "플레이 중" : "시청 중")) : "",
-        poster: log.category === "culture" ? (payload.poster || null) : null,
+        poster: log.category === "reading"
+          ? (payload.cover || null)
+          : log.category === "study"
+            ? (payload.image_url || payload.imageUrl || null)
+            : (payload.poster || null),
       };
       const existing = acc.find((group) => group.key === key);
       if (existing) {
@@ -297,8 +301,9 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                         onClick={() => onOpenDetail?.({ section: item.sectionKey, id: item.id })}
                         style={{
                           width: "100%",
-                          borderRadius: 22,
                           border: `1px solid ${item.accent}2c`,
+                          color: COLORS.dark.text,
+                          borderRadius: 22,
                           background: `linear-gradient(180deg, rgba(255,255,255,0.03), ${item.accent}10)`,
                           padding: layout.isPhone ? "16px" : "18px 20px",
                           boxShadow: "0 18px 34px rgba(0,0,0,0.14)",
@@ -317,14 +322,14 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                           <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{item.time}</span>
                         </div>
                         {item.poster ? (
-                          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                          <div style={{ display: "flex", gap: layout.isPhone ? 12 : 16, alignItems: "flex-start" }}>
                             <img
                               src={item.poster}
                               alt=""
-                              style={{ width: 42, height: 60, borderRadius: 6, objectFit: "cover", flexShrink: 0, boxShadow: "0 4px 12px rgba(0,0,0,0.35)" }}
+                              style={{ width: layout.isPhone ? 58 : 72, height: layout.isPhone ? 84 : 104, borderRadius: 10, objectFit: "cover", flexShrink: 0, boxShadow: "0 8px 18px rgba(0,0,0,0.3)" }}
                             />
                             <div style={{ minWidth: 0 }}>
-                              <h3 style={{ margin: "0 0 6px", fontSize: 18, lineHeight: 1.3, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
+                              <h3 style={{ margin: "0 0 6px", fontSize: 18, lineHeight: 1.3, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
                               {item.progress !== null ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                   <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
@@ -334,23 +339,23 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                     ) : null}
                                   </div>
                                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: COLORS.dark.textMuted }}>{item.summary || "진행 정보 없음"}</p>
+                                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: COLORS.dark.textMuted, flex: 1 }}>{item.summary || "진행 정보 없음"}</p>
                                     <span style={{ fontSize: 12, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
                                   </div>
                                   {item.snippet ? (
-                                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                                       {item.snippet}
                                     </p>
                                   ) : null}
                                 </div>
                               ) : (
-                                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.summary || "기록 메모 없음"}</p>
+                                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.summary || "기록 메모 없음"}</p>
                               )}
                             </div>
                           </div>
                         ) : (
                           <>
-                            <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
+                            <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
                             {item.progress !== null ? (
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
@@ -360,17 +365,17 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                   ) : null}
                                 </div>
                                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                                  <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: COLORS.dark.textMuted }}>{item.summary || "진행 정보 없음"}</p>
+                                  <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: COLORS.dark.textMuted, flex: 1 }}>{item.summary || "진행 정보 없음"}</p>
                                   <span style={{ fontSize: 12, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
                                 </div>
                                 {item.snippet ? (
-                                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                                     {item.snippet}
                                   </p>
                                 ) : null}
                               </div>
                             ) : (
-                              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.summary || "기록 메모 없음"}</p>
+                              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.summary || "기록 메모 없음"}</p>
                             )}
                           </>
                         )}
