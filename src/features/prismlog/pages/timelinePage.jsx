@@ -387,9 +387,16 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                               {item.progress !== null ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                   <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
-                                    <div style={{ position: "absolute", inset: 0, width: `${visible ? progressValue : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 16px ${item.accent}44`, transition: "width 0.72s cubic-bezier(.16,1,.3,1)" }} />
+                                    {/* 1. 기존 진행률 (Solid) */}
+                                    <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${visible ? progressStart : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 12px ${item.accent}33`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.1s" }} />
+                                    
                                     {progressDelta > 0 ? (
-                                      <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: "#f5f0eb", boxShadow: `0 0 18px ${item.accent}66`, transition: "width 0.94s cubic-bezier(.16,1,.3,1)" }} />
+                                      <>
+                                        {/* 2. 델타 가이드 (Light Leader) */}
+                                        <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `${item.accent}55`, boxShadow: `0 0 18px ${item.accent}44`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.6s" }} />
+                                        {/* 3. 델타 채우기 (Solid Follower) */}
+                                        <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 16px ${item.accent}66`, transition: "width 0.7s cubic-bezier(.16,1,.3,1)", transitionDelay: "1.1s" }} />
+                                      </>
                                     ) : null}
                                     {progressValue >= 100 ? (
                                       <div style={{ position: "absolute", right: 2, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 4 }}>
@@ -438,9 +445,16 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                             {item.progress !== null ? (
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
-                                  <div style={{ position: "absolute", inset: 0, width: `${visible ? progressValue : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 16px ${item.accent}44`, transition: "width 0.72s cubic-bezier(.16,1,.3,1)" }} />
+                                  {/* 1. 기존 진행률 (Solid) */}
+                                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${visible ? progressStart : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 12px ${item.accent}33`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.1s" }} />
+                                  
                                   {progressDelta > 0 ? (
-                                    <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: "#f5f0eb", boxShadow: `0 0 18px ${item.accent}66`, transition: "width 0.94s cubic-bezier(.16,1,.3,1)" }} />
+                                    <>
+                                      {/* 2. 델타 가이드 (Light Leader) */}
+                                      <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `${item.accent}55`, boxShadow: `0 0 18px ${item.accent}44`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.6s" }} />
+                                      {/* 3. 델타 채우기 (Solid Follower) */}
+                                      <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 16px ${item.accent}66`, transition: "width 0.7s cubic-bezier(.16,1,.3,1)", transitionDelay: "1.1s" }} />
+                                    </>
                                   ) : null}
                                   {progressValue >= 100 ? (
                                     <div style={{ position: "absolute", right: 2, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 4 }}>
