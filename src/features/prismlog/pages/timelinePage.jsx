@@ -332,10 +332,10 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                               <h3 style={{ margin: "0 0 6px", fontSize: 18, lineHeight: 1.3, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
                               {item.progress !== null ? (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                  <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                                    <div style={{ position: "absolute", inset: 0, width: `${visible ? progressValue : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, ${item.accent}40, ${item.accent}85)`, transition: "width 0.72s cubic-bezier(.16,1,.3,1)" }} />
+                                  <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
+                                    <div style={{ position: "absolute", inset: 0, width: `${visible ? progressValue : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, ${item.accent}99, ${item.accent}dd)`, boxShadow: `0 0 16px ${item.accent}44`, transition: "width 0.72s cubic-bezier(.16,1,.3,1)" }} />
                                     {progressDelta > 0 ? (
-                                      <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, #f5f0eb, ${item.accent})`, boxShadow: `0 0 18px ${item.accent}66`, transition: "width 0.94s cubic-bezier(.16,1,.3,1)" }} />
+                                      <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, rgba(245,240,235,0.9), ${item.accent})`, boxShadow: `0 0 18px ${item.accent}66`, transition: "width 0.94s cubic-bezier(.16,1,.3,1)" }} />
                                     ) : null}
                                   </div>
                                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -358,10 +358,10 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                             <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
                             {item.progress !== null ? (
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                                  <div style={{ position: "absolute", inset: 0, width: `${visible ? progressValue : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, ${item.accent}40, ${item.accent}85)`, transition: "width 0.72s cubic-bezier(.16,1,.3,1)" }} />
+                                <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
+                                  <div style={{ position: "absolute", inset: 0, width: `${visible ? progressValue : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, ${item.accent}99, ${item.accent}dd)`, boxShadow: `0 0 16px ${item.accent}44`, transition: "width 0.72s cubic-bezier(.16,1,.3,1)" }} />
                                   {progressDelta > 0 ? (
-                                    <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, #f5f0eb, ${item.accent})`, boxShadow: `0 0 18px ${item.accent}66`, transition: "width 0.94s cubic-bezier(.16,1,.3,1)" }} />
+                                    <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, rgba(245,240,235,0.9), ${item.accent})`, boxShadow: `0 0 18px ${item.accent}66`, transition: "width 0.94s cubic-bezier(.16,1,.3,1)" }} />
                                   ) : null}
                                 </div>
                                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
