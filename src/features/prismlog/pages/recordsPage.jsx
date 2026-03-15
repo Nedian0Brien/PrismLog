@@ -1858,14 +1858,16 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
   const tags = Array.isArray(book.tags) ? book.tags : [];
   const publishedLabel = book.publishedDate ? formatMonthDayLabel(book.publishedDate) : "";
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
-  const [collapsedNoteDates, setCollapsedNoteDates] = useState({});
   const [visibleTimelineKeys, setVisibleTimelineKeys] = useState({});
   const timelineEntryRefs = useRef({});
   const trendPoints = useMemo(() => buildReadingTrendPoints(book), [book]);
   const timelineGroups = useMemo(() => buildReadingTimelineGroups(book), [book]);
+  const readingFeedNotes = useMemo(
+    () => (Array.isArray(book.readingNotes) ? [...book.readingNotes].sort((a, b) => new Date(b.date) - new Date(a.date)) : []),
+    [book],
+  );
 
   useEffect(() => {
-    setCollapsedNoteDates({});
     setVisibleTimelineKeys({});
   }, [book.id]);
 
@@ -2067,7 +2069,7 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Reading Timeline</p>
-            <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>독서 기록 & 메모</h4>
+            <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>독서 타임라인</h4>
           </div>
           {timelineGroups.length === 0 ? (
             <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>아직 독서 기록이나 메모가 없습니다.</p>
@@ -2085,7 +2087,6 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
               }} />
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 {timelineGroups.map((group, index) => {
-                  const notesCollapsed = collapsedNoteDates[group.dateKey] ?? group.notes.length > 1;
                   const timelineVisible = visibleTimelineKeys[group.dateKey] ?? false;
                   const sessionStartLabel = group.session ? formatTimeLabel(group.session.startedAt) : "";
                   const sessionEndLabel = group.session ? formatTimeLabel(group.session.endedAt) : "";
@@ -2188,35 +2189,18 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                         )}
                         {group.notes.length > 0 && (
                           <div style={{ borderRadius: 22, border: `1px solid ${COLORS.dark.border}`, background: "linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02))", padding: layout.isPhone ? "16px" : "18px 20px", boxShadow: "0 18px 34px rgba(0,0,0,0.12)" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                                <Badge text="독서 메모" color={COLORS.reading.progressSoft} />
+                                <Badge text="메모 스니펫" color={COLORS.reading.progressSoft} />
                                 <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{`${group.notes.length}개 메모`}</span>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => setCollapsedNoteDates((prev) => ({ ...prev, [group.dateKey]: !notesCollapsed }))}
-                                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: 0, border: "none", background: "none", color: COLORS.dark.textMuted, cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}
-                              >
-                                <span style={{ transform: notesCollapsed ? "rotate(0deg)" : "rotate(180deg)", transition: "transform 0.2s ease" }}>
-                                  <ChevronDown size={14} color={COLORS.reading.progressSoft} />
-                                </span>
-                                {notesCollapsed ? "메모 펼치기" : "메모 접기"}
-                              </button>
+                              <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>
+                                {formatTimeLabel(group.notes[0]?.date)}
+                              </span>
                             </div>
-                            {!notesCollapsed && (
-                              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
-                                {group.notes.map((note) => (
-                                  <div key={note.id} style={{ padding: "13px 14px", borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.03)" }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
-                                      <strong style={{ fontSize: 13, color: COLORS.dark.text }}>{note.page > 0 ? `${note.page}p 메모` : "독서 메모"}</strong>
-                                      <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{formatTimeLabel(note.date)}</span>
-                                    </div>
-                                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{note.text}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                              {group.notes[0]?.text}
+                            </p>
                           </div>
                         )}
                       </div>
@@ -2224,6 +2208,51 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                   );
                 })}
               </div>
+            </div>
+          )}
+        </div>
+      </GlassCard>
+
+      <GlassCard glow={COLORS.reading.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <div>
+              <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Reading Feed</p>
+              <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>독서 피드</h4>
+            </div>
+            <button
+              type="button"
+              onClick={() => onAddNote(book)}
+              style={{ minHeight: 40, padding: "0 14px", borderRadius: 999, border: `1px solid ${accent}44`, background: `${accent}12`, color: accent, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Pretendard', sans-serif" }}
+            >
+              + 독서 메모
+            </button>
+          </div>
+          {readingFeedNotes.length === 0 ? (
+            <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>아직 남긴 독서 메모가 없습니다.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {readingFeedNotes.map((note) => (
+                <div key={note.id} style={{ position: "relative", padding: layout.isPhone ? "18px 16px 16px" : "20px 18px 18px", borderRadius: 22, border: `1px solid ${accent}20`, background: "linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02))", overflow: "hidden", boxShadow: "0 18px 34px rgba(0,0,0,0.12)" }}>
+                  <span style={{ position: "absolute", top: -12, left: 12, fontSize: layout.isPhone ? 74 : 82, lineHeight: 1, fontWeight: 800, color: `${accent}18`, fontFamily: "'Outfit', sans-serif", pointerEvents: "none" }}>
+                    “
+                  </span>
+                  <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <Badge text="독서 메모" color={COLORS.reading.progressSoft} />
+                        {note.page > 0 ? <span style={{ fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>{`${note.page}p`}</span> : null}
+                      </div>
+                      <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>
+                        {[formatMonthDayLabel(note.date), formatTimeLabel(note.date)].filter(Boolean).join(" · ")}
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 14, lineHeight: 1.85, color: COLORS.dark.text }}>
+                      {note.text}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -2347,7 +2376,7 @@ export const ReadingGridCard = ({ book, onEdit, onAdd, onOpen, layout }) => {
 };
 
 /* ──────────── Page: Reading ──────────── */
-export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout }) => {
+export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, initialDetailId = null }) => {
   const [viewMode, setViewMode] = useState("list");
   const [detailId, setDetailId] = useState(null);
   const [progressModalBook, setProgressModalBook] = useState(null);
@@ -2369,6 +2398,10 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout }
       setDetailId(null);
     }
   }, [books.length, detailBook, detailId]);
+
+  useEffect(() => {
+    if (initialDetailId) setDetailId(initialDetailId);
+  }, [initialDetailId]);
 
   const openProgressModal = useCallback((book) => {
     const latestSession = Array.isArray(book.readingSessions) && book.readingSessions.length > 0
@@ -2738,9 +2771,12 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout }
 };
 
 /* ──────────── Page: Study ──────────── */
-export const StudyPage = ({ studies, loading, onEdit, layout }) => {
+export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = null }) => {
   const [detailId, setDetailId] = useState(null);
   const detail = studies.find(s => s.id === detailId);
+  useEffect(() => {
+    if (initialDetailId) setDetailId(initialDetailId);
+  }, [initialDetailId]);
   if (detail) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -2822,7 +2858,7 @@ export const StudyPage = ({ studies, loading, onEdit, layout }) => {
 };
 
 /* ──────────── Page: Culture ──────────── */
-export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, layout, title = "문화생활", fixedType = null }) => {
+export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, layout, title = "문화생활", fixedType = null, initialDetailId = null }) => {
   const [filter, setFilter] = useState(fixedType || "전체");
   const [detailId, setDetailId] = useState(null);
   const filters = ["전체", ...CULTURE_TYPES];
@@ -2844,6 +2880,10 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
     () => filtered.find((item) => item.id === detailId) || null,
     [detailId, filtered]
   );
+
+  useEffect(() => {
+    if (initialDetailId) setDetailId(initialDetailId);
+  }, [initialDetailId]);
 
   if (detailItem?.type === "시리즈") {
     return <SeriesDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} onUpdateSeriesProgress={onUpdateSeriesProgress} />;
@@ -3199,7 +3239,7 @@ export const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
   );
 };
 
-export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, onAddReadingNote, initialSection = null, onSectionChange, layout }) => {
+export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, onAddReadingNote, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
   const [selectedSection, setSelectedSection] = useState(initialSection);
   const [mobileColumns, setMobileColumns] = useState(1);
   const [transitionDirection, setTransitionDirection] = useState(initialSection ? "forward" : "back");
@@ -3402,17 +3442,18 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
   };
 
   const renderSectionPage = () => {
+    const initialDetailId = initialDetailTarget?.section === selectedSection ? initialDetailTarget.id : null;
     switch (selectedSection) {
       case "reading":
-        return <ReadingPage books={sortedReading} loading={loading} onEdit={onEditReading} onAdd={onAddReading} onAddNote={onAddReadingNote} layout={layout} />;
+        return <ReadingPage books={sortedReading} loading={loading} onEdit={onEditReading} onAdd={onAddReading} onAddNote={onAddReadingNote} layout={layout} initialDetailId={initialDetailId} />;
       case "study":
-        return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} layout={layout} />;
+        return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} layout={layout} initialDetailId={initialDetailId} />;
       case "movie":
-        return <CulturePage items={movieLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="영화 기록" fixedType="영화" />;
+        return <CulturePage items={movieLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="영화 기록" fixedType="영화" initialDetailId={initialDetailId} />;
       case "series":
-        return <CulturePage items={seriesLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="시리즈 기록" fixedType="시리즈" />;
+        return <CulturePage items={seriesLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="시리즈 기록" fixedType="시리즈" initialDetailId={initialDetailId} />;
       case "game":
-        return <CulturePage items={gameLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="게임 기록" fixedType="게임" />;
+        return <CulturePage items={gameLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="게임 기록" fixedType="게임" initialDetailId={initialDetailId} />;
       default:
         return null;
     }

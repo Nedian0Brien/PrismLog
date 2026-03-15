@@ -95,6 +95,7 @@ export default function PrismLog() {
   const [editingReading, setEditingReading] = useState(null);
   const [editingStudy, setEditingStudy] = useState(null);
   const [editingCulture, setEditingCulture] = useState(null);
+  const [recordsDetailTarget, setRecordsDetailTarget] = useState(null);
   const layout = useResponsiveLayout();
   const mainScrollRef = useRef(null);
   const isAnySheetOpen = sheetOpen || Boolean(editingReading) || Boolean(editingStudy) || Boolean(editingCulture);
@@ -141,6 +142,12 @@ export default function PrismLog() {
     if (currentPath === nextPath) return;
     window.history[mode === "replace" ? "replaceState" : "pushState"]({}, "", nextPath);
   }, []);
+
+  const openTimelineRecordDetail = useCallback((target) => {
+    if (!target?.section || !target?.id) return;
+    setRecordsDetailTarget(target);
+    navigateTo("records", target.section);
+  }, [navigateTo]);
 
 
   const readingLogs = useMemo(
@@ -465,10 +472,14 @@ export default function PrismLog() {
         onAddReading={addReadingProgress}
         onAddReadingNote={addReadingNote}
         initialSection={recordsSection}
-        onSectionChange={(section) => navigateTo("records", section)}
+        initialDetailTarget={recordsDetailTarget}
+        onSectionChange={(section) => {
+          setRecordsDetailTarget(null);
+          navigateTo("records", section);
+        }}
         layout={layout}
       />;
-      case "timeline": return <TimelinePage logs={logs} loading={loading} layout={layout} />;
+      case "timeline": return <TimelinePage logs={logs} loading={loading} layout={layout} onOpenDetail={openTimelineRecordDetail} />;
       case "settings": return <SettingsPage readingLogs={readingLogs} studyLogs={studyLogs} cultureLogs={cultureLogs} layout={layout} />;
       default: return <DashboardPage
         logs={logs}

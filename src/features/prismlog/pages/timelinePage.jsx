@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   COLORS,
   DAYS_KO,
+  clamp,
   formatTimeLabel,
   getDateKey,
+  getSeriesProgressMetrics,
   safeNumber,
   normalizeCultureType,
   getCultureTone,
@@ -12,8 +14,10 @@ import {
 } from "../core";
 import { Badge, GlassCard, StatusBadge } from "../ui";
 
-export const TimelinePage = ({ logs, loading, layout }) => {
+export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
   const [view, setView] = useState("feed");
+  const [visibleKeys, setVisibleKeys] = useState({});
+  const itemRefs = useRef({});
 
   const groups = useMemo(() => {
     const sorted = [...logs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -27,17 +31,78 @@ export const TimelinePage = ({ logs, loading, layout }) => {
         : log.category === "study"
           ? COLORS.study.main
           : getCultureTone(type).main;
+      const readingSessions = Array.isArray(payload.reading_sessions)
+        ? [...payload.reading_sessions].sort((a, b) => new Date(b.ended_at || b.date || 0) - new Date(a.ended_at || a.date || 0))
+        : [];
+      const latestReadingSession = readingSessions[0] || null;
+      const readingNotes = Array.isArray(payload.reading_notes)
+        ? [...payload.reading_notes].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+        : [];
+      const latestReadingNote = readingNotes[0] || null;
+      const studyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
+      const studyCompleted = Array.isArray(payload.completed) ? payload.completed.filter(Boolean).length : 0;
+      const studyProgress = studyChapters.length > 0 ? Math.round((studyCompleted / studyChapters.length) * 100) : clamp(safeNumber(payload.progress), 0, 100);
+      const seriesMetrics = type === "시리즈"
+        ? getSeriesProgressMetrics({
+          episodeCount: payload.episode_count,
+          seasons: payload.seasons,
+          watchedEpisodes: payload.watched_episode_count,
+          playtime: payload.playtime,
+          progress: payload.progress,
+        })
+        : null;
+      const progress = log.category === "reading"
+        ? clamp(
+          safeNumber(
+            payload.progress,
+            safeNumber(payload.pages_total || payload.pages) > 0
+              ? Math.round((safeNumber(payload.pages_read || payload.readPages) / safeNumber(payload.pages_total || payload.pages)) * 100)
+              : 0,
+          ),
+          0,
+          100,
+        )
+        : log.category === "study"
+          ? clamp(studyProgress, 0, 100)
+          : type === "시리즈"
+            ? clamp(safeNumber(seriesMetrics?.progress, payload.progress), 0, 100)
+            : null;
+      const progressStart = log.category === "reading"
+        ? clamp(
+          safeNumber(
+            latestReadingSession?.from_progress ?? latestReadingSession?.fromProgress,
+            Math.max(0, safeNumber(progress, 0) - safeNumber(latestReadingSession?.progress_delta ?? latestReadingSession?.progressDelta, 0)),
+          ),
+          0,
+          100,
+        )
+        : progress;
+      const progressEnd = progress ?? 0;
+      const sectionKey = log.category === "reading"
+        ? "reading"
+        : log.category === "study"
+          ? "study"
+          : type === "시리즈"
+            ? "series"
+            : type === "게임"
+              ? "game"
+              : "movie";
       const item = {
         id: log.id,
         title: log.title,
         time: formatTimeLabel(log.created_at),
         accent,
+        sectionKey,
         categoryLabel: log.category === "reading" ? "독서" : log.category === "study" ? "공부" : type,
         summary: log.summary || (log.category === "reading"
           ? `${safeNumber(payload.pages_read)} / ${safeNumber(payload.pages_total)}p`
           : log.category === "study"
             ? `${Array.isArray(payload.chapters) ? payload.chapters.length : 0}개 챕터`
             : payload.playtime || payload.status || ""),
+        snippet: log.category === "reading" ? (latestReadingNote?.text || "") : "",
+        progress,
+        progressStart,
+        progressEnd,
         status: log.category === "culture" ? (payload.status || (type === "게임" ? "플레이 중" : "시청 중")) : "",
         poster: log.category === "culture" ? (payload.poster || null) : null,
       };
@@ -57,6 +122,40 @@ export const TimelinePage = ({ logs, loading, layout }) => {
       return acc;
     }, []);
   }, [logs]);
+
+  useEffect(() => {
+    setVisibleKeys({});
+  }, [logs, view]);
+
+  useEffect(() => {
+    if (view !== "feed") return undefined;
+    if (typeof window === "undefined") return undefined;
+    if (typeof window.IntersectionObserver === "undefined") {
+      setVisibleKeys(groups.reduce((acc, group) => {
+        group.items.forEach((item) => {
+          acc[item.id] = true;
+        });
+        return acc;
+      }, {}));
+      return undefined;
+    }
+    const observer = new window.IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const key = entry.target.getAttribute("data-item-key");
+        if (!key) return;
+        setVisibleKeys((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+      });
+    }, { threshold: 0.24, rootMargin: "0px 0px -8% 0px" });
+
+    groups.forEach((group) => {
+      group.items.forEach((item) => {
+        const node = itemRefs.current[item.id];
+        if (node) observer.observe(node);
+      });
+    });
+    return () => observer.disconnect();
+  }, [groups, view]);
 
   const calendarMonths = useMemo(() => {
     const counts = logs.reduce((acc, log) => {
@@ -182,15 +281,32 @@ export const TimelinePage = ({ logs, loading, layout }) => {
                     <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{group.sideLabel}</span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {group.items.map((item) => (
-                      <div
+                    {group.items.map((item) => {
+                      const visible = visibleKeys[item.id] ?? false;
+                      const progressValue = item.progressEnd ?? item.progress ?? 0;
+                      const progressStart = clamp(safeNumber(item.progressStart, progressValue), 0, 100);
+                      const progressDelta = Math.max(0, progressValue - progressStart);
+                      return (
+                      <button
                         key={item.id}
+                        type="button"
+                        ref={(node) => {
+                          itemRefs.current[item.id] = node;
+                        }}
+                        data-item-key={item.id}
+                        onClick={() => onOpenDetail?.({ section: item.sectionKey, id: item.id })}
                         style={{
+                          width: "100%",
                           borderRadius: 22,
                           border: `1px solid ${item.accent}2c`,
                           background: `linear-gradient(180deg, rgba(255,255,255,0.03), ${item.accent}10)`,
                           padding: layout.isPhone ? "16px" : "18px 20px",
                           boxShadow: "0 18px 34px rgba(0,0,0,0.14)",
+                          textAlign: "left",
+                          cursor: "pointer",
+                          opacity: visible ? 1 : 0.42,
+                          transform: visible ? "translateY(0)" : "translateY(18px)",
+                          transition: "opacity 0.5s ease, transform 0.72s cubic-bezier(.16,1,.3,1)",
                         }}
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
@@ -209,17 +325,57 @@ export const TimelinePage = ({ logs, loading, layout }) => {
                             />
                             <div style={{ minWidth: 0 }}>
                               <h3 style={{ margin: "0 0 6px", fontSize: 18, lineHeight: 1.3, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
-                              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.summary || "기록 메모 없음"}</p>
+                              {item.progress !== null ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                  <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                                    <div style={{ position: "absolute", inset: 0, width: `${visible ? progressValue : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, ${item.accent}40, ${item.accent}85)`, transition: "width 0.72s cubic-bezier(.16,1,.3,1)" }} />
+                                    {progressDelta > 0 ? (
+                                      <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, #f5f0eb, ${item.accent})`, boxShadow: `0 0 18px ${item.accent}66`, transition: "width 0.94s cubic-bezier(.16,1,.3,1)" }} />
+                                    ) : null}
+                                  </div>
+                                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: COLORS.dark.textMuted }}>{item.summary || "진행 정보 없음"}</p>
+                                    <span style={{ fontSize: 12, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
+                                  </div>
+                                  {item.snippet ? (
+                                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                                      {item.snippet}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.summary || "기록 메모 없음"}</p>
+                              )}
                             </div>
                           </div>
                         ) : (
                           <>
                             <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
-                            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.summary || "기록 메모 없음"}</p>
+                            {item.progress !== null ? (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                                  <div style={{ position: "absolute", inset: 0, width: `${visible ? progressValue : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, ${item.accent}40, ${item.accent}85)`, transition: "width 0.72s cubic-bezier(.16,1,.3,1)" }} />
+                                  {progressDelta > 0 ? (
+                                    <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `linear-gradient(90deg, #f5f0eb, ${item.accent})`, boxShadow: `0 0 18px ${item.accent}66`, transition: "width 0.94s cubic-bezier(.16,1,.3,1)" }} />
+                                  ) : null}
+                                </div>
+                                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                                  <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: COLORS.dark.textMuted }}>{item.summary || "진행 정보 없음"}</p>
+                                  <span style={{ fontSize: 12, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
+                                </div>
+                                {item.snippet ? (
+                                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                                    {item.snippet}
+                                  </p>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.summary || "기록 메모 없음"}</p>
+                            )}
                           </>
                         )}
-                      </div>
-                    ))}
+                      </button>
+                    )})}
                   </div>
                 </div>
               ))}

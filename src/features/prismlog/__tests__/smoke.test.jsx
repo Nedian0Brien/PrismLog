@@ -167,7 +167,8 @@ describe("PrismLog feature smoke", () => {
     expect(detailHtml).toContain("상세 독서 테스트");
     expect(detailHtml).toContain("+32p 읽음");
     expect(detailHtml).toContain("30분 독서");
-    expect(detailHtml).toContain("메모 펼치기");
+    expect(detailHtml).toContain("메모 스니펫");
+    expect(detailHtml).toContain("독서 피드");
     expect(detailHtml).not.toContain("NaN");
     expect(modalHtml).toContain("읽은 페이지 추가");
     expect(modalHtml).toContain("독서 시작 시각");
