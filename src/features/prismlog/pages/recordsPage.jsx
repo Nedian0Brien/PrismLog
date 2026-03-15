@@ -398,7 +398,12 @@ const FloatingSeriesProgressToast = ({ toast, visible, animatedProgress }) => {
   );
 };
 
-const SeriesProgressTrendChart = ({ points, color = COLORS.series.main }) => {
+const SeriesProgressTrendChart = ({
+  points,
+  color = COLORS.series.main,
+  labelColor = COLORS.dark.textMuted,
+  gridColor = "rgba(255,255,255,0.07)",
+}) => {
   const [displayedProgress, setDisplayedProgress] = useState(points[points.length - 1]?.progress ?? 0);
   const displayedProgressRef = useRef(points[points.length - 1]?.progress ?? 0);
   if (!points.length) return null;
@@ -465,7 +470,7 @@ const SeriesProgressTrendChart = ({ points, color = COLORS.series.main }) => {
         <p style={{ margin: 0, fontSize: 11, letterSpacing: 1, color: color, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
           Progress Trend
         </p>
-        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>
+        <span style={{ fontSize: 11, color: labelColor }}>
           {`${points[0].label} → ${points[points.length - 1].label}`}
         </span>
       </div>
@@ -485,7 +490,7 @@ const SeriesProgressTrendChart = ({ points, color = COLORS.series.main }) => {
               y1={y}
               x2={width - paddingX}
               y2={y}
-              stroke="rgba(255,255,255,0.07)"
+              stroke={gridColor}
               strokeDasharray="3 5"
             />
           );
@@ -499,8 +504,8 @@ const SeriesProgressTrendChart = ({ points, color = COLORS.series.main }) => {
         ))}
       </svg>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{points[0].label}</span>
-        <span style={{ fontSize: 11, color: COLORS.series.main, fontFamily: "'Outfit', sans-serif" }}>{animatedProgressLabel}</span>
+        <span style={{ fontSize: 11, color: labelColor }}>{points[0].label}</span>
+        <span style={{ fontSize: 11, color, fontFamily: "'Outfit', sans-serif" }}>{animatedProgressLabel}</span>
       </div>
     </div>
   );
@@ -1525,7 +1530,7 @@ export const ReadingProgressModal = ({
   onSubmit,
 }) => {
   if (!book) return null;
-  const accent = COLORS.reading.main;
+  const accent = COLORS.reading.progress;
   const parsedTotalPages = Math.max(0, safeNumber(totalPages));
   const parsedCurrentPages = clamp(safeNumber(currentPages), 0, Math.max(parsedTotalPages, 1));
   const remainingPages = Math.max(0, parsedTotalPages - parsedCurrentPages);
@@ -1594,8 +1599,8 @@ export const ReadingProgressModal = ({
             layout={layout}
             accent={accent}
             compact
-            currentLabelOverride="기록 현재 페이지"
-            totalLabelOverride="책 전체 페이지"
+            currentLabelOverride="페이지 정보 · 현재"
+            totalLabelOverride="페이지 정보 · 전체"
             currentValue={String(parsedCurrentPages)}
             totalPages={String(parsedTotalPages)}
             derivedProgress={parsedTotalPages > 0 ? Math.round((parsedCurrentPages / parsedTotalPages) * 100) : 0}
@@ -1729,7 +1734,7 @@ const ReadingNoteModal = ({ book, layout, saving, error, page, note, onPageChang
 };
 
 export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNote }) => {
-  const accent = COLORS.reading.main;
+  const accent = COLORS.reading.progress;
   const progress = clamp(safeNumber(book.progress), 0, 100);
   const tags = Array.isArray(book.tags) ? book.tags : [];
   const publishedLabel = book.publishedDate ? formatMonthDayLabel(book.publishedDate) : "";
@@ -1886,7 +1891,12 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
       <GlassCard glow={COLORS.reading.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px" }}>
         <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "minmax(0, 1fr) 158px", gap: 18, alignItems: "center" }}>
           <div style={{ width: "100%" }}>
-            <SeriesProgressTrendChart points={trendPoints} color={accent} />
+            <SeriesProgressTrendChart
+              points={trendPoints}
+              color={accent}
+              labelColor={COLORS.reading.progressSoft}
+              gridColor={`${accent}24`}
+            />
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
             <div style={{ position: "relative", width: layout.isPhone ? 118 : 132, height: layout.isPhone ? 118 : 132 }}>

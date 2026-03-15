@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 
 /* ──────────── Color Tokens ──────────── */
 export const CATEGORY_COLORS = (() => {
-  const reading = { main: "#2db5a3", glow: "rgba(45,181,163,0.35)", light: "#3fd4bf" };
+  const reading = {
+    main: "#2db5a3",
+    glow: "rgba(45,181,163,0.35)",
+    light: "#3fd4bf",
+    progress: "#2db5a3",
+    progressSoft: "#8be5d8",
+  };
   const study = { main: "#f0c930", glow: "rgba(240,201,48,0.35)", light: "#f7da5e" };
   const culture = { main: "#e63946", glow: "rgba(230,57,70,0.35)", light: "#f25d69" };
   const series = { main: "#ff8a65", glow: "rgba(255,138,101,0.35)", light: "#ffab91" };
