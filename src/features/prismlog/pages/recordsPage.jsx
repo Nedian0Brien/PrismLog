@@ -519,6 +519,7 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
   const episodeRefs = useRef({});
   const [pendingUnwatchEpisode, setPendingUnwatchEpisode] = useState(null);
   const [highlightedEpisodeKey, setHighlightedEpisodeKey] = useState(null);
+  const [detailEntering, setDetailEntering] = useState(false);
   const accent = COLORS.series.main;
   const successColor = "#63d2a4";
   const tmdbId = getSeriesTmdbId(item);
@@ -534,6 +535,16 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
     setToastVisible(false);
     setPendingUnwatchEpisode(null);
     setHighlightedEpisodeKey(null);
+    setDetailEntering(false);
+  }, [item.id]);
+
+  useEffect(() => {
+    let frameId = 0;
+    setDetailEntering(false);
+    frameId = window.requestAnimationFrame(() => {
+      setDetailEntering(true);
+    });
+    return () => window.cancelAnimationFrame(frameId);
   }, [item.id]);
 
   useEffect(() => {
@@ -709,7 +720,17 @@ const SeriesDetailPage = ({ item, layout, onBack, onEdit, onUpdateSeriesProgress
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn 0.34s cubic-bezier(.22,.9,.24,1)" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+        opacity: detailEntering ? 1 : 0,
+        transform: detailEntering ? "translate3d(0, 0, 0)" : "translate3d(0, 18px, 0)",
+        transition: "opacity 320ms cubic-bezier(.22,.9,.24,1), transform 320ms cubic-bezier(.22,.9,.24,1)",
+        willChange: "opacity, transform",
+      }}
+    >
       <FloatingSeriesProgressToast toast={toast} visible={toastVisible} animatedProgress={animatedToastProgress} />
       {pendingUnwatchEpisode && (
         <div style={{
