@@ -8,6 +8,7 @@ import {
   getResponsiveColumns,
   getCultureTone,
   getSeriesPlatformLabel,
+  getSeriesPlatformTheme,
   getSeriesProgressMetrics,
   SeriesPlatformIcon,
   formatMonthDayLabel,
@@ -260,6 +261,7 @@ const SeriesProgressSummary = ({ item, accent }) => {
 
 const SeriesPlatformBadge = ({ platformKey, platformLabel, accent = COLORS.series.main }) => {
   if (!platformKey) return null;
+  const theme = getSeriesPlatformTheme(platformKey);
   return (
     <span style={{
       display: "inline-flex",
@@ -267,15 +269,16 @@ const SeriesPlatformBadge = ({ platformKey, platformLabel, accent = COLORS.serie
       gap: 6,
       padding: "6px 10px",
       borderRadius: 999,
-      border: `1px solid ${accent}28`,
-      background: `${accent}12`,
-      color: COLORS.dark.text,
+      border: `1px solid ${theme.border}`,
+      background: `linear-gradient(145deg, ${theme.surfaceStrong}, ${theme.surface})`,
+      color: theme.text,
       fontSize: 11,
       fontWeight: 700,
       fontFamily: "'Pretendard', sans-serif",
       lineHeight: 1,
+      boxShadow: `0 8px 18px ${theme.glow}`,
     }}>
-      <SeriesPlatformIcon platformKey={platformKey} size={14} color={accent} />
+      <SeriesPlatformIcon platformKey={platformKey} size={14} color={theme.accent || accent} />
       <span>{getSeriesPlatformLabel(platformKey, platformLabel)}</span>
     </span>
   );

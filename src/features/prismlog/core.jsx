@@ -212,10 +212,66 @@ export const SERIES_PLATFORM_LOGOS = {
   apple_tv_plus: "/platforms/apple-tv-plus.svg",
   disney_plus: "/platforms/disney-plus.svg",
 };
+export const SERIES_PLATFORM_THEMES = {
+  netflix: {
+    accent: "#E50914",
+    surface: "rgba(229, 9, 20, 0.14)",
+    surfaceStrong: "rgba(229, 9, 20, 0.22)",
+    border: "rgba(229, 9, 20, 0.28)",
+    borderActive: "rgba(229, 9, 20, 0.55)",
+    text: "#ffecee",
+    glow: "rgba(229, 9, 20, 0.2)",
+  },
+  apple_tv_plus: {
+    accent: "#f5f0eb",
+    surface: "rgba(245, 240, 235, 0.09)",
+    surfaceStrong: "rgba(245, 240, 235, 0.15)",
+    border: "rgba(245, 240, 235, 0.2)",
+    borderActive: "rgba(245, 240, 235, 0.38)",
+    text: "#f5f0eb",
+    glow: "rgba(245, 240, 235, 0.12)",
+  },
+  disney_plus: {
+    accent: "#6db3ff",
+    surface: "rgba(43, 112, 220, 0.15)",
+    surfaceStrong: "rgba(43, 112, 220, 0.24)",
+    border: "rgba(109, 179, 255, 0.24)",
+    borderActive: "rgba(109, 179, 255, 0.46)",
+    text: "#edf4ff",
+    glow: "rgba(43, 112, 220, 0.22)",
+  },
+  tv: {
+    accent: "#f0c75e",
+    surface: "rgba(240, 199, 94, 0.12)",
+    surfaceStrong: "rgba(240, 199, 94, 0.2)",
+    border: "rgba(240, 199, 94, 0.24)",
+    borderActive: "rgba(240, 199, 94, 0.44)",
+    text: "#fff3cf",
+    glow: "rgba(240, 199, 94, 0.18)",
+  },
+  other: {
+    accent: "#9ad0c1",
+    surface: "rgba(154, 208, 193, 0.12)",
+    surfaceStrong: "rgba(154, 208, 193, 0.2)",
+    border: "rgba(154, 208, 193, 0.24)",
+    borderActive: "rgba(154, 208, 193, 0.42)",
+    text: "#ecfffa",
+    glow: "rgba(154, 208, 193, 0.18)",
+  },
+};
 export const getSeriesPlatformLabel = (platformKey, customLabel = "") => {
   if (!platformKey) return "";
   if (platformKey === "other") return customLabel.trim() || "기타";
   return SERIES_PLATFORM_OPTIONS.find((option) => option.key === platformKey)?.label || customLabel.trim() || platformKey;
+};
+export const getSeriesPlatformTheme = (platformKey) => SERIES_PLATFORM_THEMES[platformKey] || {
+  accent: COLORS.series.main,
+  surface: `${COLORS.series.main}18`,
+  surfaceStrong: `${COLORS.series.main}26`,
+  border: `${COLORS.series.main}28`,
+  borderActive: `${COLORS.series.main}55`,
+  text: COLORS.dark.text,
+  glow: `${COLORS.series.main}22`,
 };
 export const SeriesPlatformIcon = ({ platformKey, size = 16, color = "currentColor" }) => {
   const logoSrc = SERIES_PLATFORM_LOGOS[platformKey];

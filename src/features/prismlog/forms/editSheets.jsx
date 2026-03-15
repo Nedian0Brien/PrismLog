@@ -19,6 +19,7 @@ import {
   fetchMediaEnrichment,
   getCultureStatusOptions,
   getSeriesPlatformLabel,
+  getSeriesPlatformTheme,
   getSeriesProgressMetrics,
   SERIES_PLATFORM_OPTIONS,
   SeriesPlatformIcon,
@@ -404,21 +405,26 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
   const labelStyle = FORM_LABEL_STYLE;
   const splitFieldStyle = getSplitFieldStyle(layout);
   const accent = COLORS.culture.main;
-  const platformChipStyle = (active) => ({
-    minHeight: 46,
-    padding: "10px 12px",
-    borderRadius: 14,
-    border: `1px solid ${active ? `${accent}66` : COLORS.dark.border}`,
-    background: active ? `${accent}18` : "rgba(255,255,255,0.04)",
-    color: active ? COLORS.dark.text : COLORS.dark.textMuted,
+  const platformCardStyle = (theme, active) => ({
+    position: "relative",
+    minHeight: layout?.isPhone ? 104 : 118,
+    padding: "12px",
+    borderRadius: 18,
+    border: `1px solid ${active ? theme.borderActive : theme.border}`,
+    background: active
+      ? `linear-gradient(155deg, ${theme.surfaceStrong}, rgba(255,255,255,0.04))`
+      : `linear-gradient(155deg, ${theme.surface}, rgba(255,255,255,0.03))`,
+    color: active ? theme.text : COLORS.dark.textMuted,
     display: "flex",
-    alignItems: "center",
-    gap: 8,
-    justifyContent: "center",
+    alignItems: "flex-end",
+    justifyContent: "flex-end",
     cursor: "pointer",
     fontSize: 12,
     fontWeight: 700,
     fontFamily: "'Pretendard', sans-serif",
+    textAlign: "right",
+    overflow: "hidden",
+    boxShadow: active ? `0 18px 34px ${theme.glow}` : "0 12px 24px rgba(0,0,0,0.16)",
   });
   const seriesMetrics = form.type === "시리즈"
     ? getSeriesProgressMetrics({
@@ -537,6 +543,7 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
             <div style={{ display: "grid", gridTemplateColumns: layout?.isPhone ? "repeat(2, minmax(0, 1fr))" : "repeat(3, minmax(0, 1fr))", gap: 8 }}>
               {SERIES_PLATFORM_OPTIONS.map((option) => {
                 const active = form.platformKey === option.key;
+                const theme = getSeriesPlatformTheme(option.key);
                 return (
                   <button
                     key={option.key}
@@ -546,10 +553,29 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
                       platformKey: option.key,
                       platformLabel: option.key === "other" ? prev.platformLabel : getSeriesPlatformLabel(option.key),
                     }))}
-                    style={platformChipStyle(active)}
+                    style={platformCardStyle(theme, active)}
                   >
-                    <SeriesPlatformIcon platformKey={option.key} size={18} color={active ? accent : COLORS.dark.textMuted} />
-                    <span>{option.label}</span>
+                    <div style={{
+                      position: "absolute",
+                      top: 10,
+                      left: 10,
+                      opacity: active ? 0.22 : 0.12,
+                      transform: "scale(2.2)",
+                      transformOrigin: "top left",
+                      filter: active ? "none" : "grayscale(0.1)",
+                      pointerEvents: "none",
+                    }}>
+                      <SeriesPlatformIcon platformKey={option.key} size={24} color={theme.accent} />
+                    </div>
+                    <div style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: active
+                        ? `radial-gradient(circle at 18% 16%, ${theme.accent}16, transparent 44%)`
+                        : "none",
+                      pointerEvents: "none",
+                    }} />
+                    <span style={{ position: "relative", zIndex: 1 }}>{option.label}</span>
                   </button>
                 );
               })}
