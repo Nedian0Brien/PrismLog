@@ -26,6 +26,7 @@ import {
   GridIcon,
   GamepadIcon,
   CheckIcon,
+  XIcon,
   StarIcon,
   ClockIcon,
   CalendarIcon,
