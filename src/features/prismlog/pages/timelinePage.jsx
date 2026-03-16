@@ -21,65 +21,52 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
   const itemRefs = useRef({});
 
   const groups = useMemo(() => {
-    // occurred_at 기준으로 정렬 (없으면 created_at)
-    const sorted = [...logs].sort((a, b) => new Date(b.occurred_at || b.created_at) - new Date(a.occurred_at || a.created_at));
-    
+    // 1. 정렬: occurred_at (활동 발생일) 기준 내림차순, 없으면 created_at 기준
+    const sorted = [...logs].sort((a, b) => {
+      const dateA = new Date(a.occurred_at || a.created_at);
+      const dateB = new Date(b.occurred_at || b.created_at);
+      return dateB - dateA;
+    });
+
     return sorted.reduce((acc, log) => {
       const dateSource = log.occurred_at || log.created_at;
       const key = getDateKey(dateSource);
       if (!key) return acc;
-      
+
       const payload = log.payload || {};
       const entity = log.entity || {};
       const entityMetadata = entity.entity_metadata || {};
-      
-      // 카테고리 및 타입 결정
-      const category = log.category;
-      const type = category === "culture" ? normalizeCultureType(payload.type || entity.category) : category;
-      
-      const accent = category === "reading"
+
+      // 2. 카테고리 및 타입 분석 (디자인 톤 결정)
+      const type = log.category === "culture" ? normalizeCultureType(payload.type || entity.category) : log.category;
+      const accent = log.category === "reading"
         ? COLORS.reading.main
-        : category === "study"
+        : log.category === "study"
           ? COLORS.study.main
           : getCultureTone(type).main;
 
-      // 독서 로직 복구
+      // 3. 독서 세션 처리
       const readingSessions = Array.isArray(payload.reading_sessions)
         ? [...payload.reading_sessions].sort((a, b) => new Date(b.ended_at || b.date || 0) - new Date(a.ended_at || a.date || 0))
         : [];
       const latestReadingSession = readingSessions[0] || null;
-      
-      const progress = category === "reading"
-        ? clamp(
-          safeNumber(
-            payload.progress,
-            safeNumber(entityMetadata.pages_total || payload.pages_total || payload.pages) > 0
-              ? Math.round((safeNumber(payload.pages_read || payload.readPages) / safeNumber(entityMetadata.pages_total || payload.pages_total || payload.pages)) * 100)
-              : 0,
-          ),
-          0,
-          100,
-        )
-        : category === "study"
-          ? clamp(safeNumber(payload.progress), 0, 100)
-          : type === "시리즈"
-            ? clamp(safeNumber(payload.progress), 0, 100)
-            : null;
 
-      const progressStart = category === "reading"
-        ? clamp(
-          safeNumber(
-            latestReadingSession?.from_progress ?? latestReadingSession?.fromProgress,
-            Math.max(0, safeNumber(progress, 0) - safeNumber(latestReadingSession?.progress_delta ?? latestReadingSession?.progressDelta, 0)),
-          ),
-          0,
-          100,
-        )
-        : type === "시리즈"
-          ? clamp(safeNumber(progress, 0) - safeNumber(payload.progress_delta, 0), 0, 100)
-        : progress;
+      // 4. 공부 진행도 처리
+      const studyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
+      const studyCompleted = Array.isArray(payload.completed) ? payload.completed.filter(Boolean).length : 0;
+      const studyProgressMode = payload.progress_mode || "chapter";
+      const studyPagesTotal = safeNumber(entityMetadata.pages_total || payload.pages_total || payload.pages);
+      const studyPagesRead = safeNumber(payload.pages_read || payload.readPages);
+      let studyProgress = 0;
+      if (studyProgressMode === "page" && studyPagesTotal > 0) {
+        studyProgress = Math.round((studyPagesRead / studyPagesTotal) * 100);
+      } else if (studyChapters.length > 0) {
+        studyProgress = Math.round((studyCompleted / studyChapters.length) * 100);
+      } else {
+        studyProgress = clamp(safeNumber(payload.progress), 0, 100);
+      }
 
-      // 시리즈 메트릭스 및 오늘 본 에피소드 처리 복구
+      // 5. 시리즈 진행도 및 오늘 본 에피소드 (가로 스크롤용)
       const seriesMetrics = type === "시리즈"
         ? getSeriesProgressMetrics({
           episodeCount: entityMetadata.episode_count || payload.episode_count,
@@ -103,14 +90,44 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
             }))
         ))
         : [];
-
+      
       const seriesEpisodeCountToday = watchedEpisodesToday.length;
       const seriesProgressDelta = type === "시리즈" && safeNumber(seriesMetrics?.totalEpisodes, 0) > 0
         ? Math.min(100, (seriesEpisodeCountToday / safeNumber(seriesMetrics?.totalEpisodes, 0)) * 100)
         : 0;
 
-      const sectionKey = category === "reading" ? "reading" : category === "study" ? "study" : type === "시리즈" ? "series" : type === "게임" ? "game" : "movie";
+      // 6. 통합 진행률 계산 (델타 애니메이션용)
+      const progress = log.category === "reading"
+        ? clamp(
+          safeNumber(
+            payload.progress,
+            studyPagesTotal > 0 ? Math.round((studyPagesRead / studyPagesTotal) * 100) : 0,
+          ),
+          0,
+          100,
+        )
+        : log.category === "study"
+          ? clamp(studyProgress, 0, 100)
+          : type === "시리즈"
+            ? clamp(safeNumber(seriesMetrics?.progress, payload.progress), 0, 100)
+            : null;
 
+      const progressStart = log.category === "reading"
+        ? clamp(
+          safeNumber(
+            latestReadingSession?.from_progress ?? latestReadingSession?.fromProgress,
+            Math.max(0, safeNumber(progress, 0) - safeNumber(latestReadingSession?.progress_delta ?? latestReadingSession?.progressDelta, 0)),
+          ),
+          0,
+          100,
+        )
+        : type === "시리즈"
+          ? clamp(safeNumber(progress, 0) - seriesProgressDelta, 0, 100)
+        : progress;
+
+      const sectionKey = log.category === "reading" ? "reading" : log.category === "study" ? "study" : type === "시리즈" ? "series" : type === "게임" ? "game" : "movie";
+
+      // 7. UI 아이템 객체 구성
       const item = {
         id: log.id,
         title: log.title || entity.title || "제목 없음",
@@ -118,20 +135,20 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         accent,
         sectionKey,
         type,
-        categoryLabel: category === "reading" ? "독서" : category === "study" ? "공부" : type,
-        summary: category === "reading"
-          ? `${safeNumber(payload.pages_read || payload.readPages)} / ${safeNumber(entityMetadata.pages_total || payload.pages_total || payload.pages)}p`
-          : category === "study"
-            ? `${payload.pages_read || 0} / ${payload.pages_total || 0}p`
+        categoryLabel: log.category === "reading" ? "독서" : log.category === "study" ? "공부" : type,
+        summary: log.category === "reading"
+          ? `${studyPagesRead} / ${studyPagesTotal > 0 ? `${studyPagesTotal}p` : "?"}`
+          : log.category === "study"
+            ? (studyProgressMode === "page" && studyPagesTotal > 0 ? `${studyPagesRead} / ${studyPagesTotal}p` : `${studyChapters.length}개 챕터`)
             : payload.playtime || payload.status || "",
         snippet: log.summary || "",
         progress,
         progressStart,
-        progressEnd: progress,
+        progressEnd: progress ?? 0,
         seriesEpisodeCountToday,
         seriesProgressDelta,
         watchedEpisodesToday,
-        status: payload.status || "",
+        status: payload.status || (type === "게임" ? "플레이 중" : type === "시리즈" || type === "영화" ? "시청 중" : ""),
         poster: entityMetadata.cover || entityMetadata.poster || payload.cover || payload.poster || null,
       };
 
@@ -387,12 +404,21 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                     <span style={{ fontSize: 13, fontWeight: 700, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
                                   </div>
                                   <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
+                                    {/* 1. 기존 진행률 (Solid) */}
                                     <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${visible ? progressStart : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 12px ${item.accent}33`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.1s" }} />
+                                    
                                     {progressDelta > 0 ? (
                                       <>
+                                        {/* 2. 델타 가이드 (Light Leader) */}
                                         <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `${item.accent}55`, boxShadow: `0 0 18px ${item.accent}44`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.6s" }} />
+                                        {/* 3. 델타 채우기 (Solid Follower) */}
                                         <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 16px ${item.accent}66`, transition: "width 0.7s cubic-bezier(.16,1,.3,1)", transitionDelay: "1.1s" }} />
                                       </>
+                                    ) : null}
+                                    {progressValue >= 100 ? (
+                                      <div style={{ position: "absolute", right: 2, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 4 }}>
+                                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f5f0eb", boxShadow: `0 0 12px ${item.accent}88` }} />
+                                      </div>
                                     ) : null}
                                   </div>
                                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -432,17 +458,55 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                             {item.progress !== null ? (
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: -2 }}>
+                                  {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
                                   <span style={{ fontSize: 13, fontWeight: 700, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
                                 </div>
-                                <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${visible ? progressStart : 0}%`, borderRadius: 999, background: item.accent, transition: "width 0.6s ease-out" }} />
-                                  {progressDelta > 0 && <div style={{ position: "absolute", left: `${progressStart}%`, top: 0, bottom: 0, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: item.accent, opacity: 0.6, transition: "width 0.6s ease-out", transitionDelay: "0.3s" }} />}
+                                <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
+                                  {/* 1. 기존 진행률 (Solid) */}
+                                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${visible ? progressStart : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 12px ${item.accent}33`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.1s" }} />
+                                  
+                                  {progressDelta > 0 ? (
+                                    <>
+                                      {/* 2. 델타 가이드 (Light Leader) */}
+                                      <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `${item.accent}55`, boxShadow: `0 0 18px ${item.accent}44`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.6s" }} />
+                                      {/* 3. 델타 채우기 (Solid Follower) */}
+                                      <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 16px ${item.accent}66`, transition: "width 0.7s cubic-bezier(.16,1,.3,1)", transitionDelay: "1.1s" }} />
+                                    </>
+                                  ) : null}
+                                  {progressValue >= 100 ? (
+                                    <div style={{ position: "absolute", right: 2, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 4 }}>
+                                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f5f0eb", boxShadow: `0 0 12px ${item.accent}88` }} />
+                                    </div>
+                                  ) : null}
                                 </div>
-                                {renderSeriesStats(item)}
-                                {item.snippet && <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.snippet}</p>}
+                                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    {renderSeriesStats(item)}
+                                  </div>
+                                </div>
+                                {item.snippet ? (
+                                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                                    {item.snippet}
+                                  </p>
+                                ) : null}
+                                {item.watchedEpisodesToday?.length > 0 ? (
+                                  <div style={{ minWidth: 0, width: "100%", maxWidth: "100%", overflow: "hidden" }}>
+                                    <div style={{ display: "flex", gap: 10, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", scrollSnapType: "x proximity", paddingBottom: 4 }}>
+                                      {item.watchedEpisodesToday.map((episode) => (
+                                        <div key={episode.id} style={{ width: 120, minWidth: 120, flexShrink: 0, display: "flex", flexDirection: "column", gap: 6, scrollSnapAlign: "start" }}>
+                                          <div style={{ width: 120, height: 68, borderRadius: 10, overflow: "hidden", background: `linear-gradient(135deg, ${item.accent}24, rgba(255,255,255,0.05))`, border: `1px solid ${item.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                            {episode.stillUrl ? <img src={episode.stillUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{episode.code}</span>}
+                                          </div>
+                                          <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{episode.code}</p>
+                                          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.text, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{episode.title}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null}
                               </div>
                             ) : (
-                              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.summary || "기록 메모 없음"}</p>
+                              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.summary || "기록 메모 없음"}</p>
                             )}
                           </>
                         )}
@@ -461,6 +525,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
             <GlassCard key={month.key} style={{ padding: layout.isPhone ? "16px" : "18px 20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>{month.label}</h3>
+                <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>기록일 강조</span>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8, marginBottom: 10 }}>
                 {["월", "화", "수", "목", "금", "토", "일"].map((day) => (
