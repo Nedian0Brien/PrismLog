@@ -70,6 +70,13 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     disabled: submitting,
   });
   const splitFieldStyle = getSplitFieldStyle(layout);
+  const sectionCardStyle = {
+    padding: layout?.isPhone ? "18px 16px" : "24px 22px",
+    borderRadius: 24,
+    border: "1px solid rgba(255,255,255,0.06)",
+    background: "rgba(255,255,255,0.03)",
+    boxShadow: "0 12px 34px rgba(0,0,0,0.16)",
+  };
   const platformCardStyle = (theme, active) => ({
     position: "relative",
     minHeight: layout?.isPhone ? 104 : 118,
