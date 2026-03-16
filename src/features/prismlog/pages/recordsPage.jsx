@@ -2830,37 +2830,46 @@ export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = 
       )}
       <div style={{ display: "grid", gridTemplateColumns: layout.isDesktop ? "repeat(2, minmax(0, 1fr))" : "1fr", gap: 16 }}>
         {studies.map(s => (
-          <GlassCard key={s.id} glow={COLORS.study.glow} style={{ padding: "18px 20px", cursor: "pointer" }} onClick={() => setDetailId(s.id)}>
-            <div style={{ display: "flex", flexDirection: layout.isPhone ? "column" : "row", gap: 16 }}>
-            {s.imageUrl && (
+          <GlassCard key={s.id} glow={COLORS.study.glow} style={{ padding: 0, cursor: "pointer", overflow: "hidden" }} onClick={() => setDetailId(s.id)}>
+            <div style={{ display: "flex", minHeight: 124 }}>
               <div style={{
-                width: 60, height: 84, borderRadius: 10, flexShrink: 0, overflow: "hidden",
-                border: `1px solid ${COLORS.study.main}22`,
+                width: 92,
+                flexShrink: 0,
                 background: `linear-gradient(135deg, ${COLORS.study.main}33, ${COLORS.study.main}11)`,
+                borderRight: `1px solid ${COLORS.study.main}22`,
+                position: "relative",
+                overflow: "hidden",
               }}>
-                <img src={s.imageUrl} alt={`${s.title} 이미지`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                {s.imageUrl ? (
+                  <img src={s.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                ) : (
+                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4 }}>
+                    <PenIcon size={24} color={COLORS.study.main} />
+                  </div>
+                )}
               </div>
-            )}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <h4 style={{ fontSize: 16, fontWeight: 700, color: COLORS.dark.text, margin: "0 0 4px", fontFamily: "'Pretendard', sans-serif" }}>{s.title}</h4>
-                  <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: 0 }}>
-                    {s.goal} · {s.progressMode === "page" && s.pagesTotal > 0 ? `${s.pagesRead}/${s.pagesTotal}p` : `${s.chapters.length}개 챕터`}
-                  </p>
+              <div style={{ flex: 1, minWidth: 0, padding: "16px 18px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <h4 style={{ fontSize: 16, fontWeight: 700, color: COLORS.dark.text, margin: "0 0 4px", fontFamily: "'Pretendard', sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</h4>
+                      <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {s.goal} · {s.progressMode === "page" && s.pagesTotal > 0 ? `${s.pagesRead}/${s.pagesTotal}p` : `${s.chapters.length}개 챕터`}
+                      </p>
+                    </div>
+                    <span style={{ fontSize: 24, fontWeight: 800, color: COLORS.study.main, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
+                      {s.progress}%
+                    </span>
+                  </div>
+                  <ProgressBar value={s.progress} color={COLORS.study.main} />
                 </div>
-                <span style={{ display: "inline-block", fontSize: 22, fontWeight: 800, color: COLORS.study.main, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
-                  {s.progress}%
-                </span>
-              </div>
-              <ProgressBar value={s.progress} color={COLORS.study.main} />
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, marginTop: 10 }}>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {s.tags.map(t => <Badge key={t} text={`#${t}`} color={COLORS.study.main} />)}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, marginTop: 12 }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", maxHeight: 22, overflow: "hidden" }}>
+                    {s.tags.map(t => <Badge key={t} text={`#${t}`} color={COLORS.study.main} />)}
+                  </div>
+                  <IconActionButton onClick={(e) => { e.stopPropagation(); onEdit(s); }} />
                 </div>
-                <IconActionButton onClick={(e) => { e.stopPropagation(); onEdit(s); }} />
               </div>
-            </div>
             </div>
           </GlassCard>
         ))}
