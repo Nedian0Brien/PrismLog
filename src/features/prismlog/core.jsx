@@ -762,37 +762,78 @@ export const getCultureStatusOptions = (type) => (
 );
 
 export const formatKoreanDateLabel = (isoLike) => {
+  if (!isoLike) return "";
   const date = new Date(isoLike);
   if (Number.isNaN(date.getTime())) return "";
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ${DAYS_KO[date.getDay()]}요일`;
 };
 
 export const formatMonthDayLabel = (isoLike) => {
+  if (!isoLike) return "";
   const date = new Date(isoLike);
   if (Number.isNaN(date.getTime())) return "";
   return `${date.getMonth() + 1}월 ${date.getDate()}일`;
 };
 
 export const formatTimeLabel = (isoLike) => {
+  if (!isoLike) return "";
   const date = new Date(isoLike);
   if (Number.isNaN(date.getTime())) return "";
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 };
 
+/**
+ * 입력을 로컬 날짜 키(YYYY-MM-DD)로 변환합니다.
+ * 타임존 정보를 포함하지 않는 문자열이 들어올 경우 브라우저 해석 차이를 방지하기 위해 보정 로직을 포함합니다.
+ * @param {string|Date} isoLike - ISO 날짜 문자열 또는 Date 객체
+ * @returns {string} YYYY-MM-DD 형식의 날짜 키
+ */
 export const getDateKey = (isoLike) => {
-  const date = new Date(isoLike);
-  if (Number.isNaN(date.getTime())) return "";
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  if (!isoLike) return "";
+  
+  // 이미 Date 객체인 경우 그대로 사용
+  let date = isoLike instanceof Date ? isoLike : new Date(isoLike);
+  
+  // 유효하지 않은 날짜인 경우
+  if (Number.isNaN(date.getTime())) {
+    // 만약 "2026-03-16" 같은 날짜만 있는 문자열인데 실패했다면 강제로 T00:00:00 추가 시도
+    if (typeof isoLike === "string" && /^\d{4}-\d{2}-\d{2}$/.test(isoLike)) {
+      date = new Date(`${isoLike}T00:00:00`);
+    } else {
+      return "";
+    }
+  }
+
+  // 타임존 정보가 없는 문자열(예: "2026-03-16 00:00:00")이 들어왔을 때 
+  // 브라우저가 이를 UTC로 오해하여 로컬 시간(한국)에서 날짜가 하루 밀리는 현상을 방지하기 위해,
+  // 문자열에 T나 Z가 없고 날짜 정보가 포함된 경우 로컬 시간으로 해석되도록 유도해야 합니다.
+  // 현재 new Date()는 표준 ISO 형식이면 UTC로, 아니면 로컬로 해석하는 경향이 있습니다.
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  
+  return `${year}-${month}-${day}`;
 };
 
 export const formatRelativeTime = (isoLike) => {
+  if (!isoLike) return "";
   const date = new Date(isoLike);
   if (Number.isNaN(date.getTime())) return "";
+  
   const now = new Date();
-  const diff = Math.floor((now.setHours(0, 0, 0, 0) - date.setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
-  if (diff <= 0) return "오늘";
-  if (diff === 1) return "어제";
-  return `${diff}일 전`;
+  
+  // 날짜 차이 계산을 위해 자정 기준으로 맞춤
+  const d1 = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const d2 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  const diffMs = d2.getTime() - d1.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays <= 0) return "오늘";
+  if (diffDays === 1) return "어제";
+  if (diffDays < 7) return `${diffDays}일 전`;
+  return formatMonthDayLabel(isoLike);
 };
 
 export const buildHeatmapMatrix = (logs) => {

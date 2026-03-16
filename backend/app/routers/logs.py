@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 from typing import Optional
 
@@ -108,22 +109,18 @@ def list_logs(
 
 @router.post("", response_model=LogRead, status_code=201)
 def create_log(payload: LogCreate, db: Session = Depends(get_db)) -> Log:
-    log = Log(
-        user_id=payload.user_id,
-        category=payload.category,
-        entity_id=payload.entity_id,
-        title=payload.title,
-        summary=payload.summary,
-        tags=payload.tags,
-        payload=payload.payload,
-        occurred_at=payload.occurred_at or Log.occurred_at.default.arg, # 명시적 날짜 없으면 서버 시간
-    )
+    # payload.occurred_at이 None이면 SQLAlchemy 모델의 default(lambda)가 자동으로 작동함
+    log_data = payload.model_dump(exclude={"occurred_at"})
+    if payload.occurred_at:
+        log_data["occurred_at"] = payload.occurred_at
+
+    log = Log(**log_data)
     
     # 엔티티가 있을 경우 엔티티의 updated_at 갱신 유도
     if payload.entity_id:
         entity = db.get(LogEntity, payload.entity_id)
         if entity:
-            entity.updated_at = LogEntity.updated_at.default.arg # 수동 갱신 시그널
+            entity.updated_at = datetime.now(timezone.utc)
             db.add(entity)
 
     db.add(log)
