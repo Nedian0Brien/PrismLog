@@ -3024,22 +3024,32 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
         <div style={{ display: "flex", flexDirection: layout.isPhone ? "column" : "row", minHeight: 180 }}>
           {/* 교재 이미지 섹션 */}
           <div style={{
-            width: layout.isPhone ? "100%" : 88,
-            height: layout.isPhone ? 120 : "auto",
-            background: `linear-gradient(135deg, ${accent}22, ${accent}08)`,
+            padding: "16px",
+            flexShrink: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            position: "relative",
+            background: `linear-gradient(135deg, ${accent}18, ${accent}05)`,
             borderRight: layout.isPhone ? "none" : `1px solid ${COLORS.dark.border}`,
             borderBottom: layout.isPhone ? `1px solid ${COLORS.dark.border}` : "none",
-            flexShrink: 0,
           }}>
-            {item.imageUrl ? (
-              <img src={item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              <PenIcon size={32} color={accent} style={{ opacity: 0.3 }} />
-            )}
+            <div style={{
+              width: layout.isPhone ? 80 : 88,
+              height: layout.isPhone ? 110 : 120,
+              borderRadius: 12,
+              overflow: "hidden",
+              boxShadow: "0 12px 28px rgba(0,0,0,0.25)",
+              border: `1px solid ${accent}22`,
+              background: COLORS.dark.surfaceSolid,
+            }}>
+              {item.imageUrl ? (
+                <img src={item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+              ) : (
+                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4 }}>
+                  <PenIcon size={32} color={accent} />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 정보 섹션 */}
