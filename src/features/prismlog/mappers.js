@@ -92,8 +92,17 @@ export const mapLogToUiItem = (log) => {
     status: payload.status || "",
     poster,
     occurredAt: log.occurred_at || log.created_at,
+    // 기존 호환성을 위한 추가 필드
+    hours: safeNumber(payload.hours, 0),
   };
 };
+
+/**
+ * 하위 호환성을 위한 개별 매퍼 함수들
+ */
+export const mapReadingLog = (log) => mapLogToUiItem(log);
+export const mapStudyLog = (log) => mapLogToUiItem(log);
+export const mapCultureLog = (log) => mapLogToUiItem(log);
 
 /**
  * 로그 목록을 날짜별 그룹으로 묶습니다.
