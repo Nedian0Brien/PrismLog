@@ -21,8 +21,38 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
   const itemRefs = useRef({});
 
   const groups = useMemo(() => {
-    // 1. 정렬: occurred_at (활동 발생일) 기준 내림차순, 없으면 created_at 기준
-    const sorted = [...logs].sort((a, b) => {
+    // 1. 데이터 확장 (Flattening): 세션이 있는 경우 각각을 독립적인 로그 항목으로 분리
+    const expandedLogs = [];
+    logs.forEach((log) => {
+      const payload = log.payload || {};
+      
+      // 독서 세션이 있는 경우 각 세션을 개별 항목으로 추출
+      if (log.category === "reading" && Array.isArray(payload.reading_sessions) && payload.reading_sessions.length > 0) {
+        payload.reading_sessions.forEach((session, idx) => {
+          // 세션 날짜 정보 추출 (우선순위: ended_at > date > occurred_at)
+          const sessionDate = session.ended_at || session.date || log.occurred_at || log.created_at;
+          expandedLogs.push({
+            ...log,
+            id: `${log.id}-session-${idx}`,
+            original_id: log.id,
+            occurred_at: sessionDate,
+            // 세션 전용 페이로드 구성 (해당 세션의 진행도 반영)
+            session_payload: {
+              ...payload,
+              progress: session.progress ?? payload.progress,
+              pages_read: session.pages_read ?? session.read_pages ?? payload.pages_read,
+              current_session: session,
+            },
+            is_session: true,
+          });
+        });
+      } else {
+        expandedLogs.push({ ...log, original_id: log.id });
+      }
+    });
+
+    // 2. 정렬: occurred_at 기준 내림차순
+    const sorted = expandedLogs.sort((a, b) => {
       const dateA = new Date(a.occurred_at || a.created_at);
       const dateB = new Date(b.occurred_at || b.created_at);
       return dateB - dateA;
@@ -33,11 +63,11 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       const key = getDateKey(dateSource);
       if (!key) return acc;
 
-      const payload = log.payload || {};
+      const payload = log.session_payload || log.payload || {};
       const entity = log.entity || {};
       const entityMetadata = entity.entity_metadata || {};
 
-      // 2. 카테고리 및 타입 분석 (디자인 톤 결정)
+      // 3. 카테고리 및 타입 분석 (디자인 톤 결정)
       const type = log.category === "culture" ? normalizeCultureType(payload.type || entity.category) : log.category;
       const accent = log.category === "reading"
         ? COLORS.reading.main
@@ -45,13 +75,10 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           ? COLORS.study.main
           : getCultureTone(type).main;
 
-      // 3. 독서 세션 처리
-      const readingSessions = Array.isArray(payload.reading_sessions)
-        ? [...payload.reading_sessions].sort((a, b) => new Date(b.ended_at || b.date || 0) - new Date(a.ended_at || a.date || 0))
-        : [];
-      const latestReadingSession = readingSessions[0] || null;
+      // 4. 독서 세션 처리 (확장된 로그일 경우 현재 세션 정보 활용)
+      const latestReadingSession = log.is_session ? payload.current_session : null;
 
-      // 4. 공부 진행도 처리
+      // 5. 공부 진행도 처리
       const studyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
       const studyCompleted = Array.isArray(payload.completed) ? payload.completed.filter(Boolean).length : 0;
       const studyProgressMode = payload.progress_mode || "chapter";
@@ -132,6 +159,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       // 7. UI 아이템 객체 구성
       const item = {
         id: log.id,
+        originalId: log.originalId || log.original_id,
         title: log.title || entity.title || "제목 없음",
         time: formatTimeLabel(dateSource),
         accent,
@@ -139,11 +167,11 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         type,
         categoryLabel: log.category === "reading" ? "독서" : log.category === "study" ? "공부" : type,
         summary: log.category === "reading"
-          ? `${studyPagesRead} / ${studyPagesTotal > 0 ? `${studyPagesTotal}p` : "?"}`
+          ? `${payload.pages_read || studyPagesRead || 0} / ${studyPagesTotal > 0 ? `${studyPagesTotal}p` : "?"}`
           : log.category === "study"
             ? (studyProgressMode === "page" && studyPagesTotal > 0 ? `${studyPagesRead} / ${studyPagesTotal}p` : `${studyChapters.length}개 챕터`)
             : payload.playtime || payload.status || "",
-        snippet: log.summary || "",
+        snippet: (log.is_session && payload.current_session?.note) ? payload.current_session.note : (log.summary || ""),
         progress,
         progressStart,
         progressEnd: progress ?? 0,
@@ -364,7 +392,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                           itemRefs.current[item.id] = node;
                         }}
                         data-item-key={item.id}
-                        onClick={() => onOpenDetail?.({ section: item.sectionKey, id: item.id })}
+                        onClick={() => onOpenDetail?.({ section: item.sectionKey, id: item.originalId || item.id })}
                         style={{
                           width: "100%",
                           maxWidth: "100%",
