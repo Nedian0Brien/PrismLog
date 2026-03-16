@@ -40,40 +40,40 @@ export const mapLogToUiItem = (log) => {
   let progressEnd = 0;
 
   if (category === "reading") {
-    const pagesRead = safeNumber(payload.pages_read || payload.readPages);
-    const pagesTotal = safeNumber(entityMetadata.pages_total || payload.pages_total || payload.pages);
+    const pagesRead = safeNumber(payload?.pages_read || payload?.readPages);
+    const pagesTotal = safeNumber(entityMetadata?.pages_total || payload?.pages_total || payload?.pages);
     summary = `${pagesRead} / ${pagesTotal > 0 ? `${pagesTotal}p` : "?"}`;
     progress = pagesTotal > 0 ? clamp(Math.round((pagesRead / pagesTotal) * 100), 0, 100) : 0;
     
     // 이전 기록과의 델타 계산을 위해 progressStart 추정 (간소화)
     progressEnd = progress;
-    progressStart = Math.max(0, progress - safeNumber(payload.progress_delta, 0));
+    progressStart = Math.max(0, progress - safeNumber(payload?.progress_delta, 0));
   } else if (category === "study") {
-    const progressMode = payload.progress_mode || "chapter";
+    const progressMode = payload?.progress_mode || "chapter";
     if (progressMode === "page") {
-      const pagesRead = safeNumber(payload.pages_read);
-      const pagesTotal = safeNumber(entityMetadata.pages_total || payload.pages_total);
+      const pagesRead = safeNumber(payload?.pages_read);
+      const pagesTotal = safeNumber(entityMetadata?.pages_total || payload?.pages_total);
       summary = `${pagesRead} / ${pagesTotal}p`;
       progress = pagesTotal > 0 ? Math.round((pagesRead / pagesTotal) * 100) : 0;
     } else {
-      progress = clamp(safeNumber(payload.progress), 0, 100);
+      progress = clamp(safeNumber(payload?.progress), 0, 100);
       summary = `${progress}% 완료`;
     }
     progressEnd = progress;
     progressStart = progress; // 공부는 일단 동일하게 표시
   } else if (cultureType === "시리즈") {
     const metrics = getSeriesProgressMetrics({
-      episodeCount: entityMetadata.episode_count || payload.episode_count,
-      seasons: entityMetadata.seasons || payload.seasons,
-      watchedEpisodes: payload.watched_episode_count,
-      progress: payload.progress,
+      episodeCount: entityMetadata?.episode_count || payload?.episode_count,
+      seasons: entityMetadata?.seasons || payload?.seasons || [],
+      watchedEpisodes: payload?.watched_episode_count,
+      progress: payload?.progress,
     });
-    summary = metrics.playtimeLabel || `${payload.watched_episode_count || 0}화 시청`;
-    progress = metrics.progress;
+    summary = metrics?.playtimeLabel || `${payload?.watched_episode_count || 0}화 시청`;
+    progress = metrics?.progress ?? 0;
     progressEnd = progress;
-    progressStart = Math.max(0, progress - safeNumber(payload.progress_delta, 0));
+    progressStart = Math.max(0, progress - safeNumber(payload?.progress_delta, 0));
   } else {
-    summary = payload.playtime || payload.status || "";
+    summary = payload?.playtime || payload?.status || "";
   }
 
   return {

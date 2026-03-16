@@ -69,25 +69,27 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       // 5. 시리즈 진행도 및 오늘 본 에피소드 (가로 스크롤용)
       const seriesMetrics = type === "시리즈"
         ? getSeriesProgressMetrics({
-          episodeCount: entityMetadata.episode_count || payload.episode_count,
-          seasons: entityMetadata.seasons || payload.seasons,
-          watchedEpisodes: payload.watched_episode_count,
-          playtime: payload.playtime,
-          progress: payload.progress,
+          episodeCount: entityMetadata?.episode_count || payload?.episode_count,
+          seasons: entityMetadata?.seasons || payload?.seasons || [],
+          watchedEpisodes: payload?.watched_episode_count,
+          playtime: payload?.playtime,
+          progress: payload?.progress,
         })
         : null;
       
-      const seriesWatchDates = type === "시리즈" ? normalizeEpisodeWatchDates(payload.episode_watch_dates) : {};
-      const watchedEpisodesToday = type === "시리즈"
-        ? (seriesMetrics?.seasons || []).flatMap((season) => (
-          season.episodes
-            .filter((episode) => seriesWatchDates[`${season.seasonNumber}-${episode.episodeNumber}`]?.slice(0, 10) === key)
-            .map((episode) => ({
-              id: `${log.id}-${season.seasonNumber}-${episode.episodeNumber}`,
-              title: episode.name || `EP ${episode.episodeNumber}`,
-              code: `S${season.seasonNumber} · E${episode.episodeNumber}`,
-              stillUrl: episode.stillUrl,
-            }))
+      const seriesWatchDates = type === "시리즈" ? normalizeEpisodeWatchDates(payload?.episode_watch_dates) : {};
+      const watchedEpisodesToday = (type === "시리즈" && Array.isArray(seriesMetrics?.seasons))
+        ? seriesMetrics.seasons.flatMap((season) => (
+          Array.isArray(season?.episodes) 
+            ? season.episodes
+                .filter((episode) => seriesWatchDates[`${season.seasonNumber}-${episode.episodeNumber}`]?.slice(0, 10) === key)
+                .map((episode) => ({
+                  id: `${log.id}-${season.seasonNumber}-${episode.episodeNumber}`,
+                  title: episode.name || `EP ${episode.episodeNumber}`,
+                  code: `S${season.seasonNumber} · E${episode.episodeNumber}`,
+                  stillUrl: episode.stillUrl,
+                }))
+            : []
         ))
         : [];
       
