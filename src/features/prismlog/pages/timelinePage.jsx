@@ -292,7 +292,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
     { key: "feed", label: "시간순 피드", icon: <ClockIcon size={16} /> },
     { key: "calendar", label: "캘린더", icon: <CalendarIcon size={16} /> },
   ];
-  const lineLeft = layout.isPhone ? 17 : 118;
+  const lineLeft = layout.isPhone ? 17 : 97;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -364,7 +364,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                 >
                   <div style={{
                     position: "absolute",
-                    left: layout.isPhone ? 11 : lineLeft - 7,
+                    left: layout.isPhone ? 11 : lineLeft - 6,
                     top: layout.isPhone ? 18 : 22,
                     width: 14,
                     height: 14,
