@@ -2406,10 +2406,10 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                               </div>
                               <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                                 <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: COLORS.dark.textMuted }}>
-                                  {`${group.session.fromPages}p → ${group.session.toPages}p`}
+                                  {`${safeNumber(group.session.fromPages)}p → ${safeNumber(group.session.toPages)}p`}
                                 </p>
                                 <p style={{ margin: 0, fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>
-                                  {`+${group.session.progressDelta}%`}
+                                  {`+${safeNumber(group.session.progressDelta)}%`}
                                 </p>
                               </div>
                             </div>

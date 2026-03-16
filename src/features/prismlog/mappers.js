@@ -51,8 +51,11 @@ export const mapLogToUiItem = (log) => {
   const readingSessions = rawSessions.map(s => ({
     ...s,
     pagesRead: safeNumber(s.pages_read || s.pagesRead),
+    fromPages: safeNumber(s.from_pages || s.fromPages),
+    toPages: safeNumber(s.to_pages || s.toPages),
     fromProgress: safeNumber(s.from_progress || s.fromProgress),
     toProgress: safeNumber(s.to_progress || s.toProgress),
+    progressDelta: safeNumber(s.progress_delta || s.progressDelta),
     durationMinutes: safeNumber(s.duration_minutes || s.durationMinutes),
     endedAt: s.ended_at || s.endedAt || s.date,
   }));
