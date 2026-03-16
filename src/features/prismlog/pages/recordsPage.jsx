@@ -2771,52 +2771,181 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
 };
 
 /* ──────────── Page: Study ──────────── */
+/* ──────────── Study Detail Page ──────────── */
+const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
+  const accent = COLORS.study.main;
+  const isPageMode = item.progressMode === "page";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: 40 }}>
+      {/* 상단 액션 및 제목 */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <button onClick={onBack} style={{
+          background: "none", border: "none", color: accent, fontSize: 14,
+          fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+          padding: "8px 0", fontFamily: "'Pretendard', sans-serif",
+        }}>
+          <span style={{ fontSize: 18 }}>←</span> 목록으로
+        </button>
+        <IconActionButton onClick={() => onEdit(item)} />
+      </div>
+
+      {/* 메인 헤더 카드 */}
+      <GlassCard glow={COLORS.study.glow} style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ display: "flex", flexDirection: layout.isPhone ? "column" : "row", minHeight: 180 }}>
+          {/* 교재 이미지 섹션 */}
+          <div style={{
+            width: layout.isPhone ? "100%" : 160,
+            aspectRatio: layout.isPhone ? "16/9" : "auto",
+            background: `linear-gradient(135deg, ${accent}22, ${accent}08)`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
+            borderRight: layout.isPhone ? "none" : `1px solid ${COLORS.dark.border}`,
+            borderBottom: layout.isPhone ? `1px solid ${COLORS.dark.border}` : "none",
+          }}>
+            {item.imageUrl ? (
+              <img src={item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <PenIcon size={48} color={accent} style={{ opacity: 0.3 }} />
+            )}
+          </div>
+
+          {/* 정보 섹션 */}
+          <div style={{ flex: 1, padding: 24, display: "flex", flexDirection: "column", justifyContent: "center", gap: 12 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <Badge text="공부 중" color={accent} />
+                <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{formatRelativeTime(item.date)} 시작</span>
+              </div>
+              <h2 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", lineHeight: 1.2 }}>
+                {item.title}
+              </h2>
+            </div>
+            
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              {item.goal && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <StarIcon size={14} color={accent} />
+                  <span style={{ fontSize: 13, color: COLORS.dark.textMuted }}>{item.goal}</span>
+                </div>
+              )}
+              {item.hours > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <ClockIcon size={14} color={accent} />
+                  <span style={{ fontSize: 13, color: COLORS.dark.textMuted }}>누적 {item.hours}시간</span>
+                </div>
+              )}
+            </div>
+
+            {item.tags.length > 0 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {item.tags.map(t => <Badge key={t} text={`#${t}`} color={accent} />)}
+              </div>
+            )}
+          </div>
+        </div>
+      </GlassCard>
+
+      {/* 진행률 및 통계 그리드 */}
+      <div style={{ display: "grid", gridTemplateColumns: layout.isTabletUp ? "1.2fr 1fr" : "1fr", gap: 18 }}>
+        {/* 진행률 카드 */}
+        <GlassCard style={{ padding: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20 }}>
+            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+              PROGRESS
+            </h4>
+            <div style={{ textAlign: "right" }}>
+              <span style={{ fontSize: 32, fontWeight: 800, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
+                {item.progress}%
+              </span>
+            </div>
+          </div>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <ProgressBar value={item.progress} color={accent} height={12} />
+            <div style={{ display: "flex", justifyContent: "space-between", color: COLORS.dark.textMuted, fontSize: 13, fontWeight: 600 }}>
+              <span>{isPageMode ? "페이지" : "목차"} 기준</span>
+              <span>
+                {isPageMode 
+                  ? `${item.pagesRead} / ${item.pagesTotal}p` 
+                  : `${item.completed.filter(Boolean).length} / ${item.chapters.length} 챕터`}
+              </span>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* 요약/통계 카드 */}
+        <GlassCard style={{ padding: 20, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: `${accent}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <ListIcon size={20} color={accent} />
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>남은 과제</p>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: COLORS.dark.text }}>
+                {isPageMode 
+                  ? `${Math.max(0, item.pagesTotal - item.pagesRead)}페이지` 
+                  : `${item.chapters.length - item.completed.filter(Boolean).length}개 챕터`}
+              </p>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: `${accent}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <CalendarIcon size={20} color={accent} />
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>마지막 기록</p>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: COLORS.dark.text }}>{formatRelativeTime(item.date)}</p>
+            </div>
+          </div>
+        </GlassCard>
+      </div>
+
+      {/* 회고 섹션 (있을 때만) */}
+      {item.summary && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>RETROSPECTIVE</h4>
+          <GlassCard style={{ 
+            padding: 24, 
+            background: `linear-gradient(135deg, rgba(255,255,255,0.03), ${accent}08)`,
+            borderLeft: `4px solid ${accent}`,
+          }}>
+            <p style={{ 
+              margin: 0, 
+              fontSize: 16, 
+              lineHeight: 1.8, 
+              color: COLORS.dark.text, 
+              fontFamily: "'Pretendard', sans-serif",
+              whiteSpace: "pre-wrap"
+            }}>
+              "{item.summary}"
+            </p>
+          </GlassCard>
+        </div>
+      )}
+
+      {/* 목차 섹션 */}
+      {item.chapters.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>TABLE OF CONTENTS</h4>
+          <StudyAccordion study={item} />
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = null }) => {
   const [detailId, setDetailId] = useState(null);
   const detail = studies.find(s => s.id === detailId);
   useEffect(() => {
     if (initialDetailId) setDetailId(initialDetailId);
   }, [initialDetailId]);
+
   if (detail) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <button onClick={() => setDetailId(null)} style={{
-            background: "none", border: "none", color: COLORS.study.main, fontSize: 13,
-            fontWeight: 600, cursor: "pointer", textAlign: "left", padding: 0, fontFamily: "'Pretendard', sans-serif",
-          }}>← 뒤로</button>
-        </div>
-        <h3 style={{ fontSize: 20, fontWeight: 800, color: COLORS.dark.text, margin: 0, fontFamily: "'Outfit', sans-serif" }}>{detail.title}</h3>
-        {detail.imageUrl && (
-          <div style={{ borderRadius: 14, overflow: "hidden", border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.03)" }}>
-            <img src={detail.imageUrl} alt={`${detail.title} 이미지`} style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }} />
-          </div>
-        )}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ProgressBar value={detail.progress} color={COLORS.study.main} height={8} />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", minWidth: 48 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.study.main, fontFamily: "'Outfit', sans-serif" }}>{detail.progress}%</span>
-            {detail.progressMode === "page" && detail.pagesTotal > 0 && (
-              <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{detail.pagesRead}/{detail.pagesTotal}p</span>
-            )}
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <Badge text={detail.goal} color={COLORS.study.main} />
-          {detail.progressMode === "chapter" && <Badge text={`${detail.chapters.length}개 챕터`} color={COLORS.study.main} />}
-          {detail.tags.map(t => <Badge key={t} text={`#${t}`} color={COLORS.study.main} />)}
-        </div>
-        {detail.chapters.length > 0 && (
-          <>
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: COLORS.dark.textMuted, margin: "8px 0 4px", fontFamily: "'Outfit', sans-serif" }}>학습 목차</h4>
-            <StudyAccordion study={detail} />
-          </>
-        )}
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <IconActionButton onClick={() => onEdit(detail)} />
-        </div>
-      </div>
-    );
+    return <StudyDetailPage item={detail} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} />;
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
