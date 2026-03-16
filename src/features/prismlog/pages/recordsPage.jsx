@@ -2376,7 +2376,18 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                                 </span>
                               ) : null}
                             </div>
-                            <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{`+${safeNumber(group.session.pagesRead)}p 읽음`}</h3>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, marginBottom: 12 }}>
+                              <div style={{ minWidth: 0 }}>
+                                <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 0.5, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Today's Progress</p>
+                                <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1, fontWeight: 800, fontFamily: "'Pretendard', sans-serif", color: COLORS.dark.text }}>{`+${safeNumber(group.session.pagesRead)}p 읽음`}</h3>
+                              </div>
+                              <div style={{ textAlign: "right" }}>
+                                <strong style={{ fontSize: 28, fontWeight: 800, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1, display: "flex", alignItems: "baseline", gap: 1 }}>
+                                  <span>{`+${safeNumber(group.session.progressDelta)}`}</span>
+                                  <span style={{ fontSize: 14 }}>%</span>
+                                </strong>
+                              </div>
+                            </div>
 
                             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                               <div style={{ position: "relative", height: 16, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
@@ -2404,12 +2415,9 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                                   }}
                                 />
                               </div>
-                              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: COLORS.dark.textMuted }}>
+                              <div style={{ display: "flex", justifyContent: "flex-start", gap: 10, alignItems: "center" }}>
+                                <p style={{ margin: 0, fontSize: 12, lineHeight: 1, color: COLORS.dark.textMuted }}>
                                   {`${safeNumber(group.session.fromPages)}p → ${safeNumber(group.session.toPages)}p`}
-                                </p>
-                                <p style={{ margin: 0, fontSize: 12, color: accent, fontFamily: "'Outfit', sans-serif" }}>
-                                  {`+${safeNumber(group.session.progressDelta)}%`}
                                 </p>
                               </div>
                             </div>
