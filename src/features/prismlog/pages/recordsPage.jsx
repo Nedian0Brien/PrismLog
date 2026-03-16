@@ -1972,6 +1972,15 @@ const buildReadingTrendPoints = (book) => {
   return points;
 };
 
+const buildStudyTrendPoints = (study) => {
+  // 현재는 단순화하여 시작(0%)과 현재 진행률만 표시
+  // 추후 목차 완료 일시나 세션 기록이 추가되면 이를 기반으로 고도화 가능
+  return [
+    { label: "시작", progress: 0, dateKey: "study-start" },
+    { label: "현재", progress: clamp(safeNumber(study.progress), 0, 100), dateKey: "study-current" },
+  ];
+};
+
 const formatReadingDuration = (minutes) => {
   const safeMinutes = Math.max(0, safeNumber(minutes, 0));
   if (safeMinutes <= 0) return "독서 시간 기록 대기";
@@ -2992,31 +3001,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
 const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
   const accent = COLORS.study.main;
   const isPageMode = item.progressMode === "page";
-
-  const handleSaveToc = async (nextToc) => {
-    // 진행률 재계산
-    const doneCount = (function countDone(items) {
-      return items.reduce((sum, i) => sum + (i.completed ? 1 : 0) + countDone(i.children || []), 0);
-    })(nextToc);
-    const totalCount = (function countTotal(items) {
-      return items.reduce((sum, i) => sum + 1 + countTotal(i.children || []), 0);
-    })(nextToc);
-
-    let nextProgress = item.progress;
-    if (!isPageMode && totalCount > 0) {
-      nextProgress = Math.round((doneCount / totalCount) * 100);
-    }
-
-    // 부모의 onEdit를 활용해 즉시 저장 (수정 시트 없이 페이로드 직접 전송)
-    // 여기서는 onEdit이 보통 수정 시트를 여는 용도이므로, 
-    // 실제 저장 로직인 onSave(recordId, data)가 상세 페이지까지 전달되어야 함.
-    // RecordsPage에서 onSave를 props로 내려주고 있는지 확인 필요.
-    // 일단은 UI 상태만이라도 즉시 반영되도록 처리 (실제 저장은 onEdit 시트 완료 시 수행되는 구조라면 보강 필요)
-    
-    // 임시로 onEdit를 호출하되, 상세 페이지에서 직접 수정한 내용을 반영할 수 있는 구조로 변경
-    // RecordsPage에서 onEditStudy는 (study) => { setEditingStudy(study); setStudySheetOpen(true); } 형태임.
-    // 상세 페이지에서의 "즉시 저장"을 위해 RecordsPage의 구성을 살펴봐야 함.
-  };
+  const trendPoints = useMemo(() => buildStudyTrendPoints(item), [item]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: 40 }}>
@@ -3093,26 +3078,56 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
         </div>
       </GlassCard>
 
+      {/* 진행률 차트 섹션 */}
+      <GlassCard glow={COLORS.study.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "minmax(0, 1fr) 158px", gap: 18, alignItems: "center" }}>
+          <div style={{ width: "100%" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <p style={{ margin: 0, fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif", fontWeight: 700 }}>Progress Trend</p>
+            </div>
+            <SeriesProgressTrendChart
+              points={trendPoints}
+              color={accent}
+              labelColor={`${accent}cc`}
+              gridColor={`${accent}24`}
+            />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+            <div style={{ position: "relative", width: layout.isPhone ? 118 : 132, height: layout.isPhone ? 118 : 132 }}>
+              <SeriesProgressDonut value={item.progress} size={layout.isPhone ? 118 : 132} strokeWidth={11} color={accent} />
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>TOTAL</span>
+                <strong style={{ fontSize: layout.isPhone ? 28 : 32, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>{item.progress}%</strong>
+              </div>
+            </div>
+            <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
+              {isPageMode 
+                ? `${item.pagesRead}/${item.pagesTotal}p` 
+                : `${item.toc ? (function countDone(items) {
+                    return items.reduce((sum, i) => sum + (i.completed ? 1 : 0) + countDone(i.children || []), 0);
+                  })(item.toc) : item.completed.filter(Boolean).length} / ${item.toc ? (function countTotal(items) {
+                    return items.reduce((sum, i) => sum + 1 + countTotal(i.children || []), 0);
+                  })(item.toc) : item.chapters.length} 챕터`}
+            </p>
+          </div>
+        </div>
+      </GlassCard>
+
       {/* 진행률 및 통계 그리드 */}
-      <div style={{ display: "grid", gridTemplateColumns: layout.isTabletUp ? "1.2fr 1fr" : "1fr", gap: 18 }}>
-        {/* 진행률 카드 */}
+      <div style={{ display: "grid", gridTemplateColumns: layout.isTabletUp ? "1fr 1fr" : "1fr", gap: 18 }}>
+        {/* 현황 카드 */}
         <GlassCard style={{ padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20 }}>
             <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
-              PROGRESS
+              CURRENT STATUS
             </h4>
-            <div style={{ textAlign: "right" }}>
-              <span style={{ fontSize: 32, fontWeight: 800, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
-                {item.progress}%
-              </span>
-            </div>
           </div>
           
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <ProgressBar value={item.progress} color={accent} height={12} />
             <div style={{ display: "flex", justifyContent: "space-between", color: COLORS.dark.textMuted, fontSize: 13, fontWeight: 600 }}>
-              <span>{isPageMode ? "페이지" : "목차"} 기준</span>
-              <span>
+              <span>{isPageMode ? "페이지" : "목차"} 기준 진행</span>
+              <span style={{ color: COLORS.dark.text }}>
                 {isPageMode 
                   ? `${item.pagesRead} / ${item.pagesTotal}p` 
                   : `${item.toc ? (function countDone(items) {
@@ -3126,21 +3141,21 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
         </GlassCard>
 
         {/* 요약/통계 카드 */}
-        <GlassCard style={{ padding: 20, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16 }}>
+        <GlassCard style={{ padding: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 42, height: 42, borderRadius: 12, background: `${accent}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <ListIcon size={20} color={accent} />
             </div>
             <div>
-              <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>남은 과제</p>
-              <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: COLORS.dark.text }}>
+              <p style={{ margin: "0 0 2px", fontSize: 11, color: COLORS.dark.textMuted }}>남은 과제</p>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: COLORS.dark.text }}>
                 {isPageMode 
-                  ? `${Math.max(0, item.pagesTotal - item.pagesRead)}페이지` 
+                  ? `${Math.max(0, item.pagesTotal - item.pagesRead)}p` 
                   : `${(function countTotal(items) {
                       return items.reduce((sum, i) => sum + 1 + countTotal(i.children || []), 0);
                     })(item.toc || []) - (function countDone(items) {
                       return items.reduce((sum, i) => sum + (i.completed ? 1 : 0) + countDone(i.children || []), 0);
-                    })(item.toc || [])}개 챕터`}
+                    })(item.toc || [])}개`}
               </p>
             </div>
           </div>
@@ -3149,8 +3164,8 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
               <CalendarIcon size={20} color={accent} />
             </div>
             <div>
-              <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>마지막 기록</p>
-              <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: COLORS.dark.text }}>{formatRelativeTime(item.date)}</p>
+              <p style={{ margin: "0 0 2px", fontSize: 11, color: COLORS.dark.textMuted }}>마지막 기록</p>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: COLORS.dark.text }}>{formatRelativeTime(item.date)}</p>
             </div>
           </div>
         </GlassCard>
