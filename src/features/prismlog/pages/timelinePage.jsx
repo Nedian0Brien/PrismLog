@@ -292,7 +292,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
     { key: "feed", label: "시간순 피드", icon: <ClockIcon size={16} /> },
     { key: "calendar", label: "캘린더", icon: <CalendarIcon size={16} /> },
   ];
-  const lineLeft = layout.isPhone ? 17 : 97;
+  const lineLeft = layout.isPhone ? 17 : 92;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
