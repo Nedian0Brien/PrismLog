@@ -53,6 +53,8 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
   const [studyForm, setStudyForm] = useState({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "", progressMode: "page", pages: "", readPages: "", cover: "", isbn: "" });
   const [studyStep, setStudyStep] = useState("search");
   const [studySearchComposing, setStudySearchComposing] = useState(false);
+  const [studyEnriching, setStudyEnriching] = useState(false);
+  const [studyPageMessage, setStudyPageMessage] = useState("");
   const [cultureForm, setCultureForm] = useState(createCultureFormState);
   const [cultureStep, setCultureStep] = useState("search");
   const [cultureSearchComposing, setCultureSearchComposing] = useState(false);
@@ -101,6 +103,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     setStudyForm({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "", progressMode: "page", pages: "", readPages: "", cover: "", isbn: "" });
     setStudyStep("search");
     setStudySearchComposing(false);
+    setStudyEnriching(false);
     setCultureForm(createCultureFormState());
     setCultureStep("search");
     setCultureSearchComposing(false);
@@ -869,9 +872,9 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                  {studyForm.isbn && (
                    <button
                      type="button"
-                     disabled={enriching}
+                     disabled={studyEnriching}
                      onClick={async () => {
-                       setEnriching(true);
+                       setStudyEnriching(true);
                        setPageMessage("");
                        try {
                          const data = await fetchReadingEnrichment(apiBaseUrl, studyForm.isbn);
@@ -884,7 +887,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                        } catch (err) {
                          setPageMessage("정보를 불러오는 중 오류가 발생했습니다.");
                        } finally {
-                         setEnriching(false);
+                         setStudyEnriching(false);
                        }
                      }}
                      style={{
@@ -892,7 +895,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                        background: `${accent}16`, color: accent, fontSize: 11, fontWeight: 700, cursor: "pointer"
                      }}
                    >
-                     {enriching ? "불러오는 중..." : "페이지 보강"}
+                     {studyEnriching ? "불러오는 중..." : "페이지 보강"}
                    </button>
                  )}
                </div>
