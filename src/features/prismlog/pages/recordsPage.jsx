@@ -2183,7 +2183,7 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {book.publisher && <Badge text={book.publisher} color={accent} />}
               {publishedLabel && <Badge text={publishedLabel} color={accent} />}
-              {tags.map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
+              {(tags || []).map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
             </div>
 
             <div style={{
@@ -2313,7 +2313,7 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                 boxShadow: `0 0 18px ${accent}22`,
               }} />
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                {timelineGroups.map((group, index) => {
+                {(timelineGroups || []).map((group, index) => {
                   const timelineVisible = visibleTimelineKeys[group.dateKey] ?? false;
                   const sessionStartLabel = group.session ? formatTimeLabel(group.session.startedAt) : "";
                   const sessionEndLabel = group.session ? formatTimeLabel(group.session.endedAt) : "";
@@ -2459,7 +2459,7 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
             <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>아직 남긴 독서 메모가 없습니다.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {readingFeedNotes.map((note) => (
+              {(readingFeedNotes || []).map((note) => (
                 <div key={note.id} style={{ position: "relative", padding: layout.isPhone ? "18px 16px 16px" : "20px 18px 18px", borderRadius: 22, border: `1px solid ${accent}20`, background: "linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.02))", overflow: "hidden", boxShadow: "0 18px 34px rgba(0,0,0,0.12)" }}>
                   <span style={{ position: "absolute", top: -12, left: 12, fontSize: layout.isPhone ? 74 : 82, lineHeight: 1, fontWeight: 800, color: `${accent}18`, fontFamily: "'Outfit', sans-serif", pointerEvents: "none" }}>
                     “
@@ -2561,7 +2561,7 @@ export const ReadingGridCard = ({ book, onEdit, onAdd, onOpen, layout }) => {
     )}
 
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, flexWrap: "wrap" }}>
-      {book.tags.map(t => <Badge key={t} text={`#${t}`} color={COLORS.reading.main} />)}
+      {(book?.tags || []).map(t => <Badge key={t} text={`#${t}`} color={COLORS.reading.main} />)}
     </div>
 
     <div style={{ display: "flex", gap: 8, marginTop: "auto" }}>
@@ -2852,7 +2852,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
 
       {viewMode === "list" ? (
         <div key="reading-list" style={{ display: "flex", flexDirection: "column", gap: 16, animation: "viewSwitch 0.28s ease-out" }}>
-          {books.map((book, idx) => (
+          {(books || []).map((book, idx) => (
             <div
               key={book.id}
               style={{
@@ -2919,7 +2919,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
                     </div>
                     {book.review && <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: "8px 0 0", fontStyle: "italic", lineHeight: 1.5 }}>"{book.review}"</p>}
                     <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                      {book.tags.map(t => <Badge key={t} text={`#${t}`} color={COLORS.reading.main} />)}
+                      {(book?.tags || []).map(t => <Badge key={t} text={`#${t}`} color={COLORS.reading.main} />)}
                     </div>
                   </div>
                 </div>
@@ -2930,7 +2930,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
       ) : (
         <div key="reading-grid" style={{ animation: "viewSwitch 0.28s ease-out" }}>
           <div style={{ display: "grid", gridTemplateColumns: `repeat(${getResponsiveColumns(layout, { phone: 1, tablet: 2, desktop: 3 })}, minmax(0, 1fr))`, gap: 12 }}>
-            {books.map((book, idx) => (
+            {(books || []).map((book, idx) => (
               <div
                 key={book.id}
                 style={{
@@ -3080,7 +3080,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
 
             {item.tags.length > 0 && (
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {item.tags.map(t => <Badge key={t} text={`#${t}`} color={accent} />)}
+                {(item?.tags || []).map(t => <Badge key={t} text={`#${t}`} color={accent} />)}
               </div>
             )}
           </div>
@@ -3250,7 +3250,7 @@ export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = 
         </GlassCard>
       )}
       <div style={{ display: "grid", gridTemplateColumns: layout.isDesktop ? "repeat(2, minmax(0, 1fr))" : "1fr", gap: 16 }}>
-        {studies.map(s => (
+        {(studies || []).map(s => (
           <GlassCard key={s.id} glow={COLORS.study.glow} style={{ padding: 0, cursor: "pointer", overflow: "hidden" }} onClick={() => setDetailId(s.id)}>
             <div style={{ display: "flex", alignItems: "center", minHeight: 124 }}>
               <div style={{
@@ -3374,7 +3374,7 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
             <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>문화 기록이 없습니다.</p>
           </GlassCard>
         )}
-        {filtered.map(c => {
+        {(filtered || []).map(c => {
           const tone = getCultureTone(c.type);
           const accent = tone.main;
           const glow = tone.glow;
