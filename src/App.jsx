@@ -215,10 +215,12 @@ export default function PrismLog() {
       body: JSON.stringify({
         user_id: DEMO_USER_ID,
         category: logInput.category,
+        entity_id: logInput.entity_id,
         title,
         summary: logInput.summary || "",
         tags: Array.isArray(logInput.tags) ? logInput.tags : [],
         payload: logInput.payload || {},
+        occurred_at: logInput.occurred_at,
       }),
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
