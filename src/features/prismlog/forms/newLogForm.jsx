@@ -57,7 +57,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
   const [readingForm, setReadingForm] = useState(createReadingFormState);
   const [cultureForm, setCultureForm] = useState(createCultureFormState);
   const [studyForm, setStudyForm] = useState({
-    title: "", retrospect: "", tags: "", progressMode: "chapter", pages: "", readPages: "", cover: "", resource: "",
+    title: "", retrospect: "", tags: "", progressMode: "chapter", pages: "", readPages: "", cover: "", resource: "", isbn: "",
   });
   
   const [submitting, setSubmitting] = useState(false);
@@ -104,7 +104,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
       setSelectedEntity(null);
       setReadingForm(createReadingFormState());
       setCultureForm(createCultureFormState());
-      setStudyForm({ title: "", retrospect: "", tags: "", progressMode: "chapter", pages: "", readPages: "", cover: "", resource: "" });
+      setStudyForm({ title: "", retrospect: "", tags: "", progressMode: "chapter", pages: "", readPages: "", cover: "", resource: "", isbn: "" });
       setSubmitMessage("");
     }
   }, [isOpen]);
@@ -344,6 +344,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                 title: book.title || prev.title,
                 pages: book.pages_total ? String(book.pages_total) : prev.pages,
                 cover: book.cover_url || "",
+                isbn: book.isbn13 || book.isbn || "",
               }));
               setStep("details");
             }}
@@ -452,10 +453,57 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
               </div>
 
               {studyForm.progressMode === "page" ? (
-                <div style={splitFieldStyle}>
-                  <div><label style={labelStyle}>진행 페이지</label><input style={inputStyle} type="number" value={studyForm.readPages} onChange={(e) => setStudyForm(prev => ({ ...prev, readPages: e.target.value }))} /></div>
-                  <div><label style={labelStyle}>전체 페이지</label><input style={inputStyle} type="number" value={studyForm.pages} onChange={(e) => setStudyForm(prev => ({ ...prev, pages: e.target.value }))} /></div>
-                </div>
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <label style={labelStyle}>ISBN (선택)</label>
+                    <button
+                      type="button"
+                      disabled={!studyForm.isbn || enriching}
+                      onClick={async () => {
+                        if (!studyForm.isbn) return;
+                        setEnriching(true);
+                        setPageMessage("");
+                        try {
+                          const data = await fetchReadingEnrichment(apiBaseUrl, studyForm.isbn);
+                          if (data?.pages_total) {
+                            setStudyForm(prev => ({ ...prev, pages: String(data.pages_total) }));
+                            setPageMessage(`자동 입력 성공: ${data.pages_total}p`);
+                          } else {
+                            setPageMessage("페이지 정보를 찾지 못했습니다.");
+                          }
+                        } catch (err) {
+                          setPageMessage("보강 실패");
+                        } finally {
+                          setEnriching(false);
+                        }
+                      }}
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: 8,
+                        border: `1px solid ${studyForm.isbn ? accent : COLORS.dark.border}`,
+                        background: studyForm.isbn ? `${accent}16` : "rgba(255,255,255,0.03)",
+                        color: studyForm.isbn ? accent : COLORS.dark.textMuted,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: studyForm.isbn ? "pointer" : "not-allowed",
+                      }}
+                    >
+                      {enriching ? "보강 중..." : "페이지 자동 보강"}
+                    </button>
+                  </div>
+                  <input
+                    style={{ ...inputStyle, marginBottom: 12 }}
+                    placeholder="978... (ISBN을 입력하면 정보를 보강합니다)"
+                    value={studyForm.isbn}
+                    onChange={(e) => setStudyForm(prev => ({ ...prev, isbn: e.target.value }))}
+                  />
+                  {pageMessage && <p style={{ margin: "-8px 0 10px", fontSize: 11, color: pageMessage.includes("실패") ? "#f8b4bb" : accent }}>{pageMessage}</p>}
+                  
+                  <div style={splitFieldStyle}>
+                    <div><label style={labelStyle}>진행 페이지</label><input style={inputStyle} type="number" value={studyForm.readPages} onChange={(e) => setStudyForm(prev => ({ ...prev, readPages: e.target.value }))} /></div>
+                    <div><label style={labelStyle}>전체 페이지</label><input style={inputStyle} type="number" value={studyForm.pages} onChange={(e) => setStudyForm(prev => ({ ...prev, pages: e.target.value }))} /></div>
+                  </div>
+                </>
               ) : (
                 <div>
                   <label style={labelStyle}>목차 입력 (줄바꿈으로 구분)</label>
@@ -503,6 +551,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
               pages_read: studyForm.readPages,
               pages_total: studyForm.pages,
               cover: studyForm.cover,
+              isbn: studyForm.isbn,
             };
 
             if (studyForm.progressMode === "chapter") {
