@@ -164,66 +164,131 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
 
   // --- 1단계: 엔티티 선택 화면 ---
   if (step === "select-entity") {
+    const recentEntities = entities.slice(0, 3);
+    const otherEntities = entities.slice(3);
+
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <div style={{ padding: "12px 0" }}>
-          <h3 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 800, color: COLORS.dark.text }}>기록할 대상을 선택하세요</h3>
-          <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>최근에 기록하던 대상을 이어가거나 새로 추가할 수 있습니다.</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <div style={{ padding: "8px 0 4px" }}>
+          <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Continue Logging</p>
+          <h3 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>기록할 대상을 선택하세요</h3>
+          <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>가장 최근에 남긴 기록을 이어가거나 새로운 대상을 추가할 수 있습니다.</p>
         </div>
         
         {loadingEntities ? (
-          <p style={{ fontSize: 13, color: COLORS.dark.textMuted }}>목록 불러오는 중...</p>
+          <GlassCard style={{ padding: "20px", textAlign: "center" }}>
+            <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>데이터를 불러오는 중...</p>
+          </GlassCard>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "repeat(2, 1fr)", gap: 12 }}>
-            {/* 새 대상 추가 버튼 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* 1. 최근 기록 대상 (최대 3개) */}
+            {recentEntities.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>
+                  {recentEntities.map(entity => {
+                    const coverImg = entity.entity_metadata?.cover || entity.entity_metadata?.poster;
+                    return (
+                      <button
+                        key={entity.id}
+                        onClick={() => {
+                          setSelectedEntity(entity);
+                          if (category === "reading") {
+                            setReadingForm(prev => ({ 
+                              ...prev, 
+                              title: entity.title, 
+                              cover: coverImg || "",
+                              pages: String(entity.entity_metadata?.pages_total || ""),
+                              author: entity.entity_metadata?.author || "",
+                            }));
+                          }
+                          setStep("details");
+                        }}
+                        style={{
+                          padding: "16px", borderRadius: 24, border: `1px solid ${accent}33`,
+                          background: `linear-gradient(180deg, ${accent}12, rgba(255,255,255,0.03))`,
+                          color: COLORS.dark.text, cursor: "pointer",
+                          display: "flex", flexDirection: "column", gap: 12, textAlign: "left",
+                          boxShadow: `0 12px 24px ${accent}08`,
+                          transition: "transform 0.2s",
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
+                      >
+                        <div style={{ 
+                          width: "100%", aspectRatio: "3 / 4", borderRadius: 16, 
+                          background: `${accent}22`, overflow: "hidden", position: "relative",
+                          boxShadow: "0 8px 16px rgba(0,0,0,0.2)"
+                        }}>
+                          {coverImg ? (
+                            <img src={coverImg} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+                          ) : (
+                            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <BookIcon size={32} color={accent} />
+                            </div>
+                          )}
+                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "8px", background: "linear-gradient(0deg, rgba(0,0,0,0.6), transparent)" }}>
+                            <Badge text={entity.category} color={accent} />
+                          </div>
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <h4 style={{ margin: "0 0 2px", fontSize: 15, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "'Pretendard', sans-serif" }}>{entity.title}</h4>
+                          <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted }}>{new Date(entity.updated_at).toLocaleDateString()} 업데이트</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 2. 새로운 대상 찾기 버튼 */}
             <button
               onClick={() => setStep("search")}
               style={{
-                padding: "20px", borderRadius: 20, border: `2px dashed ${accent}44`,
+                padding: "20px", borderRadius: 24, border: `2px dashed ${accent}44`,
                 background: `${accent}08`, color: accent, cursor: "pointer",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
                 transition: "all 0.2s",
               }}
+              onMouseEnter={e => { e.currentTarget.style.background = `${accent}12`; }}
+              onMouseLeave={e => { e.currentTarget.style.background = `${accent}08`; }}
             >
-              <PlusIcon size={32} />
-              <span style={{ fontWeight: 700 }}>새로운 대상 찾기</span>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: `${accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <PlusIcon size={24} color={accent} />
+              </div>
+              <span style={{ fontWeight: 800, fontSize: 16, fontFamily: "'Outfit', sans-serif" }}>새로운 대상 찾기</span>
             </button>
             
-            {/* 기존 엔티티 목록 */}
-            {entities.map(entity => (
-              <button
-                key={entity.id}
-                onClick={() => {
-                  setSelectedEntity(entity);
-                  // 엔티티 정보를 폼에 미리 채워넣음 (기존 데이터 호환)
-                  if (category === "reading") {
-                    setReadingForm(prev => ({ 
-                      ...prev, 
-                      title: entity.title, 
-                      cover: entity.entity_metadata?.cover || "",
-                      pages: String(entity.entity_metadata?.pages_total || ""),
-                      author: entity.entity_metadata?.author || "",
-                    }));
-                  }
-                  setStep("details");
-                }}
-                style={{
-                  padding: "14px", borderRadius: 20, border: `1px solid ${COLORS.dark.border}`,
-                  background: "rgba(255,255,255,0.03)", color: COLORS.dark.text, cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 14, textAlign: "left",
-                }}
-              >
-                <div style={{ width: 48, height: 68, borderRadius: 8, background: `${accent}22`, overflow: "hidden", flexShrink: 0 }}>
-                  {(entity.entity_metadata?.cover || entity.entity_metadata?.poster) && (
-                    <img src={entity.entity_metadata.cover || entity.entity_metadata.poster} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
-                  )}
+            {/* 3. 나머지 엔티티 목록 (리스트 형태) */}
+            {otherEntities.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>기타 대상 목록</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {otherEntities.map(entity => (
+                    <button
+                      key={entity.id}
+                      onClick={() => {
+                        setSelectedEntity(entity);
+                        setStep("details");
+                      }}
+                      style={{
+                        padding: "12px 16px", borderRadius: 16, border: `1px solid ${COLORS.dark.border}`,
+                        background: "rgba(255,255,255,0.02)", color: COLORS.dark.text, cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 12, textAlign: "left",
+                      }}
+                    >
+                      <div style={{ width: 32, height: 44, borderRadius: 6, background: `${accent}22`, overflow: "hidden", flexShrink: 0 }}>
+                        {(entity.entity_metadata?.cover || entity.entity_metadata?.poster) && (
+                          <img src={entity.entity_metadata.cover || entity.entity_metadata.poster} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+                        )}
+                      </div>
+                      <span style={{ flex: 1, fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entity.title}</span>
+                      <ChevronDown size={14} color={COLORS.dark.textMuted} style={{ transform: "rotate(-90deg)" }} />
+                    </button>
+                  ))}
                 </div>
-                <div style={{ minWidth: 0 }}>
-                  <h4 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entity.title}</h4>
-                  <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>{entity.category} · {new Date(entity.updated_at).toLocaleDateString()} 업데이트</p>
-                </div>
-              </button>
-            ))}
+              </div>
+            )}
           </div>
         )}
       </div>
