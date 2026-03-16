@@ -45,8 +45,23 @@ export const mapLogToUiItem = (log) => {
   // --- 독서 데이터 가공 ---
   const pagesRead = safeNumber(combined.pages_read || combined.readPages);
   const pagesTotal = safeNumber(combined.pages_total || combined.pages);
-  const readingSessions = Array.isArray(combined.reading_sessions) ? combined.reading_sessions : (Array.isArray(combined.readingSessions) ? combined.readingSessions : []);
-  const readingNotes = Array.isArray(combined.reading_notes) ? combined.reading_notes : (Array.isArray(combined.readingNotes) ? combined.readingNotes : []);
+  
+  // 세션 데이터 필드명 변환 (snake_case -> camelCase) 및 하위 호환성
+  const rawSessions = Array.isArray(combined.reading_sessions) ? combined.reading_sessions : (Array.isArray(combined.readingSessions) ? combined.readingSessions : []);
+  const readingSessions = rawSessions.map(s => ({
+    ...s,
+    pagesRead: safeNumber(s.pages_read || s.pagesRead),
+    fromProgress: safeNumber(s.from_progress || s.fromProgress),
+    toProgress: safeNumber(s.to_progress || s.toProgress),
+    durationMinutes: safeNumber(s.duration_minutes || s.durationMinutes),
+    endedAt: s.ended_at || s.endedAt || s.date,
+  }));
+
+  const rawNotes = Array.isArray(combined.reading_notes) ? combined.reading_notes : (Array.isArray(combined.readingNotes) ? combined.readingNotes : []);
+  const readingNotes = rawNotes.map(n => ({
+    ...n,
+    date: n.date || n.created_at,
+  }));
 
   // --- 시리즈 데이터 가공 ---
   const seasons = normalizeSeriesSeasons(combined.seasons);

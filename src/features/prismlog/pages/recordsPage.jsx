@@ -2376,7 +2376,8 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                                 </span>
                               ) : null}
                             </div>
-                            <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{`+${group.session.pagesRead}p 읽음`}</h3>
+                            <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{`+${safeNumber(group.session.pagesRead)}p 읽음`}</h3>
+
                             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                               <div style={{ position: "relative", height: 16, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
                                 <div
