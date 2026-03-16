@@ -60,7 +60,14 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     progressMode: "chapter",
     pages: "",
     readPages: "",
+    isbn: "",
+    author: "",
+    publisher: "",
   });
+  const [studyStep, setStudyStep] = useState("search");
+  const [studyEnrichingPages, setStudyEnrichingPages] = useState(false);
+  const [studySearchComposing, setStudySearchComposing] = useState(false);
+  const [studyPageMessage, setStudyPageMessage] = useState("");
   const [cultureForm, setCultureForm] = useState(createCultureFormState);
   const [cultureStep, setCultureStep] = useState("search");
   const [cultureSearchComposing, setCultureSearchComposing] = useState(false);
@@ -116,7 +123,14 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
       progressMode: "chapter",
       pages: "",
       readPages: "",
+      isbn: "",
+      author: "",
+      publisher: "",
     });
+    setStudyStep("search");
+    setStudyEnrichingPages(false);
+    setStudySearchComposing(false);
+    setStudyPageMessage("");
     setCultureForm(createCultureFormState());
     setCultureStep("search");
     setCultureSearchComposing(false);
@@ -779,6 +793,115 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     );
   }
   if (category === "study") {
+    if (studyStep === "search") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{
+            padding: layout?.isPhone ? "18px 16px" : "22px 20px",
+            borderRadius: 18,
+            border: `1px solid ${accent}22`,
+            background: `linear-gradient(180deg, ${accent}18, rgba(255,255,255,0.03))`,
+            boxShadow: `0 18px 40px ${accent}14`,
+          }}>
+            <p style={{ margin: "0 0 8px", fontSize: 12, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+              Study Resource Search
+            </p>
+            <h3 style={{ margin: "0 0 8px", fontSize: layout?.isPhone ? 22 : 24, lineHeight: 1.2, fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: COLORS.dark.text }}>
+              학습할 교재를 찾으세요
+            </h3>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: COLORS.dark.textMuted }}>
+              제목이나 ISBN을 입력하면 아래에 검색 결과가 뜹니다. 교재를 선택하면 정보가 자동으로 채워집니다.
+            </p>
+          </div>
+
+          <div>
+            <label style={labelStyle}>교재 검색</label>
+            <input
+              value={studyForm.title}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                setStudyPageMessage("");
+                setStudyForm((prev) => ({ ...prev, title: nextValue, isbn: "", author: "", publisher: "", imageUrl: "", pages: "" }));
+              }}
+              onCompositionStart={() => setStudySearchComposing(true)}
+              onCompositionEnd={(event) => {
+                setStudySearchComposing(false);
+                const nextValue = event.currentTarget.value;
+                setStudyPageMessage("");
+                setStudyForm((prev) => ({ ...prev, title: nextValue, isbn: "", author: "", publisher: "", imageUrl: "", pages: "" }));
+              }}
+              style={{ ...inputStyle, padding: "15px 18px", fontSize: 16 }}
+              placeholder="제목 또는 ISBN으로 검색..."
+            />
+          </div>
+
+          <BookSearchResultsPanel
+            query={studyForm.title}
+            apiBaseUrl={apiBaseUrl}
+            accentColor={accent}
+            suspend={studySearchComposing}
+            onSelect={async (book) => {
+                setStudyPageMessage("");
+                setStudyForm((prev) => ({
+                  ...prev,
+                  title: book.title || prev.title,
+                  author: Array.isArray(book.authors) ? book.authors.join(", ") : prev.author,
+                  publisher: book.publisher || "",
+                  isbn: book.isbn13 || book.isbn || "",
+                  imageUrl: book.cover_url || "",
+                  pages: book.pages_total ? String(book.pages_total) : "",
+                }));
+                setStudyStep("details");
+                const isbn = book.isbn13 || book.isbn;
+                if (!isbn) return;
+                setStudyEnrichingPages(true);
+                try {
+                  const enrichment = await fetchReadingEnrichment(apiBaseUrl, isbn);
+                  if (enrichment) {
+                    setStudyForm((prev) => ({
+                      ...prev,
+                      title: enrichment.title || prev.title,
+                      author: Array.isArray(enrichment.authors) && enrichment.authors.length > 0 ? enrichment.authors.join(", ") : prev.author,
+                      publisher: enrichment.publisher || prev.publisher,
+                      pages: enrichment.pages_total ? String(enrichment.pages_total) : prev.pages,
+                      imageUrl: enrichment.cover_url || prev.imageUrl,
+                    }));
+                    setStudyPageMessage(getReadingEnrichmentMessage(enrichment));
+                  }
+                } catch (error) {
+                  console.error("study book enrichment failed", error);
+                } finally {
+                  setStudyEnrichingPages(false);
+                }
+              }}
+          />
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
+              검색 결과가 없으면 직접 입력으로 계속 진행할 수 있습니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => setStudyStep("details")}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: `1px solid ${accent}55`,
+                background: `${accent}16`,
+                color: accent,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "'Pretendard', sans-serif",
+              }}
+            >
+              직접 입력하기
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     const studySectionCardStyle = {
       padding: layout?.isPhone ? "16px" : "18px",
       borderRadius: 20,
@@ -801,7 +924,75 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     });
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{
+          display: "flex",
+          alignItems: layout?.isPhone ? "stretch" : "center",
+          justifyContent: "space-between",
+          gap: 12,
+          flexDirection: layout?.isPhone ? "column" : "row",
+        }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: "0 0 4px", fontSize: 12, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+              Ready to Study
+            </p>
+            <h3 style={{ margin: "0 0 6px", fontSize: 22, lineHeight: 1.2, fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: COLORS.dark.text }}>
+              기록 상세 입력
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStudyStep("search")}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: `1px solid ${accent}55`,
+              background: "rgba(255,255,255,0.04)",
+              color: accent,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "'Pretendard', sans-serif",
+              flexShrink: 0,
+            }}
+          >
+            교재 다시 검색
+          </button>
+        </div>
+
+        {studyForm.isbn && (
+          <div style={{
+            ...studySectionCardStyle,
+            display: "flex",
+            gap: 16,
+            background: `linear-gradient(145deg, ${accent}14, rgba(255,255,255,0.03))`,
+            alignItems: "center",
+          }}>
+            <div style={{
+              width: 52,
+              height: 74,
+              borderRadius: 10,
+              overflow: "hidden",
+              boxShadow: "0 8px 18px rgba(0,0,0,0.3)",
+              background: `${accent}16`,
+              flexShrink: 0,
+            }}>
+              {studyForm.imageUrl ? (
+                <img src={studyForm.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <BookIcon size={20} color={accent} />
+                </div>
+              )}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: "0 0 2px", fontSize: 11, color: accent, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Selected Textbook</p>
+              <h4 style={{ margin: "0 0 2px", fontSize: 16, fontWeight: 700, color: COLORS.dark.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{studyForm.title}</h4>
+              <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>{studyForm.author} · {studyForm.publisher}</p>
+            </div>
+          </div>
+        )}
+
         <div><label style={labelStyle}>학습 주제</label><input value={studyForm.title} onChange={(e) => setStudyForm((prev) => ({ ...prev, title: e.target.value }))} style={inputStyle} placeholder="학습 주제를 입력하세요" /></div>
 
         <div style={studySectionCardStyle}>
