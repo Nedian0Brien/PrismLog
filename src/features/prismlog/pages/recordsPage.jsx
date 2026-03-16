@@ -3039,8 +3039,8 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
         <div style={{ display: "flex", flexDirection: layout.isPhone ? "column" : "row", minHeight: 180 }}>
           {/* 교재 이미지 섹션 */}
           <div style={{
-            width: layout.isPhone ? "100%" : 160,
-            aspectRatio: layout.isPhone ? "16/9" : "auto",
+            width: layout.isPhone ? "100%" : 88,
+            height: layout.isPhone ? 120 : "auto",
             background: `linear-gradient(135deg, ${accent}22, ${accent}08)`,
             display: "flex",
             alignItems: "center",
@@ -3048,11 +3048,12 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
             position: "relative",
             borderRight: layout.isPhone ? "none" : `1px solid ${COLORS.dark.border}`,
             borderBottom: layout.isPhone ? `1px solid ${COLORS.dark.border}` : "none",
+            flexShrink: 0,
           }}>
             {item.imageUrl ? (
               <img src={item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
-              <PenIcon size={48} color={accent} style={{ opacity: 0.3 }} />
+              <PenIcon size={32} color={accent} style={{ opacity: 0.3 }} />
             )}
           </div>
 
