@@ -1,184 +1,125 @@
 import {
-  clamp,
-  formatMonthDayLabel,
-  getSeriesPlatformLabel,
-  getSeriesProgressMetrics,
-  normalizeCultureType,
-  normalizeEpisodeWatchDates,
-  normalizeMetadataObject,
+  COLORS,
   safeNumber,
+  clamp,
+  normalizeCultureType,
+  getCultureTone,
+  formatTimeLabel,
+  getSeriesProgressMetrics,
 } from "./core";
 
-const normalizeReadingSession = (entry) => {
-  if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
-  const date = String(entry.ended_at || entry.endedAt || entry.date || entry.updated_at || "").trim();
-  if (!date) return null;
-  const startedAt = String(entry.started_at || entry.startedAt || date).trim();
-  const endedAt = String(entry.ended_at || entry.endedAt || date).trim();
-  return {
-    id: String(entry.id || `${date}-${safeNumber(entry.to_pages, 0)}`),
-    date,
-    dateLabel: formatMonthDayLabel(date),
-    fromPages: safeNumber(entry.from_pages ?? entry.fromPages, 0),
-    toPages: safeNumber(entry.to_pages ?? entry.toPages, 0),
-    totalPages: safeNumber(entry.total_pages ?? entry.totalPages, 0),
-    pagesRead: safeNumber(entry.pages_read ?? entry.pagesRead, 0),
-    fromProgress: clamp(safeNumber(entry.from_progress ?? entry.fromProgress, 0), 0, 100),
-    toProgress: clamp(safeNumber(entry.to_progress ?? entry.toProgress, 0), 0, 100),
-    progressDelta: safeNumber(entry.progress_delta ?? entry.progressDelta, 0),
-    startedAt,
-    endedAt,
-    durationMinutes: safeNumber(entry.duration_minutes ?? entry.durationMinutes, 0),
-  };
-};
-
-const normalizeReadingNote = (entry) => {
-  if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
-  const date = String(entry.date || "").trim();
-  const text = String(entry.text || "").trim();
-  if (!date || !text) return null;
-  return {
-    id: String(entry.id || `${date}-${text.slice(0, 12)}`),
-    date,
-    dateLabel: formatMonthDayLabel(date),
-    page: safeNumber(entry.page, 0),
-    text,
-  };
-};
-
-export const mapReadingLog = (log) => {
+/**
+ * 개별 로그 항목을 UI용 아이템 객체로 변환합니다.
+ */
+export const mapLogToUiItem = (log) => {
   const payload = log.payload || {};
-  const pages = safeNumber(payload.pages_total || payload.pages);
-  const readPages = safeNumber(payload.pages_read || payload.readPages);
-  const computed = pages > 0 ? Math.round((readPages / pages) * 100) : 0;
-  const progress = clamp(safeNumber(payload.progress, computed), 0, 100);
-  return {
-    id: log.id,
-    title: log.title,
-    summary: log.summary || "",
-    author: payload.author || "저자 정보 없음",
-    publisher: payload.publisher || "",
-    isbn: payload.isbn13 || payload.isbn || "",
-    publishedDate: payload.published_date || "",
-    description: payload.description || "",
-    cover: payload.cover || null,
-    medium: payload.medium || "paper",
-    ebookService: payload.ebook_service || "",
-    ebookProgressMode: payload.progress_mode || "page",
-    readingStatus: payload.reading_status || "reading",
-    progressValue: safeNumber(payload.progress_value, progress),
-    sourceProvider: payload.source_provider || "",
-    sourceId: payload.source_id || "",
-    enrichmentProvider: payload.enrichment_provider || "",
-    sourceMetadata: normalizeMetadataObject(payload.source_metadata),
-    progress,
-    pages,
-    readPages,
-    readingSessions: Array.isArray(payload.reading_sessions)
-      ? payload.reading_sessions.map(normalizeReadingSession).filter(Boolean).sort((a, b) => new Date(b.date) - new Date(a.date))
-      : [],
-    readingNotes: Array.isArray(payload.reading_notes)
-      ? payload.reading_notes.map(normalizeReadingNote).filter(Boolean).sort((a, b) => new Date(b.date) - new Date(a.date))
-      : [],
-    rating: clamp(safeNumber(payload.rating), 0, 5),
-    review: payload.review || log.summary || "",
-    tags: Array.isArray(log.tags) ? log.tags : [],
-    date: log.created_at,
-  };
-};
-
-export const mapStudyLog = (log) => {
-  const payload = log.payload || {};
-  const legacyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
-  const legacyCompleted = Array.isArray(payload.completed) ? payload.completed : legacyChapters.map(() => false);
+  const entity = log.entity || {};
+  const entityMetadata = entity.entity_metadata || {};
   
-  // 신규 toc 구조가 있으면 사용, 없으면 구 구조(legacy)에서 마이그레이션
-  const toc = Array.isArray(payload.toc) ? payload.toc : legacyChapters.map((title, idx) => ({
-    id: `legacy-${idx}-${Date.now()}`,
-    title,
-    completed: Boolean(legacyCompleted[idx]),
-    notes: "",
-    children: [],
-    expanded: false,
-  }));
-
-  const doneCount = (function countDone(items) {
-    return items.reduce((sum, item) => 
-      sum + (item.completed ? 1 : 0) + countDone(item.children || []), 0);
-  })(toc);
+  // 카테고리 및 색상 결정
+  const category = log.category;
+  const cultureType = category === "culture" ? normalizeCultureType(payload.type || entity.category) : null;
+  const typeLabel = category === "reading" ? "독서" : category === "study" ? "공부" : cultureType;
   
-  const totalCount = (function countTotal(items) {
-    return items.reduce((sum, item) => 
-      sum + 1 + countTotal(item.children || []), 0);
-  })(toc);
+  const accent = category === "reading"
+    ? COLORS.reading.main
+    : category === "study"
+      ? COLORS.study.main
+      : getCultureTone(cultureType).main;
 
-  const progressMode = payload.progress_mode || "chapter";
-  const pagesTotal = safeNumber(payload.pages_total || payload.pages);
-  const pagesRead = safeNumber(payload.pages_read || payload.readPages);
+  // 제목: 로그 자체 제목이 있으면 사용, 없으면 엔티티 제목 사용
+  const title = log.title || entity.title || "제목 없음";
 
-  let computed = 0;
-  if (progressMode === "page" && pagesTotal > 0) {
-    computed = Math.round((pagesRead / pagesTotal) * 100);
-  } else if (totalCount > 0) {
-    computed = Math.round((doneCount / totalCount) * 100);
+  // 포스터/커버 이미지 결정
+  const poster = entityMetadata.cover || entityMetadata.poster || entityMetadata.image_url || payload.cover || payload.poster || payload.image_url || null;
+
+  // 진행률 및 요약 정보 계산 (기존 로직 이관)
+  let summary = "";
+  let progress = null;
+  let progressStart = 0;
+  let progressEnd = 0;
+
+  if (category === "reading") {
+    const pagesRead = safeNumber(payload.pages_read || payload.readPages);
+    const pagesTotal = safeNumber(entityMetadata.pages_total || payload.pages_total || payload.pages);
+    summary = `${pagesRead} / ${pagesTotal > 0 ? `${pagesTotal}p` : "?"}`;
+    progress = pagesTotal > 0 ? clamp(Math.round((pagesRead / pagesTotal) * 100), 0, 100) : 0;
+    
+    // 이전 기록과의 델타 계산을 위해 progressStart 추정 (간소화)
+    progressEnd = progress;
+    progressStart = Math.max(0, progress - safeNumber(payload.progress_delta, 0));
+  } else if (category === "study") {
+    const progressMode = payload.progress_mode || "chapter";
+    if (progressMode === "page") {
+      const pagesRead = safeNumber(payload.pages_read);
+      const pagesTotal = safeNumber(entityMetadata.pages_total || payload.pages_total);
+      summary = `${pagesRead} / ${pagesTotal}p`;
+      progress = pagesTotal > 0 ? Math.round((pagesRead / pagesTotal) * 100) : 0;
+    } else {
+      progress = clamp(safeNumber(payload.progress), 0, 100);
+      summary = `${progress}% 완료`;
+    }
+    progressEnd = progress;
+    progressStart = progress; // 공부는 일단 동일하게 표시
+  } else if (cultureType === "시리즈") {
+    const metrics = getSeriesProgressMetrics({
+      episodeCount: entityMetadata.episode_count || payload.episode_count,
+      seasons: entityMetadata.seasons || payload.seasons,
+      watchedEpisodes: payload.watched_episode_count,
+      progress: payload.progress,
+    });
+    summary = metrics.playtimeLabel || `${payload.watched_episode_count || 0}화 시청`;
+    progress = metrics.progress;
+    progressEnd = progress;
+    progressStart = Math.max(0, progress - safeNumber(payload.progress_delta, 0));
+  } else {
+    summary = payload.playtime || payload.status || "";
   }
 
   return {
     id: log.id,
-    title: log.title,
-    summary: log.summary || "",
-    progress: clamp(safeNumber(payload.progress, computed), 0, 100),
-    toc,
-    chapters: legacyChapters, // 하위 호환성 유지
-    completed: legacyCompleted,
-    progressMode,
-    pagesTotal,
-    pagesRead,
-    goal: payload.goal || "학습 목표 미설정",
-    imageUrl: payload.image_url || payload.imageUrl || null,
-    date: log.created_at,
-    tags: Array.isArray(log.tags) ? log.tags : [],
-    hours: safeNumber(payload.hours),
+    entityId: log.entity_id,
+    title,
+    time: formatTimeLabel(log.occurred_at || log.created_at),
+    accent,
+    type: cultureType || category,
+    categoryLabel: typeLabel,
+    summary,
+    snippet: log.summary || "",
+    progress,
+    progressStart,
+    progressEnd,
+    status: payload.status || "",
+    poster,
+    occurredAt: log.occurred_at || log.created_at,
   };
 };
 
-export const mapCultureLog = (log) => {
-  const payload = log.payload || {};
-  const type = normalizeCultureType(payload.type);
-  const seriesMetrics = type === "시리즈"
-    ? getSeriesProgressMetrics({
-      episodeCount: payload.episode_count,
-      seasons: payload.seasons,
-      watchedEpisodes: payload.watched_episode_count,
-      playtime: payload.playtime,
-      progress: payload.progress,
-    })
-    : null;
-  return {
-    id: log.id,
-    title: log.title,
-    summary: log.summary || "",
-    overview: payload.overview || log.summary || "",
-    type,
-    status: payload.status || (type === "게임" ? "플레이 중" : "시청 중"),
-    poster: payload.poster || null,
-    releaseDate: payload.release_date || null,
-    sourceProvider: payload.source_provider || "",
-    sourceId: payload.source_id || "",
-    tmdbId: payload.tmdb_id || null,
-    igdbId: payload.igdb_id || null,
-    episodeCount: safeNumber(payload.episode_count, 0) || null,
-    seasonCount: safeNumber(payload.season_count, 0) || null,
-    runtime: safeNumber(payload.runtime, 0) || null,
-    seasons: seriesMetrics?.seasons || [],
-    episodeWatchDates: normalizeEpisodeWatchDates(payload.episode_watch_dates),
-    platformKey: payload.platform_key || "",
-    platformLabel: getSeriesPlatformLabel(payload.platform_key, payload.platform_label || ""),
-    watchedEpisodes: seriesMetrics?.watchedEpisodes ?? safeNumber(payload.watched_episode_count, 0),
-    progress: seriesMetrics?.progress ?? clamp(safeNumber(payload.progress), 0, 100),
-    rating: clamp(safeNumber(payload.rating), 0, 5),
-    date: log.created_at,
-    tags: Array.isArray(log.tags) ? log.tags : [],
-    playtime: type === "시리즈" ? seriesMetrics?.playtimeLabel || payload.playtime || null : payload.playtime || null,
-  };
+/**
+ * 로그 목록을 날짜별 그룹으로 묶습니다.
+ */
+export const groupLogsByDate = (logs) => {
+  if (!Array.isArray(logs)) return [];
+  
+  const sorted = [...logs].sort((a, b) => new Date(b.occurred_at || b.created_at) - new Date(a.occurred_at || a.created_at));
+  
+  return sorted.reduce((acc, log) => {
+    const dateObj = new Date(log.occurred_at || log.created_at);
+    const key = dateObj.toISOString().split("T")[0];
+    const item = mapLogToUiItem(log);
+    
+    const existing = acc.find((g) => g.key === key);
+    if (existing) {
+      existing.items.push(item);
+    } else {
+      acc.push({
+        key,
+        date: dateObj,
+        dayNumber: String(dateObj.getDate()).padStart(2, "0"),
+        sideLabel: `${dateObj.getMonth() + 1}월 · ${["일","월","화","수","목","금","토"][dateObj.getDay()]}요일`,
+        items: [item],
+      });
+    }
+    return acc;
+  }, []);
 };
