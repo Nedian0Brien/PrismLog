@@ -374,17 +374,17 @@ const animateScrollAxis = (element, axis, target, duration = 760) => new Promise
 
 const buildSeriesSeasonRows = (item) => {
   const metrics = getSeriesProgressMetrics(item);
-  const episodeWatchDates = item.episodeWatchDates || {};
+  const episodeWatchDates = item?.episodeWatchDates || {};
   let remainingWatched = metrics.watchedEpisodes;
   let currentPointer = null;
   let absoluteEpisodeCursor = 0;
 
-  const seasons = metrics.seasons.map((season) => {
-    const totalEpisodes = Math.max(safeNumber(season.episodeCount, season.episodes.length), 0);
+  const seasons = (Array.isArray(metrics?.seasons) ? metrics.seasons : []).map((season) => {
+    const totalEpisodes = Math.max(safeNumber(season?.episodeCount, Array.isArray(season?.episodes) ? season.episodes.length : 0), 0);
     const watchedEpisodes = totalEpisodes > 0 ? Math.min(remainingWatched, totalEpisodes) : 0;
     remainingWatched = Math.max(remainingWatched - totalEpisodes, 0);
 
-    const episodes = season.episodes.map((episode, index) => {
+    const episodes = (Array.isArray(season?.episodes) ? season.episodes : []).map((episode, index) => {
       absoluteEpisodeCursor += 1;
       const watched = index < watchedEpisodes;
       const isCurrent = !currentPointer && !watched && metrics.watchedEpisodes < metrics.totalEpisodes;
@@ -1953,12 +1953,13 @@ export const ReadingProgressModal = ({
 };
 
 const buildReadingTrendPoints = (book) => {
-  const sessions = Array.isArray(book.readingSessions) ? [...book.readingSessions].sort((a, b) => new Date(a.date) - new Date(b.date)) : [];
+  const sessions = (book && Array.isArray(book.readingSessions)) ? [...book.readingSessions].sort((a, b) => new Date(a.date) - new Date(b.date)) : [];
   if (sessions.length === 0) {
-    return [{ label: "현재", progress: clamp(safeNumber(book.progress), 0, 100), dateKey: "reading-current" }];
+    return [{ label: "현재", progress: clamp(safeNumber(book?.progress), 0, 100), dateKey: "reading-current" }];
   }
   const points = [];
   sessions.forEach((session, index) => {
+    if (!session) return;
     const dateKey = getDateKey(session.endedAt || session.date) || `reading-session-${index}`;
     const label = formatMonthDayLabel(session.endedAt || session.date) || "기록";
     const startProgress = clamp(safeNumber(session.fromProgress), 0, 100);
