@@ -2368,23 +2368,16 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                         {group.session && (
                           <div style={{ borderRadius: 22, border: `1px solid ${accent}2c`, background: `linear-gradient(180deg, rgba(255,255,255,0.03), ${accent}12)`, padding: layout.isPhone ? "16px" : "18px 20px", boxShadow: "0 18px 34px rgba(0,0,0,0.14)" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
-                              <Badge text="독서 기록" color={accent} />
-                              {sessionMetaLabel ? (
-                                <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>
-                                  {sessionMetaLabel}
-                                </span>
-                              ) : null}
-                            </div>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, marginBottom: 12 }}>
                               <div style={{ minWidth: 0 }}>
                                 <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 0.5, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Today's Progress</p>
                                 <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1, fontWeight: 800, fontFamily: "'Pretendard', sans-serif", color: COLORS.dark.text }}>{`+${safeNumber(group.session.pagesRead)}p 읽음`}</h3>
                               </div>
-                              <div style={{ textAlign: "right" }}>
-                                <strong style={{ fontSize: 28, fontWeight: 800, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1, display: "flex", alignItems: "baseline", gap: 1 }}>
-                                  <span>{`+${safeNumber(group.session.progressDelta)}`}</span>
-                                  <span style={{ fontSize: 14 }}>%</span>
+                              <div style={{ textAlign: "right", display: "flex", alignItems: "baseline", gap: 8 }}>
+                                <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.9)", fontFamily: "'Outfit', sans-serif" }}>{`+${safeNumber(group.session.progressDelta)}%`}</span>
+                                <strong style={{ fontSize: 42, fontWeight: 800, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1, display: "flex", alignItems: "baseline" }}>
+                                  <span>{trackProgress}</span>
+                                  <span style={{ fontSize: 18, marginLeft: 1 }}>%</span>
                                 </strong>
                               </div>
                             </div>
@@ -2417,7 +2410,7 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                               </div>
                               <div style={{ display: "flex", justifyContent: "flex-start", gap: 10, alignItems: "center" }}>
                                 <p style={{ margin: 0, fontSize: 12, lineHeight: 1, color: COLORS.dark.textMuted }}>
-                                  {`${safeNumber(group.session.fromPages)}p → ${safeNumber(group.session.toPages)}p`}
+                                  {`${safeNumber(group.session.fromPages)}p → ${safeNumber(group.session.toPages)}p (+${safeNumber(group.session.pagesRead)}p)`}
                                 </p>
                               </div>
                             </div>
