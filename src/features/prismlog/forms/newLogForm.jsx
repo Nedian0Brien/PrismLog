@@ -57,7 +57,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
   const [readingForm, setReadingForm] = useState(createReadingFormState);
   const [cultureForm, setCultureForm] = useState(createCultureFormState);
   const [studyForm, setStudyForm] = useState({
-    title: "", retrospect: "", tags: "", progressMode: "chapter", pages: "", readPages: "",
+    title: "", retrospect: "", tags: "", progressMode: "chapter", pages: "", readPages: "", cover: "",
   });
   
   const [submitting, setSubmitting] = useState(false);
@@ -330,6 +330,24 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
             }}
           />
         )}
+
+        {category === "study" && (
+          <BookSearchResultsPanel
+            query={studyForm.title}
+            apiBaseUrl={apiBaseUrl}
+            accentColor={accent}
+            suspend={searchComposing}
+            onSelect={async (book) => {
+              setStudyForm(prev => ({
+                ...prev,
+                title: book.title || prev.title,
+                pages: book.pages_total ? String(book.pages_total) : prev.pages,
+                cover: book.cover_url || "",
+              }));
+              setStep("details");
+            }}
+          />
+        )}
         
         {category === "culture" && (
           <MediaSearchResultsPanel
@@ -363,7 +381,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     
     // 현재 표시할 제목/커버 정보 결정
     const displayTitle = selectedEntity?.title || (isReading ? readingForm.title : isCulture ? cultureForm.title : studyForm.title);
-    const displayCover = selectedEntity?.entity_metadata?.cover || selectedEntity?.entity_metadata?.poster || (isReading ? readingForm.cover : isCulture ? cultureForm.poster : "");
+    const displayCover = selectedEntity?.entity_metadata?.cover || selectedEntity?.entity_metadata?.poster || (isReading ? readingForm.cover : isCulture ? cultureForm.poster : studyForm.cover);
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -440,7 +458,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
             const payload = isReading 
               ? { category: "reading", title: displayTitle, summary: readingForm.memo, tags: parseTags(readingForm.tags), payload: buildReadingPayload(readingForm) }
               : isStudy
-              ? { category: "study", title: displayTitle, summary: studyForm.retrospect, tags: parseTags(studyForm.tags), payload: { pages_read: studyForm.readPages, pages_total: studyForm.pages } }
+              ? { category: "study", title: displayTitle, summary: studyForm.retrospect, tags: parseTags(studyForm.tags), payload: { pages_read: studyForm.readPages, pages_total: studyForm.pages, cover: studyForm.cover } }
               : { category: "culture", title: displayTitle, summary: cultureForm.overview, tags: parseTags(cultureForm.tags), payload: buildCulturePayload(cultureForm) };
             
             handleSave(payload);
