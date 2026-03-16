@@ -2794,14 +2794,24 @@ export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = 
         )}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <ProgressBar value={detail.progress} color={COLORS.study.main} height={8} />
-          <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.study.main, fontFamily: "'Outfit', sans-serif" }}>{detail.progress}%</span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", minWidth: 48 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.study.main, fontFamily: "'Outfit', sans-serif" }}>{detail.progress}%</span>
+            {detail.progressMode === "page" && detail.pagesTotal > 0 && (
+              <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{detail.pagesRead}/{detail.pagesTotal}p</span>
+            )}
+          </div>
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <Badge text={detail.goal} color={COLORS.study.main} />
+          {detail.progressMode === "chapter" && <Badge text={`${detail.chapters.length}개 챕터`} color={COLORS.study.main} />}
           {detail.tags.map(t => <Badge key={t} text={`#${t}`} color={COLORS.study.main} />)}
         </div>
-        <h4 style={{ fontSize: 14, fontWeight: 700, color: COLORS.dark.textMuted, margin: "8px 0 4px", fontFamily: "'Outfit', sans-serif" }}>학습 목차</h4>
-        <StudyAccordion study={detail} />
+        {detail.chapters.length > 0 && (
+          <>
+            <h4 style={{ fontSize: 14, fontWeight: 700, color: COLORS.dark.textMuted, margin: "8px 0 4px", fontFamily: "'Outfit', sans-serif" }}>학습 목차</h4>
+            <StudyAccordion study={detail} />
+          </>
+        )}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <IconActionButton onClick={() => onEdit(detail)} />
         </div>
@@ -2835,7 +2845,9 @@ export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <h4 style={{ fontSize: 16, fontWeight: 700, color: COLORS.dark.text, margin: "0 0 4px", fontFamily: "'Pretendard', sans-serif" }}>{s.title}</h4>
-                  <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: 0 }}>{s.goal} · {s.chapters.length}개 챕터</p>
+                  <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: 0 }}>
+                    {s.goal} · {s.progressMode === "page" && s.pagesTotal > 0 ? `${s.pagesRead}/${s.pagesTotal}p` : `${s.chapters.length}개 챕터`}
+                  </p>
                 </div>
                 <span style={{ display: "inline-block", fontSize: 22, fontWeight: 800, color: COLORS.study.main, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
                   {s.progress}%

@@ -92,7 +92,17 @@ export const mapStudyLog = (log) => {
   const chapters = Array.isArray(payload.chapters) ? payload.chapters : [];
   const completed = Array.isArray(payload.completed) ? payload.completed : chapters.map(() => false);
   const doneCount = completed.filter(Boolean).length;
-  const computed = chapters.length > 0 ? Math.round((doneCount / chapters.length) * 100) : 0;
+  const progressMode = payload.progress_mode || "chapter";
+  const pagesTotal = safeNumber(payload.pages_total || payload.pages);
+  const pagesRead = safeNumber(payload.pages_read || payload.readPages);
+
+  let computed = 0;
+  if (progressMode === "page" && pagesTotal > 0) {
+    computed = Math.round((pagesRead / pagesTotal) * 100);
+  } else if (chapters.length > 0) {
+    computed = Math.round((doneCount / chapters.length) * 100);
+  }
+
   return {
     id: log.id,
     title: log.title,
@@ -100,6 +110,9 @@ export const mapStudyLog = (log) => {
     progress: clamp(safeNumber(payload.progress, computed), 0, 100),
     chapters,
     completed,
+    progressMode,
+    pagesTotal,
+    pagesRead,
     goal: payload.goal || "학습 목표 미설정",
     imageUrl: payload.image_url || payload.imageUrl || null,
     date: log.created_at,

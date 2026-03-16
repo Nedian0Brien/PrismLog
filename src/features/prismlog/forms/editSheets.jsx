@@ -250,6 +250,9 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
     tags: "",
     progress: 0,
     hours: 0,
+    progressMode: "chapter",
+    pages: "",
+    readPages: "",
   });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -266,6 +269,9 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
       tags: (record.tags || []).map((tag) => `#${tag}`).join(" "),
       progress: safeNumber(record.progress),
       hours: safeNumber(record.hours),
+      progressMode: record.progressMode || "chapter",
+      pages: String(record.pagesTotal || record.pages || ""),
+      readPages: String(record.pagesRead || record.readPages || ""),
     });
     setMessage("");
   }, [record]);
@@ -275,6 +281,7 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
   const inputStyle = getFormInputStyle();
   const labelStyle = FORM_LABEL_STYLE;
   const splitFieldStyle = getSplitFieldStyle(layout);
+  const accent = COLORS.study.main;
 
   const save = async () => {
     if (!form.title.trim()) {
@@ -284,6 +291,17 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
     const chapters = form.chaptersText.split("\n").map((line) => line.trim()).filter(Boolean);
     const baseCompleted = Array.isArray(record.completed) ? record.completed : [];
     const completed = chapters.map((_, idx) => Boolean(baseCompleted[idx]));
+
+    const totalPages = safeNumber(form.pages);
+    const readPages = safeNumber(form.readPages);
+    let progress = safeNumber(form.progress);
+
+    if (form.progressMode === "page" && totalPages > 0) {
+      progress = clamp(Math.round((readPages / totalPages) * 100), 0, 100);
+    } else if (form.progressMode === "chapter" && chapters.length > 0) {
+      const completedCount = completed.filter(Boolean).length;
+      progress = clamp(Math.round((completedCount / chapters.length) * 100), 0, 100);
+    }
 
     setSaving(true);
     setMessage("");
@@ -297,7 +315,10 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
           image_url: form.imageUrl.trim() || null,
           chapters,
           completed,
-          progress: clamp(safeNumber(form.progress), 0, 100),
+          progress_mode: form.progressMode,
+          pages_total: totalPages || null,
+          pages_read: readPages || 0,
+          progress,
           hours: Math.max(0, safeNumber(form.hours)),
         },
       });
@@ -323,17 +344,78 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
     }
   };
 
+  const studyChipButtonStyle = (active) => ({
+    minHeight: 40,
+    padding: "8px 12px",
+    borderRadius: 12,
+    border: `1px solid ${active ? `${accent}88` : COLORS.dark.border}`,
+    background: active ? `${accent}18` : "rgba(255,255,255,0.03)",
+    color: active ? COLORS.dark.text : COLORS.dark.textMuted,
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+    fontFamily: "'Pretendard', sans-serif",
+  });
+
   return (
     <BottomSheet open={open} onClose={onClose} title="공부 기록 수정" layout={layout}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div><label style={labelStyle}>학습 주제</label><input value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} style={inputStyle} /></div>
-        <div><label style={labelStyle}>학습 목표</label><input value={form.goal} onChange={(e) => setForm((prev) => ({ ...prev, goal: e.target.value }))} style={inputStyle} /></div>
-        <div><label style={labelStyle}>이미지 URL</label><input value={form.imageUrl} onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))} style={inputStyle} placeholder="https://.../study-cover.jpg" /></div>
-        <div><label style={labelStyle}>학습 목차 (줄바꿈 구분)</label><textarea value={form.chaptersText} onChange={(e) => setForm((prev) => ({ ...prev, chaptersText: e.target.value }))} style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} /></div>
+
+        <div style={{
+          padding: "16px",
+          borderRadius: 18,
+          border: `1px solid ${accent}22`,
+          background: "rgba(255,255,255,0.03)",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <label style={labelStyle}>진행률 측정 방식</label>
+            <div style={{ display: "flex", gap: 6 }}>
+              {["chapter", "page"].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setForm((prev) => ({ ...prev, progressMode: mode }))}
+                  style={studyChipButtonStyle(form.progressMode === mode)}
+                >
+                  {mode === "chapter" ? "목차" : "페이지"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{
+              padding: "10px",
+              borderRadius: 12,
+              background: form.progressMode === "page" ? `${accent}08` : "transparent",
+              border: `1px solid ${form.progressMode === "page" ? `${accent}33` : "transparent"}`,
+            }}>
+              <label style={{ ...labelStyle, fontSize: 12, color: form.progressMode === "page" ? accent : labelStyle.color }}>페이지 정보</label>
+              <div style={splitFieldStyle}>
+                <input value={form.readPages} onChange={(e) => setForm((prev) => ({ ...prev, readPages: e.target.value }))} style={inputStyle} type="number" placeholder="현재" />
+                <input value={form.pages} onChange={(e) => setForm((prev) => ({ ...prev, pages: e.target.value }))} style={inputStyle} type="number" placeholder="전체" />
+              </div>
+            </div>
+
+            <div style={{
+              padding: "10px",
+              borderRadius: 12,
+              background: form.progressMode === "chapter" ? `${accent}08` : "transparent",
+              border: `1px solid ${form.progressMode === "chapter" ? `${accent}33` : "transparent"}`,
+            }}>
+              <label style={{ ...labelStyle, fontSize: 12, color: form.progressMode === "chapter" ? accent : labelStyle.color }}>학습 목차 (줄바꿈 구분)</label>
+              <textarea value={form.chaptersText} onChange={(e) => setForm((prev) => ({ ...prev, chaptersText: e.target.value }))} style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} />
+            </div>
+          </div>
+        </div>
+
         <div style={splitFieldStyle}>
-          <div><label style={labelStyle}>진척도(%)</label><input value={form.progress} onChange={(e) => setForm((prev) => ({ ...prev, progress: safeNumber(e.target.value) }))} style={inputStyle} type="number" min="0" max="100" /></div>
+          <div><label style={labelStyle}>진척도(%)</label><input value={form.progress} onChange={(e) => setForm((prev) => ({ ...prev, progress: safeNumber(e.target.value) }))} style={inputStyle} type="number" min="0" max="100" disabled={form.progressMode !== "manual"} /></div>
           <div><label style={labelStyle}>학습 시간(h)</label><input value={form.hours} onChange={(e) => setForm((prev) => ({ ...prev, hours: safeNumber(e.target.value) }))} style={inputStyle} type="number" min="0" /></div>
         </div>
+
+        <div><label style={labelStyle}>학습 목표</label><input value={form.goal} onChange={(e) => setForm((prev) => ({ ...prev, goal: e.target.value }))} style={inputStyle} /></div>
+        <div><label style={labelStyle}>이미지 URL</label><input value={form.imageUrl} onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))} style={inputStyle} placeholder="https://.../study-cover.jpg" /></div>
         <div><label style={labelStyle}>회고</label><textarea value={form.retrospect} onChange={(e) => setForm((prev) => ({ ...prev, retrospect: e.target.value }))} style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} /></div>
         <div><label style={labelStyle}>태그</label><input value={form.tags} onChange={(e) => setForm((prev) => ({ ...prev, tags: e.target.value }))} style={inputStyle} placeholder="#코딩 #AI" /></div>
         {message && <p style={{ margin: 0, fontSize: 12, color: message.startsWith("저장 실패") ? "#f8b4bb" : COLORS.study.light }}>{message}</p>}

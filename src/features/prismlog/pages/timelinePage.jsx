@@ -46,7 +46,17 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       const latestReadingNote = readingNotes[0] || null;
       const studyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
       const studyCompleted = Array.isArray(payload.completed) ? payload.completed.filter(Boolean).length : 0;
-      const studyProgress = studyChapters.length > 0 ? Math.round((studyCompleted / studyChapters.length) * 100) : clamp(safeNumber(payload.progress), 0, 100);
+      const studyProgressMode = payload.progress_mode || "chapter";
+      const studyPagesTotal = safeNumber(payload.pages_total || payload.pages);
+      const studyPagesRead = safeNumber(payload.pages_read || payload.readPages);
+      let studyProgress = 0;
+      if (studyProgressMode === "page" && studyPagesTotal > 0) {
+        studyProgress = Math.round((studyPagesRead / studyPagesTotal) * 100);
+      } else if (studyChapters.length > 0) {
+        studyProgress = Math.round((studyCompleted / studyChapters.length) * 100);
+      } else {
+        studyProgress = clamp(safeNumber(payload.progress), 0, 100);
+      }
       const seriesMetrics = type === "시리즈"
         ? getSeriesProgressMetrics({
           episodeCount: payload.episode_count,
@@ -119,11 +129,13 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         sectionKey,
         type,
         categoryLabel: log.category === "reading" ? "독서" : log.category === "study" ? "공부" : type,
-        summary: log.summary || (log.category === "reading"
-          ? `${safeNumber(payload.pages_read)} / ${safeNumber(payload.pages_total)}p`
+        summary: log.category === "reading"
+          ? `${safeNumber(payload.pages_read || payload.readPages)} / ${safeNumber(payload.pages_total || payload.pages)}p`
           : log.category === "study"
-            ? `${Array.isArray(payload.chapters) ? payload.chapters.length : 0}개 챕터`
-            : payload.playtime || payload.status || ""),
+            ? (studyProgressMode === "page" && studyPagesTotal > 0
+                ? `${studyPagesRead} / ${studyPagesTotal}p`
+                : `${studyChapters.length}개 챕터`)
+            : payload.playtime || payload.status || "",
         snippet: log.category === "reading" ? (latestReadingNote?.text || "") : "",
         progress,
         progressStart,
