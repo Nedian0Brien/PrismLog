@@ -3078,19 +3078,21 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
         </div>
       </GlassCard>
 
-      {/* 진행률 및 통계 그리드 */}
-      <div style={{ display: "grid", gridTemplateColumns: layout.isTabletUp ? "1fr 1fr" : "1fr", gap: 18 }}>
-        {/* 현황 카드 (CURRENT STATUS) */}
-        <GlassCard style={{ padding: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 20 }}>
-            <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
-              CURRENT STATUS
-            </h4>
-          </div>
-          
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* 통합 진행 현황 및 통계 섹션 */}
+      <GlassCard style={{ padding: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* 상단: 진행률 바 */}
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12 }}>
+              <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", letterSpacing: 0.5 }}>
+                CURRENT STATUS
+              </h4>
+              <span style={{ fontSize: 24, fontWeight: 800, color: accent, fontFamily: "'Outfit', sans-serif" }}>
+                {item.progress}%
+              </span>
+            </div>
             <ProgressBar value={item.progress} color={accent} height={12} />
-            <div style={{ display: "flex", justifyContent: "space-between", color: COLORS.dark.textMuted, fontSize: 13, fontWeight: 600 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, color: COLORS.dark.textMuted, fontSize: 13, fontWeight: 600 }}>
               <span>{isPageMode ? "페이지" : "목차"} 기준 진행</span>
               <span style={{ color: COLORS.dark.text }}>
                 {isPageMode 
@@ -3103,38 +3105,44 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
               </span>
             </div>
           </div>
-        </GlassCard>
 
-        {/* 요약/통계 카드 (남은 과제 / 마지막 기록) */}
-        <GlassCard style={{ padding: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: `${accent}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <ListIcon size={20} color={accent} />
+          {/* 하단: 통계 요약 (2열 그리드) */}
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "1fr 1fr", 
+            gap: 16, 
+            paddingTop: 20,
+            borderTop: `1px solid ${COLORS.dark.border}` 
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: `${accent}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <ListIcon size={18} color={accent} />
+              </div>
+              <div>
+                <p style={{ margin: "0 0 2px", fontSize: 11, color: COLORS.dark.textMuted }}>남은 과제</p>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: COLORS.dark.text }}>
+                  {isPageMode 
+                    ? `${Math.max(0, item.pagesTotal - item.pagesRead)}p` 
+                    : `${(function countTotal(items) {
+                        return items.reduce((sum, i) => sum + 1 + countTotal(i.children || []), 0);
+                      })(item.toc || []) - (function countDone(items) {
+                        return items.reduce((sum, i) => sum + (i.completed ? 1 : 0) + countDone(i.children || []), 0);
+                      })(item.toc || [])}개`}
+                </p>
+              </div>
             </div>
-            <div>
-              <p style={{ margin: "0 0 2px", fontSize: 11, color: COLORS.dark.textMuted }}>남은 과제</p>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: COLORS.dark.text }}>
-                {isPageMode 
-                  ? `${Math.max(0, item.pagesTotal - item.pagesRead)}p` 
-                  : `${(function countTotal(items) {
-                      return items.reduce((sum, i) => sum + 1 + countTotal(i.children || []), 0);
-                    })(item.toc || []) - (function countDone(items) {
-                      return items.reduce((sum, i) => sum + (i.completed ? 1 : 0) + countDone(i.children || []), 0);
-                    })(item.toc || [])}개`}
-              </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: `${accent}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <CalendarIcon size={18} color={accent} />
+              </div>
+              <div>
+                <p style={{ margin: "0 0 2px", fontSize: 11, color: COLORS.dark.textMuted }}>마지막 기록</p>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: COLORS.dark.text }}>{formatRelativeTime(item.date)}</p>
+              </div>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: `${accent}15`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <CalendarIcon size={20} color={accent} />
-            </div>
-            <div>
-              <p style={{ margin: "0 0 2px", fontSize: 11, color: COLORS.dark.textMuted }}>마지막 기록</p>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: COLORS.dark.text }}>{formatRelativeTime(item.date)}</p>
-            </div>
-          </div>
-        </GlassCard>
-      </div>
+        </div>
+      </GlassCard>
 
       {/* 진행률 차트 섹션 (Progress Trend) */}
       <GlassCard glow={COLORS.study.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px" }}>
