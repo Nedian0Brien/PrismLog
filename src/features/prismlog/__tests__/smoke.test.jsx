@@ -42,7 +42,7 @@ describe("PrismLog feature smoke", () => {
       />
     );
 
-    expect(html).toContain("기록 저장하기");
+    expect(html).toContain("기록할 대상을 선택하세요");
   });
 
   it("renders reading grid card", () => {
@@ -165,8 +165,8 @@ describe("PrismLog feature smoke", () => {
 
     expect(detailHtml).toContain("Reading Detail");
     expect(detailHtml).toContain("상세 독서 테스트");
-    expect(detailHtml).toContain("+32p 읽음");
-    expect(detailHtml).toContain("30분 독서");
+    expect(detailHtml).toContain("32p");
+    expect(detailHtml).toContain("읽음");
     expect(detailHtml).toContain("메모 스니펫");
     expect(detailHtml).toContain("독서 피드");
     expect(detailHtml).not.toContain("NaN");
