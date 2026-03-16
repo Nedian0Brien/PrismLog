@@ -3022,32 +3022,30 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
       {/* 메인 헤더 카드 */}
       <GlassCard glow={COLORS.study.glow} style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ display: "flex", flexDirection: layout.isPhone ? "column" : "row", minHeight: 180 }}>
-          {/* 교재 이미지 섹션 */}
+          {/* 교재 이미지 섹션 (독서 탭과 스타일 통일) */}
           <div style={{
-            padding: "16px",
+            padding: layout.isPhone ? "18px 16px" : "24px",
             flexShrink: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: `linear-gradient(135deg, ${accent}18, ${accent}05)`,
-            borderRight: layout.isPhone ? "none" : `1px solid ${COLORS.dark.border}`,
-            borderBottom: layout.isPhone ? `1px solid ${COLORS.dark.border}` : "none",
           }}>
             <div style={{
-              width: layout.isPhone ? 80 : 88,
-              height: layout.isPhone ? 110 : 120,
-              borderRadius: 12,
+              width: layout.isPhone ? "min(40vw, 140px)" : 110,
+              aspectRatio: "3 / 4.4",
+              borderRadius: 18,
               overflow: "hidden",
-              boxShadow: "0 12px 28px rgba(0,0,0,0.25)",
-              border: `1px solid ${accent}22`,
-              background: COLORS.dark.surfaceSolid,
+              border: `1px solid ${accent}24`,
+              background: item.imageUrl ? COLORS.dark.surfaceSolid : `linear-gradient(150deg, ${accent}24, rgba(255,255,255,0.04))`,
+              boxShadow: "0 20px 40px rgba(0,0,0,0.22)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}>
               {item.imageUrl ? (
-                <img src={item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+                <img src={item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
               ) : (
-                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4 }}>
-                  <PenIcon size={32} color={accent} />
-                </div>
+                <BookIcon size={32} color={accent} />
               )}
             </div>
           </div>
