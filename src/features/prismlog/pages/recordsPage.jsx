@@ -2862,10 +2862,19 @@ export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = 
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <h4 style={{ fontSize: 16, fontWeight: 700, color: COLORS.dark.text, margin: "0 0 4px", fontFamily: "'Pretendard', sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</h4>
-                      <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {s.goal} · {s.progressMode === "page" && s.pagesTotal > 0 ? `${s.pagesRead}/${s.pagesTotal}p` : `${s.chapters.length}개 챕터`}
-                      </p>
+                      <h4 style={{ fontSize: 16, fontWeight: 700, color: COLORS.dark.text, margin: "0 0 6px", fontFamily: "'Pretendard', sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</h4>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                        {s.progressMode === "page" && s.pagesTotal > 0 ? (
+                          <>
+                            <span style={{ fontSize: 18, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{s.pagesRead}</span>
+                            <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>/ {s.pagesTotal}p</span>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>
+                            {s.chapters.length}개 챕터
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <span style={{ fontSize: 24, fontWeight: 800, color: COLORS.study.main, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
                       {s.progress}%
