@@ -89,9 +89,29 @@ export const mapReadingLog = (log) => {
 
 export const mapStudyLog = (log) => {
   const payload = log.payload || {};
-  const chapters = Array.isArray(payload.chapters) ? payload.chapters : [];
-  const completed = Array.isArray(payload.completed) ? payload.completed : chapters.map(() => false);
-  const doneCount = completed.filter(Boolean).length;
+  const legacyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
+  const legacyCompleted = Array.isArray(payload.completed) ? payload.completed : legacyChapters.map(() => false);
+  
+  // 신규 toc 구조가 있으면 사용, 없으면 구 구조(legacy)에서 마이그레이션
+  const toc = Array.isArray(payload.toc) ? payload.toc : legacyChapters.map((title, idx) => ({
+    id: `legacy-${idx}-${Date.now()}`,
+    title,
+    completed: Boolean(legacyCompleted[idx]),
+    notes: "",
+    children: [],
+    expanded: false,
+  }));
+
+  const doneCount = (function countDone(items) {
+    return items.reduce((sum, item) => 
+      sum + (item.completed ? 1 : 0) + countDone(item.children || []), 0);
+  })(toc);
+  
+  const totalCount = (function countTotal(items) {
+    return items.reduce((sum, item) => 
+      sum + 1 + countTotal(item.children || []), 0);
+  })(toc);
+
   const progressMode = payload.progress_mode || "chapter";
   const pagesTotal = safeNumber(payload.pages_total || payload.pages);
   const pagesRead = safeNumber(payload.pages_read || payload.readPages);
@@ -99,8 +119,8 @@ export const mapStudyLog = (log) => {
   let computed = 0;
   if (progressMode === "page" && pagesTotal > 0) {
     computed = Math.round((pagesRead / pagesTotal) * 100);
-  } else if (chapters.length > 0) {
-    computed = Math.round((doneCount / chapters.length) * 100);
+  } else if (totalCount > 0) {
+    computed = Math.round((doneCount / totalCount) * 100);
   }
 
   return {
@@ -108,8 +128,9 @@ export const mapStudyLog = (log) => {
     title: log.title,
     summary: log.summary || "",
     progress: clamp(safeNumber(payload.progress, computed), 0, 100),
-    chapters,
-    completed,
+    toc,
+    chapters: legacyChapters, // 하위 호환성 유지
+    completed: legacyCompleted,
     progressMode,
     pagesTotal,
     pagesRead,
