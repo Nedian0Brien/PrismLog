@@ -875,17 +875,17 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                      disabled={studyEnriching}
                      onClick={async () => {
                        setStudyEnriching(true);
-                       setPageMessage("");
+                       setStudyPageMessage("");
                        try {
                          const data = await fetchReadingEnrichment(apiBaseUrl, studyForm.isbn);
                          if (data?.pages_total) {
                            setStudyForm(prev => ({ ...prev, pages: String(data.pages_total) }));
-                           setPageMessage(`전체 페이지를 불러왔습니다. (${data.pages_total}p)`);
+                           setStudyPageMessage(`전체 페이지를 불러왔습니다. (${data.pages_total}p)`);
                          } else {
-                           setPageMessage("페이지 정보를 찾지 못했습니다.");
+                           setStudyPageMessage("페이지 정보를 찾지 못했습니다.");
                          }
                        } catch (err) {
-                         setPageMessage("정보를 불러오는 중 오류가 발생했습니다.");
+                         setStudyPageMessage("정보를 불러오는 중 오류가 발생했습니다.");
                        } finally {
                          setStudyEnriching(false);
                        }
@@ -900,7 +900,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                  )}
                </div>
                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: COLORS.dark.text }}>{studyForm.title}</p>
-               {pageMessage && <p style={{ margin: "6px 0 0", fontSize: 11, color: pageMessage.includes("실패") || pageMessage.includes("오류") ? "#f8b4bb" : accent }}>{pageMessage}</p>}
+               {studyPageMessage && <p style={{ margin: "6px 0 0", fontSize: 11, color: studyPageMessage.includes("실패") || studyPageMessage.includes("오류") ? "#f8b4bb" : accent }}>{studyPageMessage}</p>}
             </div>
           </div>
         )}
