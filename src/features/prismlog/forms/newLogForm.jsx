@@ -50,7 +50,9 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
   const [readingSearchComposing, setReadingSearchComposing] = useState(false);
   const [readingDescriptionExpanded, setReadingDescriptionExpanded] = useState(false);
   const [readingPageMessage, setReadingPageMessage] = useState("");
-  const [studyForm, setStudyForm] = useState({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "" });
+  const [studyForm, setStudyForm] = useState({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "", progressMode: "page", pages: "", readPages: "", cover: "", isbn: "" });
+  const [studyStep, setStudyStep] = useState("search");
+  const [studySearchComposing, setStudySearchComposing] = useState(false);
   const [cultureForm, setCultureForm] = useState(createCultureFormState);
   const [cultureStep, setCultureStep] = useState("search");
   const [cultureSearchComposing, setCultureSearchComposing] = useState(false);
@@ -96,7 +98,9 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     setReadingSearchComposing(false);
     setReadingDescriptionExpanded(false);
     setReadingPageMessage("");
-    setStudyForm({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "" });
+    setStudyForm({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "", progressMode: "page", pages: "", readPages: "", cover: "", isbn: "" });
+    setStudyStep("search");
+    setStudySearchComposing(false);
     setCultureForm(createCultureFormState());
     setCultureStep("search");
     setCultureSearchComposing(false);
@@ -759,23 +763,173 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     );
   }
   if (category === "study") {
+    if (studyStep === "search") {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{
+            padding: layout?.isPhone ? "18px 16px" : "22px 20px",
+            borderRadius: 18,
+            border: `1px solid ${accent}22`,
+            background: `linear-gradient(180deg, ${accent}18, rgba(255,255,255,0.03))`,
+            boxShadow: `0 18px 40px ${accent}14`,
+          }}>
+            <p style={{ margin: "0 0 8px", fontSize: 12, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+              Study Search
+            </p>
+            <h3 style={{ margin: "0 0 8px", fontSize: layout?.isPhone ? 22 : 24, lineHeight: 1.2, fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: COLORS.dark.text }}>
+              공부할 교재를 찾으세요
+            </h3>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: COLORS.dark.textMuted }}>
+              교재 제목이나 ISBN을 입력하면 아래에 검색 결과가 나타납니다. 검색 결과에서 선택하면 페이지 정보가 자동으로 채워집니다.
+            </p>
+          </div>
+
+          <div>
+            <label style={labelStyle}>교재 검색</label>
+            <input
+              value={studyForm.title}
+              onChange={(e) => {
+                const val = e.target.value;
+                setStudyForm(prev => ({ ...prev, title: val, cover: "", isbn: "", pages: "" }));
+              }}
+              onCompositionStart={() => setStudySearchComposing(true)}
+              onCompositionEnd={() => setStudySearchComposing(false)}
+              style={{ ...inputStyle, padding: "15px 18px", fontSize: 16 }}
+              placeholder="교재 제목 또는 ISBN..."
+            />
+          </div>
+
+          <BookSearchResultsPanel
+            query={studyForm.title}
+            apiBaseUrl={apiBaseUrl}
+            accentColor={accent}
+            suspend={studySearchComposing}
+            onSelect={async (book) => {
+              setStudyForm(prev => ({
+                ...prev,
+                title: book.title || prev.title,
+                pages: book.pages_total ? String(book.pages_total) : prev.pages,
+                cover: book.cover_url || "",
+                isbn: book.isbn13 || book.isbn || "",
+              }));
+              setStudyStep("details");
+            }}
+          />
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
+              검색 결과가 없으면 직접 입력으로 계속할 수 있습니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => setStudyStep("details")}
+              style={{
+                padding: "10px 14px", borderRadius: 12, border: `1px solid ${accent}55`,
+                background: `${accent}16`, color: accent, fontSize: 12, fontWeight: 700,
+                cursor: "pointer", fontFamily: "'Pretendard', sans-serif",
+              }}
+            >
+              직접 입력하기
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div><label style={labelStyle}>학습 주제</label><input value={studyForm.title} onChange={(e) => setStudyForm((prev) => ({ ...prev, title: e.target.value }))} style={inputStyle} placeholder="학습 주제를 입력하세요" /></div>
-        <div><label style={labelStyle}>자료 첨부 (URL / 텍스트)</label><textarea value={studyForm.resource} onChange={(e) => setStudyForm((prev) => ({ ...prev, resource: e.target.value }))} style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} placeholder="학습 자료 URL 또는 목차를 붙여넣기..." /></div>
-        <div><label style={labelStyle}>이미지 URL (선택)</label><input value={studyForm.imageUrl} onChange={(e) => setStudyForm((prev) => ({ ...prev, imageUrl: e.target.value }))} style={inputStyle} placeholder="https://.../study-cover.jpg" /></div>
-        <button style={{
-          width: "100%", padding: "12px", borderRadius: 12, border: `1.5px dashed ${accent}66`, fontSize: 13, fontWeight: 600,
-          background: `${accent}0a`, color: accent, cursor: "pointer", fontFamily: "'Pretendard', sans-serif",
-        }}>✦ AI로 목차 자동 생성</button>
-        <div><label style={labelStyle}>학습 목표</label><input value={studyForm.goal} onChange={(e) => setStudyForm((prev) => ({ ...prev, goal: e.target.value }))} style={inputStyle} placeholder="예: 주 3회, 매일 1시간" /></div>
-        <div><label style={labelStyle}>오늘의 회고</label><textarea value={studyForm.retrospect} onChange={(e) => setStudyForm((prev) => ({ ...prev, retrospect: e.target.value }))} style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} placeholder="오늘 배운 핵심 내용 요약..." /></div>
-        <div><label style={labelStyle}>태그</label><input value={studyForm.tags} onChange={(e) => setStudyForm((prev) => ({ ...prev, tags: e.target.value }))} style={inputStyle} placeholder="#코딩 #AI ..." /></div>
-        {submitMessage && <p style={{ margin: 0, fontSize: 12, color: submitMessage.startsWith("저장 실패") ? "#f8b4bb" : COLORS.study.light }}>{submitMessage}</p>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: "0 0 2px", fontSize: 12, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+              {studyForm.isbn ? "Textbook Linked" : "Manual Input"}
+            </p>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: COLORS.dark.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {studyForm.title || "제목 없음"}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStudyStep("search")}
+            style={{
+              padding: "10px 14px", borderRadius: 12, border: `1px solid ${accent}55`,
+              background: "rgba(255,255,255,0.04)", color: accent, fontSize: 12, fontWeight: 700,
+              cursor: "pointer", fontFamily: "'Pretendard', sans-serif", flexShrink: 0,
+            }}
+          >
+            다시 검색
+          </button>
+        </div>
+
+        {studyForm.cover && (
+          <div style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "12px", borderRadius: 18, background: `${accent}12`, border: `1px solid ${accent}22` }}>
+            <img src={studyForm.cover} alt="" style={{ width: 54, height: 76, borderRadius: 8, objectFit: "cover", flexShrink: 0, boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+               <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.dark.textMuted }}>{studyForm.isbn ? `ISBN: ${studyForm.isbn}` : "직접 입력 교재"}</p>
+               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: COLORS.dark.text }}>{studyForm.title}</p>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label style={labelStyle}>진행 방식</label>
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              {[
+                { key: "page", label: "페이지 기준" },
+                { key: "chapter", label: "목차(챕터) 기준" },
+              ].map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setStudyForm(prev => ({ ...prev, progressMode: option.key }))}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 12,
+                    border: `1px solid ${studyForm.progressMode === option.key ? accent : COLORS.dark.border}`,
+                    background: studyForm.progressMode === option.key ? `${accent}16` : "rgba(255,255,255,0.04)",
+                    color: studyForm.progressMode === option.key ? accent : COLORS.dark.textMuted,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {studyForm.progressMode === "page" ? (
+            <div style={splitFieldStyle}>
+              <div><label style={labelStyle}>진행 페이지</label><input style={inputStyle} type="number" value={studyForm.readPages} onChange={(e) => setStudyForm(prev => ({ ...prev, readPages: e.target.value }))} placeholder="0" /></div>
+              <div><label style={labelStyle}>전체 페이지</label><input style={inputStyle} type="number" value={studyForm.pages} onChange={(e) => setStudyForm(prev => ({ ...prev, pages: e.target.value }))} placeholder="0" /></div>
+            </div>
+          ) : (
+            <div>
+              <label style={labelStyle}>목차 입력 (줄바꿈으로 구분)</label>
+              <textarea
+                style={{ ...inputStyle, minHeight: 120 }}
+                placeholder="예:&#10;1장. 서론&#10;2장. 기본 문법"
+                value={studyForm.resource}
+                onChange={(e) => setStudyForm(prev => ({ ...prev, resource: e.target.value }))}
+              />
+            </div>
+          )}
+
+          <div><label style={labelStyle}>학습 목표</label><input value={studyForm.goal} onChange={(e) => setStudyForm((prev) => ({ ...prev, goal: e.target.value }))} style={inputStyle} placeholder="예: 주 3회, 매일 1시간" /></div>
+          <div><label style={labelStyle}>오늘의 회고</label><textarea value={studyForm.retrospect} onChange={(e) => setStudyForm((prev) => ({ ...prev, retrospect: e.target.value }))} style={{ ...inputStyle, minHeight: 100 }} placeholder="오늘 배운 핵심 내용 요약..." /></div>
+          <div><label style={labelStyle}>태그</label><input value={studyForm.tags} onChange={(e) => setStudyForm((prev) => ({ ...prev, tags: e.target.value }))} style={inputStyle} placeholder="#코딩 #AI ..." /></div>
+        </div>
+
+        {submitMessage && <p style={{ margin: 0, fontSize: 12, color: submitMessage.startsWith("저장 실패") ? "#f8b4bb" : accent }}>{submitMessage}</p>}
+        
         <button
           disabled={submitting}
           onClick={() => {
-            const chapters = studyForm.resource.split("\n").map((line) => line.trim()).filter(Boolean);
+            const chapters = studyForm.progressMode === "chapter" 
+              ? studyForm.resource.split("\n").map((line) => line.trim()).filter(Boolean)
+              : [];
+            
             handleSave(
               {
                 category: "study",
@@ -784,14 +938,19 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                 tags: parseTags(studyForm.tags),
                 payload: {
                   goal: studyForm.goal.trim(),
-                  image_url: studyForm.imageUrl.trim() || null,
+                  cover: studyForm.cover || null,
+                  isbn: studyForm.isbn || null,
+                  progress_mode: studyForm.progressMode,
+                  pages_read: studyForm.readPages || null,
+                  pages_total: studyForm.pages || null,
                   chapters,
                   completed: chapters.map(() => false),
-                  progress: 0,
-                  hours: 0,
                 },
               },
-              () => setStudyForm({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "" })
+              () => {
+                setStudyForm({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "", pages: "", readPages: "", progressMode: "page", cover: "", isbn: "" });
+                setStudyStep("search");
+              }
             );
           }}
           style={actionButtonStyle}
