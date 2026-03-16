@@ -338,7 +338,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         </GlassCard>
       ) : view === "feed" ? (
         <GlassCard style={{ padding: layout.isPhone ? "18px 14px 24px" : "26px 24px 30px", overflow: "visible" }}>
-          <div style={{ position: "relative", paddingLeft: layout.isPhone ? 0 : 8 }}>
+          <div style={{ position: "relative" }}>
             <div style={{
               position: "absolute",
               top: 0,
