@@ -2831,24 +2831,34 @@ export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = 
       <div style={{ display: "grid", gridTemplateColumns: layout.isDesktop ? "repeat(2, minmax(0, 1fr))" : "1fr", gap: 16 }}>
         {studies.map(s => (
           <GlassCard key={s.id} glow={COLORS.study.glow} style={{ padding: 0, cursor: "pointer", overflow: "hidden" }} onClick={() => setDetailId(s.id)}>
-            <div style={{ display: "flex", minHeight: 124 }}>
+            <div style={{ display: "flex", alignItems: "center", minHeight: 124 }}>
               <div style={{
-                width: 92,
+                padding: "14px 0 14px 16px",
                 flexShrink: 0,
-                background: `linear-gradient(135deg, ${COLORS.study.main}33, ${COLORS.study.main}11)`,
-                borderRight: `1px solid ${COLORS.study.main}22`,
-                position: "relative",
-                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}>
-                {s.imageUrl ? (
-                  <img src={s.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                ) : (
-                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4 }}>
-                    <PenIcon size={24} color={COLORS.study.main} />
-                  </div>
-                )}
+                <div style={{
+                  width: 68,
+                  height: 94,
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
+                  border: `1px solid ${COLORS.study.main}22`,
+                  background: `linear-gradient(135deg, ${COLORS.study.main}33, ${COLORS.study.main}11)`,
+                  position: "relative",
+                }}>
+                  {s.imageUrl ? (
+                    <img src={s.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  ) : (
+                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4 }}>
+                      <PenIcon size={22} color={COLORS.study.main} />
+                    </div>
+                  )}
+                </div>
               </div>
-              <div style={{ flex: 1, minWidth: 0, padding: "16px 18px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+              <div style={{ flex: 1, minWidth: 0, padding: "16px 18px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 124 }}>
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
