@@ -57,7 +57,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
   const [readingForm, setReadingForm] = useState(createReadingFormState);
   const [cultureForm, setCultureForm] = useState(createCultureFormState);
   const [studyForm, setStudyForm] = useState({
-    title: "", retrospect: "", tags: "", progressMode: "chapter", pages: "", readPages: "", cover: "",
+    title: "", retrospect: "", tags: "", progressMode: "chapter", pages: "", readPages: "", cover: "", resource: "",
   });
   
   const [submitting, setSubmitting] = useState(false);
@@ -104,10 +104,11 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
       setSelectedEntity(null);
       setReadingForm(createReadingFormState());
       setCultureForm(createCultureFormState());
-      setStudyForm({ title: "", retrospect: "", tags: "", progressMode: "chapter", pages: "", readPages: "" });
+      setStudyForm({ title: "", retrospect: "", tags: "", progressMode: "chapter", pages: "", readPages: "", cover: "", resource: "" });
       setSubmitMessage("");
     }
   }, [isOpen]);
+
 
   const handleSave = async (payload) => {
     setSubmitting(true);
@@ -422,11 +423,53 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
 
           {isStudy && (
             <>
-              <div><label style={labelStyle}>오늘 공부한 내용</label><textarea style={{ ...inputStyle, minHeight: 100 }} placeholder="무엇을 배웠나요?" value={studyForm.retrospect} onChange={(e) => setStudyForm(prev => ({ ...prev, retrospect: e.target.value }))} /></div>
-              <div style={splitFieldStyle}>
-                <div><label style={labelStyle}>진행 페이지</label><input style={inputStyle} type="number" value={studyForm.readPages} onChange={(e) => setStudyForm(prev => ({ ...prev, readPages: e.target.value }))} /></div>
-                <div><label style={labelStyle}>전체 페이지</label><input style={inputStyle} type="number" value={studyForm.pages} onChange={(e) => setStudyForm(prev => ({ ...prev, pages: e.target.value }))} /></div>
+              <div>
+                <label style={labelStyle}>진행 방식</label>
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  {[
+                    { key: "page", label: "페이지 기준" },
+                    { key: "chapter", label: "목차(챕터) 기준" },
+                  ].map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => setStudyForm(prev => ({ ...prev, progressMode: option.key }))}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: 12,
+                        border: `1px solid ${studyForm.progressMode === option.key ? accent : COLORS.dark.border}`,
+                        background: studyForm.progressMode === option.key ? `${accent}16` : "rgba(255,255,255,0.03)",
+                        color: studyForm.progressMode === option.key ? accent : COLORS.dark.textMuted,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {studyForm.progressMode === "page" ? (
+                <div style={splitFieldStyle}>
+                  <div><label style={labelStyle}>진행 페이지</label><input style={inputStyle} type="number" value={studyForm.readPages} onChange={(e) => setStudyForm(prev => ({ ...prev, readPages: e.target.value }))} /></div>
+                  <div><label style={labelStyle}>전체 페이지</label><input style={inputStyle} type="number" value={studyForm.pages} onChange={(e) => setStudyForm(prev => ({ ...prev, pages: e.target.value }))} /></div>
+                </div>
+              ) : (
+                <div>
+                  <label style={labelStyle}>목차 입력 (줄바꿈으로 구분)</label>
+                  <textarea
+                    style={{ ...inputStyle, minHeight: 120 }}
+                    placeholder="예:&#10;1장. 서론&#10;2장. 기본 문법&#10;3장. 심화 학습"
+                    value={studyForm.resource}
+                    onChange={(e) => setStudyForm(prev => ({ ...prev, resource: e.target.value }))}
+                  />
+                  <p style={{ margin: "6px 0 0", fontSize: 11, color: COLORS.dark.textMuted }}>입력한 줄 수만큼 챕터가 생성됩니다.</p>
+                </div>
+              )}
+
+              <div><label style={labelStyle}>오늘의 회고</label><textarea style={{ ...inputStyle, minHeight: 100 }} placeholder="무엇을 배웠나요?" value={studyForm.retrospect} onChange={(e) => setStudyForm(prev => ({ ...prev, retrospect: e.target.value }))} /></div>
             </>
           )}
 
@@ -455,15 +498,32 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
           disabled={submitting}
           style={actionButtonStyle}
           onClick={() => {
+            let studyPayload = {
+              progress_mode: studyForm.progressMode,
+              pages_read: studyForm.readPages,
+              pages_total: studyForm.pages,
+              cover: studyForm.cover,
+            };
+
+            if (studyForm.progressMode === "chapter") {
+              const chapters = (studyForm.resource || "").split("\n").map(l => l.trim()).filter(Boolean);
+              studyPayload = {
+                ...studyPayload,
+                chapters,
+                completed: chapters.map(() => false),
+              };
+            }
+
             const payload = isReading 
               ? { category: "reading", title: displayTitle, summary: readingForm.memo, tags: parseTags(readingForm.tags), payload: buildReadingPayload(readingForm) }
               : isStudy
-              ? { category: "study", title: displayTitle, summary: studyForm.retrospect, tags: parseTags(studyForm.tags), payload: { pages_read: studyForm.readPages, pages_total: studyForm.pages, cover: studyForm.cover } }
+              ? { category: "study", title: displayTitle, summary: studyForm.retrospect, tags: parseTags(studyForm.tags), payload: studyPayload }
               : { category: "culture", title: displayTitle, summary: cultureForm.overview, tags: parseTags(cultureForm.tags), payload: buildCulturePayload(cultureForm) };
-            
+
             handleSave(payload);
           }}
         >
+
           {submitting ? "기록 중..." : "기록 남기기"}
         </button>
       </div>
