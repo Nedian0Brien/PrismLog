@@ -44,6 +44,13 @@ import {
 export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) => {
   const colorMap = { reading: COLORS.reading.main, study: COLORS.study.main, culture: COLORS.culture.main };
   const accent = colorMap[category];
+  
+  // --- 엔티티 시스템 상태 ---
+  const [step, setStep] = useState("select-entity"); // select-entity, search, details
+  const [entities, setEntities] = useState([]);
+  const [loadingEntities, setLoadingEntities] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState(null);
+
   const [readingForm, setReadingForm] = useState(createReadingFormState);
   const [readingStep, setReadingStep] = useState("search");
   const [readingEnrichingPages, setReadingEnrichingPages] = useState(false);
@@ -99,8 +106,32 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     boxShadow: active ? `0 18px 34px ${theme.glow}` : "0 12px 24px rgba(0,0,0,0.16)",
   });
 
+  // 엔티티 목록 가져오기
+  useEffect(() => {
+    if (!isOpen || step !== "select-entity") return;
+    
+    const fetchEntities = async () => {
+      setLoadingEntities(true);
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/v1/logs/entities?user_id=${DEMO_USER_ID}&category=${category}`);
+        if (res.ok) {
+          const data = await res.json();
+          setEntities(data);
+        }
+      } catch (err) {
+        console.error("failed to fetch entities", err);
+      } finally {
+        setLoadingEntities(false);
+      }
+    };
+    
+    fetchEntities();
+  }, [isOpen, category, apiBaseUrl, step]);
+
   useEffect(() => {
     if (isOpen) return;
+    setStep("select-entity");
+    setSelectedEntity(null);
     setReadingForm(createReadingFormState());
     setReadingStep("search");
     setReadingEnrichingPages(false);
@@ -111,6 +142,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     setStudyStep("search");
     setStudySearchComposing(false);
     setStudyEnriching(false);
+    setStudyPageMessage("");
     setCultureForm(createCultureFormState());
     setCultureStep("search");
     setCultureSearchComposing(false);
@@ -122,15 +154,142 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     setSubmitting(true);
     setSubmitMessage("");
     try {
-      await onSubmit(payload);
+      let entityId = selectedEntity?.id;
+      
+      // 1. 만약 신규 대상을 추가하는 경우 (검색 등을 통해 직접 입력)
+      if (!entityId) {
+        const entityPayload = {
+          user_id: DEMO_USER_ID,
+          category: category,
+          title: payload.title,
+          source_id: payload.payload.source_id || payload.payload.isbn13 || payload.payload.isbn || null,
+          entity_metadata: payload.payload, // 로그 페이로드를 엔티티의 초기 메타데이터로 사용
+        };
+        
+        const entityRes = await fetch(`${apiBaseUrl}/api/v1/logs/entities`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(entityPayload),
+        });
+        
+        if (entityRes.ok) {
+          const newEntity = await entityRes.json();
+          entityId = newEntity.id;
+        } else {
+          throw new Error("대상 정보 저장 실패");
+        }
+      }
+      
+      // 2. 실제 활동 로그 저장 (entity_id 포함)
+      const finalPayload = {
+        ...payload,
+        entity_id: entityId,
+        occurred_at: new Date().toISOString(),
+      };
+      
+      await onSubmit(finalPayload);
       reset();
       setSubmitMessage("저장 완료");
+      setTimeout(() => setStep("select-entity"), 1000);
     } catch (error) {
       setSubmitMessage(`저장 실패: ${error instanceof Error ? error.message : "unknown error"}`);
     } finally {
       setSubmitting(false);
     }
   };
+
+  // --- 1단계: 엔티티 선택 화면 ---
+  if (step === "select-entity") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{ padding: "12px 0" }}>
+          <h3 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 800, color: COLORS.dark.text }}>기록할 대상을 선택하세요</h3>
+          <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>최근에 기록하던 대상을 이어가거나 새로 추가할 수 있습니다.</p>
+        </div>
+        
+        {loadingEntities ? (
+          <p style={{ fontSize: 13, color: COLORS.dark.textMuted }}>목록 불러오는 중...</p>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "repeat(2, 1fr)", gap: 12 }}>
+            {/* 새 대상 추가 버튼 */}
+            <button
+              onClick={() => {
+                setSelectedEntity(null);
+                setStep("search");
+              }}
+              style={{
+                padding: "20px", borderRadius: 24, border: `2px dashed ${accent}44`,
+                background: `${accent}08`, color: accent, cursor: "pointer",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
+                transition: "all 0.2s",
+              }}
+            >
+              <PlusIcon size={32} />
+              <span style={{ fontWeight: 700 }}>새로운 대상 찾기</span>
+            </button>
+            
+            {/* 기존 엔티티 목록 */}
+            {entities.map(entity => (
+              <button
+                key={entity.id}
+                onClick={() => {
+                  setSelectedEntity(entity);
+                  // 엔티티 정보를 폼에 미리 채워넣음
+                  if (category === "reading") {
+                    setReadingForm(prev => ({ 
+                      ...prev, 
+                      title: entity.title, 
+                      cover: entity.entity_metadata?.cover || "",
+                      pages: String(entity.entity_metadata?.pages_total || ""),
+                      author: entity.entity_metadata?.author || "",
+                      isbn: entity.entity_metadata?.isbn || "",
+                      sourceId: entity.entity_metadata?.source_id || "",
+                    }));
+                    setReadingStep("details");
+                  } else if (category === "study") {
+                    setStudyForm(prev => ({
+                      ...prev,
+                      title: entity.title,
+                      cover: entity.entity_metadata?.cover || "",
+                      pages: String(entity.entity_metadata?.pages_total || ""),
+                      isbn: entity.entity_metadata?.isbn || "",
+                      progressMode: entity.entity_metadata?.progress_mode || "page",
+                      resource: Array.isArray(entity.entity_metadata?.chapters) ? entity.entity_metadata.chapters.join("\n") : "",
+                    }));
+                    setStudyStep("details");
+                  } else {
+                    setCultureForm(prev => ({
+                      ...prev,
+                      title: entity.title,
+                      poster: entity.entity_metadata?.poster || "",
+                      type: entity.entity_metadata?.type || "영화",
+                    }));
+                    setCultureStep("details");
+                  }
+                  setStep("details");
+                }}
+                style={{
+                  padding: "14px", borderRadius: 24, border: `1px solid ${COLORS.dark.border}`,
+                  background: "rgba(255,255,255,0.03)", color: COLORS.dark.text, cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 14, textAlign: "left",
+                }}
+              >
+                <div style={{ width: 48, height: 68, borderRadius: 8, background: `${accent}22`, overflow: "hidden", flexShrink: 0 }}>
+                  {(entity.entity_metadata?.cover || entity.entity_metadata?.poster) && (
+                    <img src={entity.entity_metadata.cover || entity.entity_metadata.poster} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
+                  )}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <h4 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entity.title}</h4>
+                  <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>{new Date(entity.updated_at).toLocaleDateString()} 업데이트</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (category === "reading") {
     if (readingStep === "search") {
@@ -185,6 +344,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                 setReadingPageMessage("");
                 setReadingForm((prev) => applyBookSelectionToReadingForm(prev, book));
                 setReadingStep("details");
+                setStep("details");
                 const isbn = book.isbn13 || book.isbn;
                 if (!isbn) {
                   setReadingPageMessage("자동 입력 실패: ISBN이 없어 페이지 정보를 찾을 수 없습니다.");
@@ -213,23 +373,29 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
             <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
               검색 결과가 없으면 수동 입력으로 계속 진행할 수 있습니다.
             </p>
-            <button
-              type="button"
-              onClick={() => setReadingStep("details")}
-              style={{
-                padding: "10px 14px",
-                borderRadius: 12,
-                border: `1px solid ${accent}55`,
-                background: `${accent}16`,
-                color: accent,
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
-                fontFamily: "'Pretendard', sans-serif",
-              }}
-            >
-              직접 입력하기
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" onClick={() => setStep("select-entity")} style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: COLORS.dark.textMuted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>뒤로가기</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setReadingStep("details");
+                  setStep("details");
+                }}
+                style={{
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  border: `1px solid ${accent}55`,
+                  background: `${accent}16`,
+                  color: accent,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "'Pretendard', sans-serif",
+                }}
+              >
+                직접 입력하기
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -329,18 +495,15 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
         }}>
           <div style={{ minWidth: 0 }}>
             <p style={{ margin: "0 0 4px", fontSize: 12, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
-              Metadata Ready
+              {selectedEntity ? "Continuing History" : "New Discovery"}
             </p>
             <h3 style={{ margin: "0 0 6px", fontSize: 22, lineHeight: 1.2, fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: COLORS.dark.text }}>
-              새 책 추가
+              {selectedEntity ? "기록 이어가기" : "새 책 추가"}
             </h3>
-            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: COLORS.dark.textMuted }}>
-              책 메타데이터는 이미 채워졌습니다. 매체와 읽기 상태를 정리하면 새 책을 바로 저장할 수 있습니다.
-            </p>
           </div>
           <button
             type="button"
-            onClick={() => setReadingStep("search")}
+            onClick={() => setStep("select-entity")}
             style={{
               padding: "10px 14px",
               borderRadius: 12,
@@ -354,7 +517,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
               flexShrink: 0,
             }}
           >
-            다시 검색
+            대상 변경
           </button>
         </div>
         <div style={{
@@ -823,6 +986,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                 isbn: book.isbn13 || book.isbn || "",
               }));
               setStudyStep("details");
+              setStep("details");
             }}
           />
 
@@ -830,17 +994,23 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
             <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
               검색 결과가 없으면 직접 입력으로 계속할 수 있습니다.
             </p>
-            <button
-              type="button"
-              onClick={() => setStudyStep("details")}
-              style={{
-                padding: "10px 14px", borderRadius: 12, border: `1px solid ${accent}55`,
-                background: `${accent}16`, color: accent, fontSize: 12, fontWeight: 700,
-                cursor: "pointer", fontFamily: "'Pretendard', sans-serif",
-              }}
-            >
-              직접 입력하기
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" onClick={() => setStep("select-entity")} style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: COLORS.dark.textMuted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>뒤로가기</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStudyStep("details");
+                  setStep("details");
+                }}
+                style={{
+                  padding: "10px 14px", borderRadius: 12, border: `1px solid ${accent}55`,
+                  background: `${accent}16`, color: accent, fontSize: 12, fontWeight: 700,
+                  cursor: "pointer", fontFamily: "'Pretendard', sans-serif",
+                }}
+              >
+                직접 입력하기
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -857,18 +1027,15 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
         }}>
           <div style={{ minWidth: 0 }}>
             <p style={{ margin: "0 0 4px", fontSize: 12, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
-              Textbook Linked
+              {selectedEntity ? "Continuing History" : "New Discovery"}
             </p>
             <h3 style={{ margin: "0 0 6px", fontSize: 22, lineHeight: 1.2, fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: COLORS.dark.text }}>
-              공부 기록 상세
+              {selectedEntity ? "기록 이어가기" : "공부 기록 상세"}
             </h3>
-            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.6, color: COLORS.dark.textMuted }}>
-              선택한 교재 정보가 채워졌습니다. 학습 방식과 회고를 입력하여 기록을 완성하세요.
-            </p>
           </div>
           <button
             type="button"
-            onClick={() => setStudyStep("search")}
+            onClick={() => setStep("select-entity")}
             style={{
               padding: "10px 14px",
               borderRadius: 12,
@@ -882,7 +1049,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
               flexShrink: 0,
             }}
           >
-            다시 검색
+            대상 변경
           </button>
         </div>
 
@@ -1123,6 +1290,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
             const selectedSourceId = media.source_id;
             setCultureForm((prev) => applyCultureSelectionToForm(prev, media));
             setCultureStep("details");
+            setStep("details");
             const tmdbId = media.tmdb_id;
             const type = media.type;
             if (!tmdbId || !["movie", "series"].includes(type)) return;
@@ -1146,17 +1314,23 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
           <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
             검색 결과가 없으면 직접 입력으로 계속할 수 있습니다.
           </p>
-          <button
-            type="button"
-            onClick={() => setCultureStep("details")}
-            style={{
-              padding: "10px 14px", borderRadius: 12, border: `1px solid ${accent}55`,
-              background: `${accent}16`, color: accent, fontSize: 12, fontWeight: 700,
-              cursor: "pointer", fontFamily: "'Pretendard', sans-serif",
-            }}
-          >
-            직접 입력하기
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" onClick={() => setStep("select-entity")} style={{ padding: "10px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: COLORS.dark.textMuted, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>뒤로가기</button>
+            <button
+              type="button"
+              onClick={() => {
+                setCultureStep("details");
+                setStep("details");
+              }}
+              style={{
+                padding: "10px 14px", borderRadius: 12, border: `1px solid ${accent}55`,
+                background: `${accent}16`, color: accent, fontSize: 12, fontWeight: 700,
+                cursor: "pointer", fontFamily: "'Pretendard', sans-serif",
+              }}
+            >
+              직접 입력하기
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1173,29 +1347,40 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     : null;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {(
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ margin: "0 0 2px", fontSize: 12, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
-              {cultureForm.sourceId ? "Metadata Ready" : "Manual Input"}
-            </p>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: COLORS.dark.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {cultureForm.title || "제목 없음"}
-            </h3>
-          </div>
-          <button
-            type="button"
-            onClick={() => setCultureStep("search")}
-            style={{
-              padding: "10px 14px", borderRadius: 12, border: `1px solid ${accent}55`,
-              background: "rgba(255,255,255,0.04)", color: accent, fontSize: 12, fontWeight: 700,
-              cursor: "pointer", fontFamily: "'Pretendard', sans-serif", flexShrink: 0,
-            }}
-          >
-            다시 검색
-          </button>
+      <div style={{
+        display: "flex",
+        alignItems: layout?.isPhone ? "stretch" : "center",
+        justifyContent: "space-between",
+        gap: 12,
+        flexDirection: layout?.isPhone ? "column" : "row",
+      }}>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ margin: "0 0 4px", fontSize: 12, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+            {selectedEntity ? "Continuing History" : "New Discovery"}
+          </p>
+          <h3 style={{ margin: "0 0 6px", fontSize: 22, lineHeight: 1.2, fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: COLORS.dark.text }}>
+            {selectedEntity ? "기록 이어가기" : "새 콘텐츠 추가"}
+          </h3>
         </div>
-      )}
+        <button
+          type="button"
+          onClick={() => setStep("select-entity")}
+          style={{
+            padding: "10px 14px",
+            borderRadius: 12,
+            border: `1px solid ${accent}55`,
+            background: "rgba(255,255,255,0.04)",
+            color: accent,
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            fontFamily: "'Pretendard', sans-serif",
+            flexShrink: 0,
+          }}
+        >
+          대상 변경
+        </button>
+      </div>
 
       {cultureForm.poster && (
         <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
