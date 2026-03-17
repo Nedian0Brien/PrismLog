@@ -464,6 +464,12 @@ export default function PrismLog() {
     setTimeout(() => setGlowEffect(null), 1200);
   }, [updateEntity, updateLog]);
 
+  const updateStudyActivityDate = useCallback(async (logId, occurredAt) => {
+    await updateLog(logId, { occurred_at: occurredAt });
+    setGlowEffect(COLORS.study.main);
+    setTimeout(() => setGlowEffect(null), 1200);
+  }, [updateLog]);
+
   const openCultureEdit = useCallback((item) => {
     setEditingCulture(item);
   }, []);
@@ -502,6 +508,7 @@ export default function PrismLog() {
         onAddReading={addReadingProgress}
         onAddReadingNote={addReadingNote}
         onAddStudy={saveLog}
+        onUpdateStudyActivityDate={updateStudyActivityDate}
         initialSection={recordsSection}
         initialDetailTarget={recordsDetailTarget}
         onSectionChange={(section) => {

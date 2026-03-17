@@ -2263,6 +2263,12 @@ const toTimeInputValue = (isoLike) => {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 };
 
+const toDateInputValue = (isoLike) => {
+  const date = new Date(isoLike);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
 const combineDateAndTime = (baseIsoLike, timeValue) => {
   if (!timeValue) return "";
   const baseDate = new Date(baseIsoLike || new Date().toISOString());
@@ -2271,6 +2277,13 @@ const combineDateAndTime = (baseIsoLike, timeValue) => {
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return "";
   baseDate.setHours(hours, minutes, 0, 0);
   return baseDate.toISOString();
+};
+
+const combineDateAndTimeInputs = (dateValue, timeValue, fallbackIsoLike) => {
+  const baseIso = dateValue
+    ? new Date(`${dateValue}T00:00:00`).toISOString()
+    : (fallbackIsoLike || new Date().toISOString());
+  return combineDateAndTime(baseIso, timeValue || toTimeInputValue(fallbackIsoLike) || "00:00");
 };
 
 const buildReadingTimelineGroups = (book) => {
@@ -2372,6 +2385,84 @@ export const ReadingNoteModal = ({ book, layout, saving, error, page, note, onPa
           <button type="button" onClick={onClose} disabled={saving} style={{ minHeight: 44, padding: "0 16px", borderRadius: 14, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.textMuted, cursor: saving ? "wait" : "pointer", fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}>취소</button>
           <button type="button" onClick={onSubmit} disabled={saving} style={{ minHeight: 44, padding: "0 18px", borderRadius: 14, border: "none", background: accent, color: "#122018", cursor: saving ? "wait" : "pointer", fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>{saving ? "저장 중..." : "메모 저장"}</button>
         </div>
+      </div>
+    </ModalShell>
+  );
+};
+
+const StudyTimelineEditModal = ({ activity, layout, saving, error, onClose, onSubmit }) => {
+  const [dateValue, setDateValue] = useState("");
+  const [timeValue, setTimeValue] = useState("");
+  const accent = COLORS.study.main;
+
+  useEffect(() => {
+    if (!activity) return;
+    setDateValue(toDateInputValue(activity.occurredAt));
+    setTimeValue(toTimeInputValue(activity.occurredAt));
+  }, [activity]);
+
+  if (!activity) return null;
+
+  return (
+    <ModalShell
+      glow={COLORS.study.glow}
+      width="min(92vw, 430px)"
+      padding={layout.isPhone ? "22px 18px" : "24px 22px"}
+      onBackdropClick={onClose}
+      onClose={onClose}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ paddingRight: 44 }}>
+          <p style={{ margin: "0 0 6px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Study Activity</p>
+          <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>기록 날짜/시간 수정</h4>
+          <p style={{ margin: "8px 0 0", fontSize: 13, lineHeight: 1.6, color: COLORS.dark.textMuted }}>{activity.title}</p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+          <div>
+            <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>기록 날짜</label>
+            <input
+              type="date"
+              value={dateValue}
+              onChange={(event) => setDateValue(event.target.value)}
+              style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none" }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>기록 시간</label>
+            <input
+              type="time"
+              value={timeValue}
+              onChange={(event) => setTimeValue(event.target.value)}
+              style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none" }}
+            />
+          </div>
+        </div>
+
+        <div style={{ padding: "14px 16px", borderRadius: 16, border: `1px solid ${accent}22`, background: `${accent}10` }}>
+          <p style={{ margin: "0 0 6px", fontSize: 11, color: COLORS.dark.textMuted }}>현재 진행률</p>
+          <strong style={{ fontSize: 24, color: accent, fontFamily: "'Outfit', sans-serif" }}>{activity.progress}%</strong>
+        </div>
+
+        {error ? <p style={{ margin: 0, fontSize: 12, color: "#f8b4bb" }}>{error}</p> : null}
+
+        <button
+          type="button"
+          onClick={() => onSubmit?.(combineDateAndTimeInputs(dateValue, timeValue, activity.occurredAt))}
+          disabled={saving || !dateValue}
+          style={{
+            minHeight: 48,
+            borderRadius: 16,
+            border: "none",
+            background: accent,
+            color: "#1a1816",
+            fontWeight: 800,
+            cursor: saving ? "wait" : "pointer",
+            fontFamily: "'Pretendard', sans-serif",
+          }}
+        >
+          {saving ? "저장 중..." : "날짜/시간 저장"}
+        </button>
       </div>
     </ModalShell>
   );
@@ -3345,11 +3436,14 @@ const StudyProgressModal = ({
 
 /* ──────────── Page: Study ──────────── */
 /* ──────────── Study Detail Page ──────────── */
-const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
+const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivityDate }) => {
   const accent = COLORS.study.main;
   const isPageMode = item.progressMode === "page";
   const trendPoints = useMemo(() => buildStudyTrendPoints(item), [item]);
   const [visibleTimelineKeys, setVisibleTimelineKeys] = useState({});
+  const [editingActivity, setEditingActivity] = useState(null);
+  const [activitySaving, setActivitySaving] = useState(false);
+  const [activityError, setActivityError] = useState("");
   const timelineEntryRefs = useRef({});
   const timelineGroups = useMemo(() => buildStudyTimelineGroups(item), [item]);
   const completedCount = countStudyCompletedItems(item);
@@ -3357,6 +3451,12 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
 
   useEffect(() => {
     setVisibleTimelineKeys({});
+  }, [item.id]);
+
+  useEffect(() => {
+    setEditingActivity(null);
+    setActivitySaving(false);
+    setActivityError("");
   }, [item.id]);
 
   useEffect(() => {
@@ -3605,14 +3705,24 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
                           const trackProgress = clamp(safeNumber(activity.progress), 0, 100);
                           const deltaStart = clamp(safeNumber(activity.progressStart), 0, 100);
                           return (
-                            <div
+                            <button
                               key={activity.id}
+                              type="button"
+                              onClick={() => {
+                                setActivityError("");
+                                setEditingActivity(activity);
+                              }}
                               style={{
+                                width: "100%",
                                 borderRadius: 22,
                                 border: `1px solid ${accent}2c`,
                                 background: `linear-gradient(180deg, rgba(255,255,255,0.03), ${accent}12)`,
                                 padding: layout.isPhone ? "16px" : "18px 20px",
                                 boxShadow: "0 18px 34px rgba(0,0,0,0.14)",
+                                textAlign: "left",
+                                cursor: "pointer",
+                                color: COLORS.dark.text,
+                                appearance: "none",
                               }}
                             >
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, marginBottom: 12 }}>
@@ -3670,7 +3780,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
                                   </div>
                                 ) : null}
                               </div>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -3720,11 +3830,36 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
           // (현 시점에서는 UI 반영 위주, 실제 영구 저장은 '수정' 버튼 클릭 후 완료 시 수행)
         }} />
       </div>
+
+      <StudyTimelineEditModal
+        activity={editingActivity}
+        layout={layout}
+        saving={activitySaving}
+        error={activityError}
+        onClose={() => {
+          if (activitySaving) return;
+          setEditingActivity(null);
+          setActivityError("");
+        }}
+        onSubmit={async (nextOccurredAt) => {
+          if (!editingActivity || !nextOccurredAt) return;
+          setActivitySaving(true);
+          setActivityError("");
+          try {
+            await onUpdateActivityDate?.(editingActivity.id, nextOccurredAt);
+            setEditingActivity(null);
+          } catch (error) {
+            setActivityError(error instanceof Error ? error.message : "저장 중 오류가 발생했습니다.");
+          } finally {
+            setActivitySaving(false);
+          }
+        }}
+      />
     </div>
   );
 };
 
-export const StudyPage = ({ studies, loading, onEdit, onSave, layout, initialDetailId = null }) => {
+export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdateActivityDate, layout, initialDetailId = null }) => {
   const groupedStudies = useMemo(() => groupStudiesByEntity(studies), [studies]);
   const [detailId, setDetailId] = useState(null);
   const detail = groupedStudies.find((study) => study.id === detailId || study.entityId === detailId) || null;
@@ -3798,6 +3933,7 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, layout, initialDet
           onBack={() => setDetailId(null)} 
           onEdit={onEdit}
           onAdd={openModal}
+          onUpdateActivityDate={onUpdateActivityDate}
         />
         <StudyProgressModal
           item={modalItem}
@@ -4364,7 +4500,7 @@ export const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
   );
 };
 
-export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, onAddReadingNote, onAddStudy, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
+export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, onAddReadingNote, onAddStudy, onUpdateStudyActivityDate, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
   const [selectedSection, setSelectedSection] = useState(initialSection);
   const [mobileColumns, setMobileColumns] = useState(1);
   const [transitionDirection, setTransitionDirection] = useState(initialSection ? "forward" : "back");
@@ -4573,7 +4709,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       case "reading":
         return <ReadingPage books={sortedReading} loading={loading} onEdit={onEditReading} onAdd={onAddReading} onAddNote={onAddReadingNote} layout={layout} initialDetailId={initialDetailId} />;
       case "study":
-        return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} onSave={onAddStudy} layout={layout} initialDetailId={initialDetailId} />;
+        return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} onSave={onAddStudy} onUpdateActivityDate={onUpdateStudyActivityDate} layout={layout} initialDetailId={initialDetailId} />;
       case "movie":
         return <CulturePage items={movieLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="영화 기록" fixedType="영화" initialDetailId={initialDetailId} />;
       case "series":
