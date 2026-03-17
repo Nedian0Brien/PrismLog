@@ -130,11 +130,25 @@ export default function BookSearchResultsPanel({
             )}
           </div>
 
-          <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#f5f0eb", lineHeight: 1.4 }}>
+          <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+            <span style={{ 
+              fontSize: 14, 
+              fontWeight: 700, 
+              color: "#f5f0eb", 
+              lineHeight: 1.4,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap"
+            }}>
               {item.title}
             </span>
-            <span style={{ fontSize: 12, color: "rgba(245,240,235,0.68)" }}>
+            <span style={{ 
+              fontSize: 12, 
+              color: "rgba(245,240,235,0.68)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap"
+            }}>
               {[item.authors?.join(", "), item.publisher, item.published_date].filter(Boolean).join(" · ")}
             </span>
             <span style={{ fontSize: 11, color: accentColor }}>
