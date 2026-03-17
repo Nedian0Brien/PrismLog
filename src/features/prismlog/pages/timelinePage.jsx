@@ -21,6 +21,43 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
   const itemRefs = useRef({});
 
   const groups = useMemo(() => {
+    const computeReadingSnapshot = (log) => {
+      const payload = log.session_payload || log.payload || {};
+      const session = payload.current_session || {};
+      const totalPages = safeNumber(session.total_pages || session.totalPages || payload.pages_total || payload.pages);
+      const progressEnd = clamp(
+        safeNumber(
+          session.to_progress ?? session.toProgress,
+          totalPages > 0 ? Math.round((safeNumber(session.to_pages ?? session.toPages ?? payload.pages_read) / totalPages) * 100) : payload.progress,
+        ),
+        0,
+        100,
+      );
+      const progressStart = clamp(
+        safeNumber(
+          session.from_progress ?? session.fromProgress,
+          Math.max(0, progressEnd - safeNumber(session.progress_delta ?? session.progressDelta, 0)),
+        ),
+        0,
+        100,
+      );
+      const fromPages = safeNumber(session.from_pages ?? session.fromPages, 0);
+      const toPages = safeNumber(session.to_pages ?? session.toPages ?? payload.pages_read, fromPages);
+      const pagesRead = safeNumber(session.pages_read ?? session.read_pages ?? session.pagesRead, Math.max(0, toPages - fromPages));
+      return {
+        progressStart,
+        progressEnd,
+        fromPages,
+        toPages,
+        pagesRead,
+        totalPages,
+        startedAt: session.started_at || session.startedAt || log.occurred_at || log.created_at,
+        endedAt: session.ended_at || session.endedAt || session.date || log.occurred_at || log.created_at,
+        durationMinutes: safeNumber(session.duration_minutes ?? session.durationMinutes, 0),
+        note: session.note || "",
+      };
+    };
+
     const computeStudyProgress = (log) => {
       const payload = log.session_payload || log.payload || {};
       const entity = log.entity || {};
@@ -75,11 +112,84 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       return dateA - dateB;
     });
 
+    const readingDailyAggregates = new Map();
     const studyDailyAggregates = new Map();
     const latestStudyProgressByEntity = new Map();
     const collapsedLogs = [];
 
     chronologicalLogs.forEach((log) => {
+      if (log.category === "reading") {
+        const occurredAt = log.occurred_at || log.created_at;
+        const dateKey = getDateKey(occurredAt);
+        const entityKey = log.entity_id || log.original_id || log.id;
+        const aggregateKey = `${dateKey}:${entityKey}`;
+        const snapshot = computeReadingSnapshot(log);
+        const existing = readingDailyAggregates.get(aggregateKey);
+
+        if (!existing) {
+          readingDailyAggregates.set(aggregateKey, {
+            ...log,
+            original_id: log.entity_id || log.original_id || log.id,
+            occurred_at: occurredAt,
+            title: log.entity?.title || log.title || "제목 없음",
+            session_payload: {
+              ...(log.session_payload || log.payload || {}),
+              progress: snapshot.progressEnd,
+              pages_read: snapshot.toPages,
+              current_session: {
+                from_pages: snapshot.fromPages,
+                to_pages: snapshot.toPages,
+                total_pages: snapshot.totalPages,
+                pages_read: snapshot.pagesRead,
+                from_progress: snapshot.progressStart,
+                to_progress: snapshot.progressEnd,
+                progress_delta: Math.max(0, snapshot.progressEnd - snapshot.progressStart),
+                started_at: snapshot.startedAt,
+                ended_at: snapshot.endedAt,
+                duration_minutes: snapshot.durationMinutes,
+                note: snapshot.note,
+              },
+            },
+            is_session: true,
+          });
+        } else {
+          const existingPayload = existing.session_payload || existing.payload || {};
+          const existingSession = existingPayload.current_session || {};
+          readingDailyAggregates.set(aggregateKey, {
+            ...existing,
+            ...log,
+            original_id: log.entity_id || log.original_id || log.id,
+            occurred_at: occurredAt,
+            title: existing.title,
+            session_payload: {
+              ...existingPayload,
+              ...(log.session_payload || log.payload || {}),
+              progress: snapshot.progressEnd,
+              pages_read: snapshot.toPages,
+              current_session: {
+                ...existingSession,
+                from_pages: safeNumber(existingSession.from_pages ?? existingSession.fromPages, snapshot.fromPages),
+                to_pages: snapshot.toPages,
+                total_pages: snapshot.totalPages || safeNumber(existingSession.total_pages ?? existingSession.totalPages, 0),
+                pages_read: safeNumber(existingSession.pages_read ?? existingSession.read_pages ?? existingSession.pagesRead, 0) + snapshot.pagesRead,
+                from_progress: safeNumber(existingSession.from_progress ?? existingSession.fromProgress, snapshot.progressStart),
+                to_progress: snapshot.progressEnd,
+                progress_delta: Math.max(
+                  0,
+                  snapshot.progressEnd - safeNumber(existingSession.from_progress ?? existingSession.fromProgress, snapshot.progressStart),
+                ),
+                started_at: existingSession.started_at || existingSession.startedAt || snapshot.startedAt,
+                ended_at: snapshot.endedAt,
+                duration_minutes: safeNumber(existingSession.duration_minutes ?? existingSession.durationMinutes, 0) + snapshot.durationMinutes,
+                note: snapshot.note || existingSession.note || "",
+              },
+            },
+            is_session: true,
+          });
+        }
+        return;
+      }
+
       if (log.category !== "study") {
         collapsedLogs.push(log);
         return;
@@ -118,6 +228,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       latestStudyProgressByEntity.set(entityKey, currentProgress);
     });
 
+    collapsedLogs.push(...readingDailyAggregates.values());
     collapsedLogs.push(...studyDailyAggregates.values());
 
     // 2. 정렬: occurred_at 기준 내림차순
@@ -504,6 +615,11 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                   <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: -2 }}>
                                     {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
+                                    {progressDelta > 0 ? (
+                                      <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.9)", fontFamily: "'Outfit', sans-serif" }}>
+                                        {`+${Math.round(progressDelta)}%`}
+                                      </span>
+                                    ) : null}
                                     <span style={{ fontSize: 13, fontWeight: 700, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
                                   </div>
                                   <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
@@ -562,6 +678,11 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: -2 }}>
                                   {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
+                                  {progressDelta > 0 ? (
+                                    <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.9)", fontFamily: "'Outfit', sans-serif" }}>
+                                      {`+${Math.round(progressDelta)}%`}
+                                    </span>
+                                  ) : null}
                                   <span style={{ fontSize: 13, fontWeight: 700, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
                                 </div>
                                 <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>

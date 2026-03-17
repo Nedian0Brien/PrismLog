@@ -3641,6 +3641,11 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
                                 </div>
                                 <div style={{ textAlign: "right", display: "flex", alignItems: "baseline", gap: 8 }}>
                                   <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{formatTimeLabel(activity.occurredAt)}</span>
+                                  {activity.progressDelta > 0 ? (
+                                    <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.9)", fontFamily: "'Outfit', sans-serif" }}>
+                                      {`+${activity.progressDelta}%`}
+                                    </span>
+                                  ) : null}
                                   <strong style={{ fontSize: 42, fontWeight: 800, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1, display: "flex", alignItems: "baseline" }}>
                                     <span>{activity.progress}</span>
                                     <span style={{ fontSize: 18, marginLeft: 1 }}>%</span>
@@ -3679,11 +3684,6 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
                                       ? `${activity.pagesRead}p / ${activity.pagesTotal}p`
                                       : `${activity.completedCount} / ${activity.totalCount} 챕터 완료`}
                                   </p>
-                                  {activity.progressDelta > 0 ? (
-                                    <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.study.light, fontFamily: "'Outfit', sans-serif" }}>
-                                      {`+${activity.progressDelta}%`}
-                                    </span>
-                                  ) : null}
                                 </div>
                                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                                   <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.textMuted }}>
