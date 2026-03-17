@@ -540,6 +540,175 @@ const SeriesProgressDonut = ({ value, size = 120, strokeWidth = 10, color = COLO
   );
 };
 
+const DetailTopBar = ({ accent, backLabel = "목록", onBack, primaryAction = null, onEdit }) => (
+  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+    <button
+      type="button"
+      onClick={onBack}
+      style={{
+        alignSelf: "flex-start",
+        minHeight: 40,
+        padding: "0 14px",
+        borderRadius: 999,
+        border: `1px solid ${accent}30`,
+        background: `${accent}10`,
+        color: accent,
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+        fontFamily: "'Pretendard', sans-serif",
+      }}
+    >
+      {`← ${backLabel}`}
+    </button>
+    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      {primaryAction}
+      {onEdit ? <IconActionButton onClick={onEdit} /> : null}
+    </div>
+  </div>
+);
+
+const FeatureCardShell = ({
+  layout,
+  accent,
+  glow,
+  imageSrc,
+  imageAlt = "",
+  fallback,
+  onOpen,
+  children,
+}) => (
+  <GlassCard
+    glow={glow}
+    style={{ padding: 0, overflow: "hidden", cursor: onOpen ? "pointer" : "default" }}
+    onClick={onOpen}
+  >
+    <div
+      style={{
+        padding: "16px 16px 14px",
+        display: "grid",
+        gridTemplateColumns: layout.isPhone ? "96px minmax(0, 1fr)" : "110px minmax(0, 1fr)",
+        gap: 14,
+        alignItems: "start",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          aspectRatio: "2 / 3",
+          borderRadius: 18,
+          overflow: "hidden",
+          border: `1px solid ${accent}24`,
+          background: imageSrc
+            ? `linear-gradient(155deg, rgba(255,255,255,0.05), ${accent}18)`
+            : `linear-gradient(160deg, ${accent}25, ${COLORS.dark.surfaceSolid})`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 18px 36px rgba(0,0,0,0.2)",
+        }}
+      >
+        {imageSrc ? (
+          <img src={imageSrc} alt={imageAlt} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+        ) : (
+          fallback
+        )}
+      </div>
+      <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+        {children}
+      </div>
+    </div>
+  </GlassCard>
+);
+
+const FeatureDetailHeroShell = ({
+  layout,
+  accent,
+  glow,
+  imageSrc,
+  imageAlt = "",
+  fallback,
+  children,
+}) => (
+  <GlassCard glow={glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px", overflow: "hidden" }}>
+    <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "156px minmax(0, 1fr)", gap: 18, alignItems: "start" }}>
+      <div
+        style={{
+          minHeight: 228,
+          borderRadius: 22,
+          overflow: "hidden",
+          border: `1px solid ${accent}24`,
+          background: imageSrc ? COLORS.dark.surfaceSolid : `linear-gradient(150deg, ${accent}24, rgba(255,255,255,0.04))`,
+          boxShadow: "0 20px 40px rgba(0,0,0,0.22)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {imageSrc ? (
+          <img src={imageSrc} alt={imageAlt} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+        ) : (
+          fallback
+        )}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+        {children}
+      </div>
+    </div>
+  </GlassCard>
+);
+
+const CompactMediaPosterCard = ({
+  accent,
+  glow,
+  title,
+  poster,
+  posterAlt,
+  fallback,
+  status,
+  metaText,
+  rating,
+  tags,
+  onEdit,
+}) => (
+  <GlassCard glow={glow} style={{ padding: 0, overflow: "hidden" }}>
+    <div style={{
+      height: 188,
+      background: poster ? COLORS.dark.surfaceSolid : `linear-gradient(160deg, ${accent}25, ${COLORS.dark.surfaceSolid})`,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+    }}>
+      {poster ? (
+        <img
+          src={poster}
+          alt={posterAlt}
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
+      ) : (
+        fallback
+      )}
+      <div style={{ position: "absolute", top: 8, right: 8 }}><StatusBadge status={status} /></div>
+    </div>
+    <div style={{ padding: "14px 14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+        <h4 style={{ fontSize: 15, fontWeight: 700, color: COLORS.dark.text, margin: 0, fontFamily: "'Pretendard', sans-serif", flex: 1, lineHeight: 1.35 }}>
+          {title}
+        </h4>
+        <IconActionButton onClick={onEdit} />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{metaText}</span>
+        {rating > 0 ? <RatingStars rating={rating} size={12} /> : null}
+      </div>
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        {tags.map((tag) => <Badge key={`${title}-${tag}`} text={`#${tag}`} color={accent} />)}
+      </div>
+    </div>
+  </GlassCard>
+);
+
 const FloatingSeriesProgressToast = ({ toast, visible, animatedProgress }) => {
   if (!toast) return null;
 
@@ -2205,150 +2374,141 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn 0.32s ease-out" }}>
-      <button
-        type="button"
-        onClick={onBack}
-        style={{
-          alignSelf: "flex-start",
-          minHeight: 40,
-          padding: "0 14px",
-          borderRadius: 999,
-          border: `1px solid ${COLORS.dark.border}`,
-          background: "rgba(255,255,255,0.03)",
-          color: COLORS.dark.text,
-          fontSize: 12,
-          fontWeight: 700,
-          cursor: "pointer",
-          fontFamily: "'Pretendard', sans-serif",
-        }}
+      <DetailTopBar
+        accent={accent}
+        backLabel="독서 목록"
+        onBack={onBack}
+        onEdit={() => onEdit(book)}
+        primaryAction={(
+          <button
+            type="button"
+            onClick={() => onAdd(book)}
+            style={{
+              minHeight: 40,
+              padding: "0 14px",
+              borderRadius: 999,
+              border: `1px solid ${accent}66`,
+              background: `${accent}18`,
+              color: accent,
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: "pointer",
+              fontFamily: "'Pretendard', sans-serif",
+            }}
+          >
+            + 독서 기록
+          </button>
+        )}
+      />
+
+      <FeatureDetailHeroShell
+        layout={layout}
+        accent={accent}
+        glow={COLORS.reading.glow}
+        imageSrc={book.cover}
+        imageAlt={`${book.title} 표지`}
+        fallback={<BookIcon size={42} color={accent} />}
       >
-        ← 독서 목록
-      </button>
-
-      <GlassCard glow={COLORS.reading.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "156px minmax(0, 1fr)", gap: 18, alignItems: "start" }}>
-          <div style={{
-            minHeight: 228,
-            borderRadius: 22,
-            overflow: "hidden",
-            border: `1px solid ${accent}24`,
-            background: book.cover ? COLORS.dark.surfaceSolid : `linear-gradient(150deg, ${accent}24, rgba(255,255,255,0.04))`,
-            boxShadow: "0 20px 40px rgba(0,0,0,0.22)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}>
-            {book.cover ? (
-              <img src={book.cover} alt={`${book.title} 표지`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-            ) : (
-              <BookIcon size={42} color={accent} />
-            )}
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
-                  Reading Detail
-                </p>
-                <h3 style={{ margin: "0 0 6px", fontSize: layout.isPhone ? 24 : 30, lineHeight: 1.15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
-                  {book.title}
-                </h3>
-                <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>
-                  {book.author || "저자 정보 없음"}
-                </p>
-              </div>
-              <IconActionButton onClick={() => onEdit(book)} />
-            </div>
-
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {book.publisher && <Badge text={book.publisher} color={accent} />}
-              {publishedLabel && <Badge text={publishedLabel} color={accent} />}
-              {(tags || []).map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
-            </div>
-
-            <div style={{
-              padding: "14px 16px",
-              borderRadius: 18,
-              border: `1px solid ${accent}22`,
-              background: `linear-gradient(135deg, ${accent}14, rgba(255,255,255,0.03))`,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
-                <div>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>Reading progress</p>
-                  <strong style={{ fontSize: 26, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
-                    {progress}%
-                  </strong>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>Pages</p>
-                  <strong style={{ fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
-                    {`${book.readPages}/${book.pages}p`}
-                  </strong>
-                </div>
-              </div>
-              <ProgressBar value={progress} color={accent} height={8} />
-            </div>
-
-            {book.description && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.75, color: COLORS.dark.textMuted, display: descriptionExpanded ? "block" : "-webkit-box", WebkitLineClamp: descriptionExpanded ? "unset" : 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                  {book.description}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setDescriptionExpanded((prev) => !prev)}
-                  style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, padding: 0, border: "none", background: "none", color: accent, cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}
-                >
-                  <span style={{ transform: descriptionExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>
-                    <ChevronDown size={14} color={accent} />
-                  </span>
-                  {descriptionExpanded ? "접기" : "펼치기"}
-                </button>
-              </div>
-            )}
-
-            {book.review && (
-              <GlassCard style={{ padding: "14px 16px" }}>
-                <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: COLORS.dark.textMuted, fontStyle: "italic" }}>
-                  "{book.review}"
-                </p>
-              </GlassCard>
-            )}
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => onAdd(book)}
-                style={{
-                  minHeight: 44,
-                  padding: "0 16px",
-                  borderRadius: 14,
-                  border: `1px solid ${accent}66`,
-                  background: `${accent}18`,
-                  color: accent,
-                  fontSize: 13,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  fontFamily: "'Pretendard', sans-serif",
-                }}
-              >
-                + 독서 기록 추가
-              </button>
-              <button
-                type="button"
-                onClick={() => onAddNote(book)}
-                style={{ minHeight: 44, padding: "0 16px", borderRadius: 14, border: `1px solid ${accent}44`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Pretendard', sans-serif" }}
-              >
-                + 독서 메모
-              </button>
-            </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+              Reading Detail
+            </p>
+            <h3 style={{ margin: "0 0 6px", fontSize: layout.isPhone ? 24 : 30, lineHeight: 1.15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+              {book.title}
+            </h3>
+            <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>
+              {book.author || "저자 정보 없음"}
+            </p>
           </div>
         </div>
-      </GlassCard>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {book.publisher && <Badge text={book.publisher} color={accent} />}
+          {publishedLabel && <Badge text={publishedLabel} color={accent} />}
+          {(tags || []).map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
+        </div>
+
+        <div style={{
+          padding: "14px 16px",
+          borderRadius: 18,
+          border: `1px solid ${accent}22`,
+          background: `linear-gradient(135deg, ${accent}14, rgba(255,255,255,0.03))`,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap" }}>
+            <div>
+              <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>Reading progress</p>
+              <strong style={{ fontSize: 26, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
+                {progress}%
+              </strong>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>Pages</p>
+              <strong style={{ fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                {`${book.readPages}/${book.pages}p`}
+              </strong>
+            </div>
+          </div>
+          <ProgressBar value={progress} color={accent} height={8} />
+        </div>
+
+        {book.description && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.75, color: COLORS.dark.textMuted, display: descriptionExpanded ? "block" : "-webkit-box", WebkitLineClamp: descriptionExpanded ? "unset" : 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              {book.description}
+            </p>
+            <button
+              type="button"
+              onClick={() => setDescriptionExpanded((prev) => !prev)}
+              style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, padding: 0, border: "none", background: "none", color: accent, cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}
+            >
+              <span style={{ transform: descriptionExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>
+                <ChevronDown size={14} color={accent} />
+              </span>
+              {descriptionExpanded ? "접기" : "펼치기"}
+            </button>
+          </div>
+        )}
+
+        {book.review && (
+          <GlassCard style={{ padding: "14px 16px" }}>
+            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: COLORS.dark.textMuted, fontStyle: "italic" }}>
+              "{book.review}"
+            </p>
+          </GlassCard>
+        )}
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => onAdd(book)}
+            style={{
+              minHeight: 44,
+              padding: "0 16px",
+              borderRadius: 14,
+              border: `1px solid ${accent}66`,
+              background: `${accent}18`,
+              color: accent,
+              fontSize: 13,
+              fontWeight: 800,
+              cursor: "pointer",
+              fontFamily: "'Pretendard', sans-serif",
+            }}
+          >
+            + 독서 기록 추가
+          </button>
+          <button
+            type="button"
+            onClick={() => onAddNote(book)}
+            style={{ minHeight: 44, padding: "0 16px", borderRadius: 14, border: `1px solid ${accent}44`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Pretendard', sans-serif" }}
+          >
+            + 독서 메모
+          </button>
+        </div>
+      </FeatureDetailHeroShell>
 
       <GlassCard glow={COLORS.reading.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px" }}>
         <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "minmax(0, 1fr) 158px", gap: 18, alignItems: "center" }}>
@@ -2943,70 +3103,65 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
                 animationDelay: `${Math.min(idx * 45, 220)}ms`,
               }}
             >
-              <GlassCard glow={COLORS.reading.glow} style={{ padding: "18px 20px", cursor: "pointer" }} onClick={() => setDetailId(book.id)}>
-                <div style={{ display: "flex", flexDirection: layout.isPhone ? "column" : "row", gap: 16 }}>
-                  <div style={{
-                    width: 60, height: 84, borderRadius: 10, flexShrink: 0, overflow: "hidden",
-                    background: `linear-gradient(135deg, ${COLORS.reading.main}33, ${COLORS.reading.main}11)`,
-                    border: `1px solid ${COLORS.reading.main}22`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    {book.cover ? (
-                      <img src={book.cover} alt={`${book.title} 표지`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                    ) : (
-                      <BookIcon size={24} color={COLORS.reading.main} />
-                    )}
+              <FeatureCardShell
+                layout={layout}
+                accent={COLORS.reading.main}
+                glow={COLORS.reading.glow}
+                imageSrc={book.cover}
+                imageAlt={`${book.title} 표지`}
+                fallback={<BookIcon size={28} color={COLORS.reading.main} />}
+                onOpen={() => setDetailId(book.id)}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <h4 style={{ fontSize: 18, fontWeight: 800, color: COLORS.dark.text, margin: "0 0 6px", fontFamily: "'Outfit', sans-serif", lineHeight: 1.2 }}>
+                      {book.title}
+                    </h4>
+                    <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: 0 }}>{book.author}</p>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <h4 style={{ fontSize: 16, fontWeight: 700, color: COLORS.dark.text, margin: "0 0 2px", fontFamily: "'Pretendard', sans-serif" }}>{book.title}</h4>
-                        <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: 0 }}>{book.author}</p>
-                      </div>
-                      <span style={{ display: "inline-block", fontSize: 22, fontWeight: 800, color: COLORS.reading.main, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
-                        {book.progress}%
-                      </span>
-                    </div>
-                    <div style={{ marginBottom: 10 }}>
-                      <ProgressBar value={book.progress} color={COLORS.reading.main} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{book.readPages}/{book.pages}p</span>
-                        {book.rating > 0 && <RatingStars rating={book.rating} size={12} />}
-                      </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            openProgressModal(book);
-                          }}
-                          style={{
-                            minHeight: 34,
-                            padding: "0 12px",
-                            borderRadius: 12,
-                            border: `1px solid ${COLORS.reading.main}55`,
-                            background: `${COLORS.reading.main}16`,
-                            color: COLORS.reading.main,
-                            cursor: "pointer",
-                            fontSize: 12,
-                            fontWeight: 700,
-                            fontFamily: "'Pretendard', sans-serif",
-                          }}
-                        >
-                          + 기록
-                        </button>
-                        <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(book); }} />
-                      </div>
-                    </div>
-                    {book.review && <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: "8px 0 0", fontStyle: "italic", lineHeight: 1.5 }}>"{book.review}"</p>}
-                    <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                      {(book?.tags || []).map(t => <Badge key={t} text={`#${t}`} color={COLORS.reading.main} />)}
-                    </div>
-                  </div>
+                  <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(book); }} />
                 </div>
-              </GlassCard>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11, letterSpacing: 0.6, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+                    독서 진행률
+                  </span>
+                  {book.rating > 0 ? <RatingStars rating={book.rating} size={12} /> : null}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
+                  <strong style={{ fontSize: 28, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", lineHeight: 0.9 }}>
+                    {book.progress}<span style={{ fontSize: 14, color: COLORS.reading.main }}>%</span>
+                  </strong>
+                  <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{book.readPages}/{book.pages}p</span>
+                </div>
+                <ProgressBar value={book.progress} color={COLORS.reading.main} height={8} />
+                {book.review ? <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: 0, fontStyle: "italic", lineHeight: 1.5 }}>"{book.review}"</p> : null}
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-end", marginTop: "auto" }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
+                    {(book?.tags || []).map((tag) => <Badge key={tag} text={`#${tag}`} color={COLORS.reading.main} />)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openProgressModal(book);
+                    }}
+                    style={{
+                      minHeight: 36,
+                      padding: "0 12px",
+                      borderRadius: 12,
+                      border: `1px solid ${COLORS.reading.main}55`,
+                      background: `${COLORS.reading.main}16`,
+                      color: COLORS.reading.main,
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      fontFamily: "'Pretendard', sans-serif",
+                    }}
+                  >
+                    + 기록
+                  </button>
+                </div>
+              </FeatureCardShell>
             </div>
           ))}
         </div>
@@ -3172,106 +3327,72 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: 40 }}>
-      {/* 상단 액션 및 제목 */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <button onClick={onBack} style={{
-          background: "none", border: "none", color: accent, fontSize: 14,
-          fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-          padding: "8px 0", fontFamily: "'Pretendard', sans-serif",
-        }}>
-          <span style={{ fontSize: 18 }}>←</span> 목록으로
-        </button>
-        <div style={{ display: "flex", gap: 8 }}>
+      <DetailTopBar
+        accent={accent}
+        backLabel="공부 목록"
+        onBack={onBack}
+        onEdit={() => onEdit(item)}
+        primaryAction={(
           <button
+            type="button"
             onClick={() => onAdd(item)}
             style={{
-              padding: "10px 16px",
-              borderRadius: 14,
+              minHeight: 40,
+              padding: "0 14px",
+              borderRadius: 999,
               border: "none",
               background: accent,
               color: "#1a1816",
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: 800,
               cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              boxShadow: `0 8px 20px ${accent}33`,
               fontFamily: "'Pretendard', sans-serif",
             }}
           >
-            <PlusIcon size={16} /> 기록 추가
+            + 기록 추가
           </button>
-          <IconActionButton onClick={() => onEdit(item)} />
-        </div>
-      </div>
+        )}
+      />
 
-      {/* 메인 헤더 카드 */}
-      <GlassCard glow={COLORS.study.glow} style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ display: "flex", flexDirection: layout.isPhone ? "column" : "row", minHeight: 180 }}>
-          {/* 교재 이미지 섹션 (독서 탭과 스타일 통일) */}
-          <div style={{
-            padding: layout.isPhone ? "18px 16px" : "24px",
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}>
-            <div style={{
-              width: layout.isPhone ? "min(40vw, 140px)" : 110,
-              aspectRatio: "3 / 4.4",
-              borderRadius: 18,
-              overflow: "hidden",
-              border: `1px solid ${accent}24`,
-              background: item.imageUrl ? COLORS.dark.surfaceSolid : `linear-gradient(150deg, ${accent}24, rgba(255,255,255,0.04))`,
-              boxShadow: "0 20px 40px rgba(0,0,0,0.22)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}>
-              {item.imageUrl ? (
-                <img src={item.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              ) : (
-                <BookIcon size={32} color={accent} />
-              )}
-            </div>
+      <FeatureDetailHeroShell
+        layout={layout}
+        accent={accent}
+        glow={COLORS.study.glow}
+        imageSrc={item.imageUrl}
+        imageAlt={`${item.title} 표지`}
+        fallback={<BookIcon size={32} color={accent} />}
+      >
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <Badge text="공부 중" color={accent} />
+            <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{formatRelativeTime(item.startedAt || item.date)} 시작</span>
           </div>
-
-          {/* 정보 섹션 */}
-          <div style={{ flex: 1, padding: 24, display: "flex", flexDirection: "column", justifyContent: "center", gap: 12 }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <Badge text="공부 중" color={accent} />
-                <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{formatRelativeTime(item.startedAt || item.date)} 시작</span>
-              </div>
-              <h2 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", lineHeight: 1.2 }}>
-                {item.title}
-              </h2>
-            </div>
-            
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              {item.goal && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <StarIcon size={14} color={accent} />
-                  <span style={{ fontSize: 13, color: COLORS.dark.textMuted }}>{item.goal}</span>
-                </div>
-              )}
-              {item.hours > 0 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <ClockIcon size={14} color={accent} />
-                  <span style={{ fontSize: 13, color: COLORS.dark.textMuted }}>누적 {item.hours}시간</span>
-                </div>
-              )}
-            </div>
-
-            {item.tags.length > 0 && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {(item?.tags || []).map(t => <Badge key={t} text={`#${t}`} color={accent} />)}
-              </div>
-            )}
-          </div>
+          <h2 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", lineHeight: 1.2 }}>
+            {item.title}
+          </h2>
         </div>
-      </GlassCard>
+
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {item.goal && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <StarIcon size={14} color={accent} />
+              <span style={{ fontSize: 13, color: COLORS.dark.textMuted }}>{item.goal}</span>
+            </div>
+          )}
+          {item.hours > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <ClockIcon size={14} color={accent} />
+              <span style={{ fontSize: 13, color: COLORS.dark.textMuted }}>누적 {item.hours}시간</span>
+            </div>
+          )}
+        </div>
+
+        {item.tags.length > 0 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {(item?.tags || []).map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
+          </div>
+        )}
+      </FeatureDetailHeroShell>
 
       {/* 통합 진행 현황 및 통계 섹션 */}
       <GlassCard style={{ padding: 24 }}>
@@ -3564,81 +3685,71 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, layout, initialDet
       )}
       <div style={{ display: "grid", gridTemplateColumns: layout.isDesktop ? "repeat(2, minmax(0, 1fr))" : "1fr", gap: 16 }}>
         {groupedStudies.map((s) => (
-          <GlassCard key={s.id} glow={COLORS.study.glow} style={{ padding: 0, cursor: "pointer", overflow: "hidden" }} onClick={() => setDetailId(s.id)}>
-            <div style={{ display: "flex", alignItems: "center", minHeight: 124 }}>
-              {/* (기존 이미지 섹션 코드 생략...) */}
-              <div style={{
-                padding: "14px 0 14px 16px",
-                flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}>
-                <div style={{
-                  width: 68,
-                  height: 94,
-                  borderRadius: 12,
-                  overflow: "hidden",
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
-                  border: `1px solid ${COLORS.study.main}22`,
-                  background: s.imageUrl ? COLORS.dark.surfaceSolid : `linear-gradient(135deg, ${COLORS.study.main}33, ${COLORS.study.main}11)`,
-                  position: "relative",
-                }}>
-                  {s.imageUrl ? (
-                    <img src={s.imageUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                  ) : (
-                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.4 }}>
-                      <PenIcon size={22} color={COLORS.study.main} />
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div style={{ flex: 1, minWidth: 0, padding: "16px 18px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 124 }}>
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <h4 style={{ fontSize: 16, fontWeight: 700, color: COLORS.dark.text, margin: "0 0 6px", fontFamily: "'Pretendard', sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.title}</h4>
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                        {s.progressMode === "page" && s.pagesTotal > 0 ? (
-                          <>
-                            <span style={{ fontSize: 18, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{s.pagesRead}</span>
-                            <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>/ {s.pagesTotal}p</span>
-                          </>
-                        ) : (
-                          <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>
-                            {s.chapters?.length || 0}개 챕터
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <span style={{ fontSize: 24, fontWeight: 800, color: COLORS.study.main, fontFamily: "'Outfit', sans-serif", lineHeight: 1 }}>
-                      {s.progress}%
-                    </span>
-                  </div>
-                  <ProgressBar value={s.progress} color={COLORS.study.main} />
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, marginTop: 12 }}>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", maxHeight: 22, overflow: "hidden", flex: 1 }}>
-                    {s.tags.map(t => <Badge key={t} text={`#${t}`} color={COLORS.study.main} />)}
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); openModal(s); }}
-                      style={{
-                        width: 34, height: 34, borderRadius: 10, border: "none",
-                        background: COLORS.study.main, color: "#1a1816",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        cursor: "pointer", boxShadow: `0 4px 12px ${COLORS.study.main}44`
-                      }}
-                    >
-                      <PlusIcon size={18} />
-                    </button>
-                    <IconActionButton onClick={(e) => { e.stopPropagation(); onEdit(s); }} />
-                  </div>
-                </div>
+          <FeatureCardShell
+            key={s.id}
+            layout={layout}
+            accent={COLORS.study.main}
+            glow={COLORS.study.glow}
+            imageSrc={s.imageUrl}
+            imageAlt={`${s.title} 표지`}
+            fallback={<PenIcon size={24} color={COLORS.study.main} />}
+            onOpen={() => setDetailId(s.id)}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+              <Badge text="공부 중" color={COLORS.study.main} />
+              <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(s); }} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <h4 style={{ fontSize: 18, fontWeight: 800, color: COLORS.dark.text, margin: "0 0 6px", fontFamily: "'Outfit', sans-serif", lineHeight: 1.2 }}>
+                {s.title}
+              </h4>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                {s.progressMode === "page" && s.pagesTotal > 0 ? (
+                  <>
+                    <span style={{ fontSize: 28, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", lineHeight: 0.9 }}>{s.pagesRead}</span>
+                    <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>/ {s.pagesTotal}p</span>
+                  </>
+                ) : (
+                  <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>
+                    {s.chapters?.length || 0}개 챕터
+                  </span>
+                )}
               </div>
             </div>
-          </GlassCard>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
+              <span style={{ fontSize: 11, letterSpacing: 0.6, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+                Study Progress
+              </span>
+              <strong style={{ fontSize: 28, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", lineHeight: 0.9 }}>
+                {s.progress}<span style={{ fontSize: 14, color: COLORS.study.main }}>%</span>
+              </strong>
+            </div>
+            <ProgressBar value={s.progress} color={COLORS.study.main} height={8} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, marginTop: "auto" }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
+                {s.tags.map((tag) => <Badge key={tag} text={`#${tag}`} color={COLORS.study.main} />)}
+              </div>
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); openModal(s); }}
+                style={{
+                  minHeight: 36,
+                  padding: "0 12px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: COLORS.study.main,
+                  color: "#1a1816",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  fontFamily: "'Pretendard', sans-serif",
+                  boxShadow: `0 4px 12px ${COLORS.study.main}44`,
+                }}
+              >
+                + 기록
+              </button>
+            </div>
+          </FeatureCardShell>
         ))}
       </div>
       <StudyProgressModal
@@ -3731,91 +3842,63 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
           ) : (
             <FilmIcon size={36} color={`${accent}88`} />
           );
-          return (
-          <GlassCard
-            key={c.id}
-            glow={glow}
-            style={{ padding: 0, overflow: "hidden", cursor: isSeries ? "pointer" : "default" }}
-            onClick={isSeries ? () => setDetailId(c.id) : undefined}
-          >
-            {isSeries ? (
-              <div style={{ padding: "16px 16px 14px", display: "flex", flexDirection: "column", gap: 14 }}>
-                <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "96px minmax(0, 1fr)" : "110px minmax(0, 1fr)", gap: 14, alignItems: "start" }}>
-                  <div style={{
-                    position: "relative",
-                    aspectRatio: "2 / 3",
-                    borderRadius: 18,
-                    overflow: "hidden",
-                    border: `1px solid ${accent}24`,
-                    background: c.poster
-                      ? `linear-gradient(155deg, rgba(255,255,255,0.05), ${accent}18)`
-                      : `linear-gradient(160deg, ${accent}25, ${COLORS.dark.surfaceSolid})`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    boxShadow: "0 18px 36px rgba(0,0,0,0.2)",
-                  }}>
-                    {posterNode}
-                  </div>
-                  <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                      <StatusBadge status={c.status} />
-                      <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(c); }} />
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <h4 style={{
-                        fontSize: 18,
-                        fontWeight: 800,
-                        lineHeight: 1.2,
-                        color: COLORS.dark.text,
-                        margin: "0 0 6px",
-                        fontFamily: "'Outfit', sans-serif",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}>
-                        {c.title}
-                      </h4>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <SeriesPlatformBadge platformKey={c.platformKey} platformLabel={c.platformLabel} accent={accent} />
-                        {c.rating > 0 && <RatingStars rating={c.rating} size={12} />}
-                      </div>
-                    </div>
-                    <SeriesProgressSummary item={c} accent={accent} />
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                  {c.tags.map(t => <Badge key={t} text={`#${t}`} color={accent} />)}
+          return isSeries ? (
+            <FeatureCardShell
+              key={c.id}
+              layout={layout}
+              accent={accent}
+              glow={glow}
+              imageSrc={c.poster}
+              imageAlt={`${c.title} 포스터`}
+              fallback={posterNode}
+              onOpen={() => setDetailId(c.id)}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <StatusBadge status={c.status} />
+                <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(c); }} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <h4 style={{
+                  fontSize: 18,
+                  fontWeight: 800,
+                  lineHeight: 1.2,
+                  color: COLORS.dark.text,
+                  margin: "0 0 6px",
+                  fontFamily: "'Outfit', sans-serif",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}>
+                  {c.title}
+                </h4>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <SeriesPlatformBadge platformKey={c.platformKey} platformLabel={c.platformLabel} accent={accent} />
+                  {c.rating > 0 && <RatingStars rating={c.rating} size={12} />}
                 </div>
               </div>
-            ) : (
-              <>
-                <div style={{
-                  height: 160, background: c.poster ? COLORS.dark.surfaceSolid : `linear-gradient(160deg, ${accent}25, ${COLORS.dark.surfaceSolid})`,
-                  display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
-                }}>
-                  {posterNode}
-                  <div style={{ position: "absolute", top: 8, right: 8 }}><StatusBadge status={c.status} /></div>
-                </div>
-                <div style={{ padding: "12px 14px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                    <h4 style={{ fontSize: 14, fontWeight: 700, color: COLORS.dark.text, margin: "0 0 4px", fontFamily: "'Pretendard', sans-serif", flex: 1 }}>{c.title}</h4>
-                    <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(c); }} />
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{c.type}</span>
-                    {c.playtime && <span style={{ fontSize: 11, color: accent }}>· {c.playtime}</span>}
-                  </div>
-                  {c.rating > 0 && <RatingStars rating={c.rating} size={12} />}
-                  <div style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}>
-                    {c.tags.map(t => <Badge key={t} text={`#${t}`} color={accent} />)}
-                  </div>
-                </div>
-              </>
-            )}
-          </GlassCard>
-        )})}
+              <SeriesProgressSummary item={c} accent={accent} />
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {c.tags.map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
+              </div>
+            </FeatureCardShell>
+          ) : (
+            <CompactMediaPosterCard
+              key={c.id}
+              accent={accent}
+              glow={glow}
+              title={c.title}
+              poster={c.poster}
+              posterAlt={`${c.title} 포스터`}
+              fallback={posterNode}
+              status={c.status}
+              metaText={c.playtime ? `${c.type} · ${c.playtime}` : c.type}
+              rating={c.rating}
+              tags={c.tags}
+              onEdit={(event) => { event.stopPropagation(); onEdit(c); }}
+            />
+          );
+        })}
       </div>
     </div>
   );
