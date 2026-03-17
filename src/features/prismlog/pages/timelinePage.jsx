@@ -515,7 +515,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           visible={visible}
           height={14}
           transitionDelay="0.1s"
-          deltaTransitionDelay="1.1s"
+          deltaTransitionDelay="0.4s"
         />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           {item.absoluteDeltaLabel ? (
