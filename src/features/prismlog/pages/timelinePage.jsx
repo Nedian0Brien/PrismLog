@@ -21,6 +21,24 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
   const itemRefs = useRef({});
 
   const groups = useMemo(() => {
+    const computeStudyProgress = (log) => {
+      const payload = log.session_payload || log.payload || {};
+      const entity = log.entity || {};
+      const entityMetadata = entity.entity_metadata || {};
+      const studyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
+      const studyCompleted = Array.isArray(payload.completed) ? payload.completed.filter(Boolean).length : 0;
+      const studyProgressMode = payload.progressMode || payload.progress_mode || "page";
+      const studyPagesTotal = safeNumber(entityMetadata.pages_total || payload.pages_total || payload.pages);
+      const studyPagesRead = safeNumber(payload.pages_read || payload.readPages);
+      if (studyProgressMode === "page" && studyPagesTotal > 0) {
+        return clamp(Math.round((studyPagesRead / studyPagesTotal) * 100), 0, 100);
+      }
+      if (studyChapters.length > 0) {
+        return clamp(Math.round((studyCompleted / studyChapters.length) * 100), 0, 100);
+      }
+      return clamp(safeNumber(payload.progress), 0, 100);
+    };
+
     // 1. 데이터 확장 (Flattening): 세션이 있는 경우 각각을 독립적인 로그 항목으로 분리
     const expandedLogs = [];
     logs.forEach((log) => {
@@ -51,50 +69,62 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       }
     });
 
-    // 2. 정렬: occurred_at 기준 내림차순
-    const sorted = expandedLogs.sort((a, b) => {
-      const dateA = new Date(a.occurred_at || a.created_at);
-      const dateB = new Date(b.occurred_at || b.created_at);
-      return dateB - dateA;
-    });
-
-    const studyProgressContextByLogId = new Map();
-    const chronologicalLogs = [...sorted].sort((a, b) => {
+    const chronologicalLogs = [...expandedLogs].sort((a, b) => {
       const dateA = new Date(a.occurred_at || a.created_at);
       const dateB = new Date(b.occurred_at || b.created_at);
       return dateA - dateB;
     });
 
+    const studyDailyAggregates = new Map();
+    const latestStudyProgressByEntity = new Map();
+    const collapsedLogs = [];
+
     chronologicalLogs.forEach((log) => {
-      if (log.category !== "study") return;
-      const payload = log.session_payload || log.payload || {};
-      const entity = log.entity || {};
-      const entityMetadata = entity.entity_metadata || {};
-      const studyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
-      const studyCompleted = Array.isArray(payload.completed) ? payload.completed.filter(Boolean).length : 0;
-      const studyProgressMode = payload.progressMode || payload.progress_mode || "page";
-      const studyPagesTotal = safeNumber(entityMetadata.pages_total || payload.pages_total || payload.pages);
-      const studyPagesRead = safeNumber(payload.pages_read || payload.readPages);
-      let studyProgress = 0;
-      if (studyProgressMode === "page" && studyPagesTotal > 0) {
-        studyProgress = Math.round((studyPagesRead / studyPagesTotal) * 100);
-      } else if (studyChapters.length > 0) {
-        studyProgress = Math.round((studyCompleted / studyChapters.length) * 100);
-      } else {
-        studyProgress = clamp(safeNumber(payload.progress), 0, 100);
+      if (log.category !== "study") {
+        collapsedLogs.push(log);
+        return;
       }
 
-      const contextKey = log.entity_id || log.id;
-      const previousProgress = safeNumber(studyProgressContextByLogId.get(contextKey)?.currentProgress, 0);
-      studyProgressContextByLogId.set(log.id, {
-        title: entity.title || log.title || "제목 없음",
-        progressStart: previousProgress,
-        progressDelta: Math.max(0, studyProgress - previousProgress),
-        currentProgress: studyProgress,
-      });
-      studyProgressContextByLogId.set(contextKey, {
-        currentProgress: studyProgress,
-      });
+      const occurredAt = log.occurred_at || log.created_at;
+      const dateKey = getDateKey(occurredAt);
+      const entityKey = log.entity_id || log.id;
+      const aggregateKey = `${dateKey}:${entityKey}`;
+      const currentProgress = computeStudyProgress(log);
+      const previousProgress = safeNumber(latestStudyProgressByEntity.get(entityKey), 0);
+      const entityTitle = log.entity?.title || log.title || "제목 없음";
+      const existing = studyDailyAggregates.get(aggregateKey);
+
+      if (!existing) {
+        studyDailyAggregates.set(aggregateKey, {
+          ...log,
+          original_id: log.entity_id || log.id,
+          title: entityTitle,
+          occurred_at: occurredAt,
+          study_progress_start: previousProgress,
+          study_progress_end: currentProgress,
+        });
+      } else {
+        studyDailyAggregates.set(aggregateKey, {
+          ...existing,
+          ...log,
+          original_id: log.entity_id || log.id,
+          title: entityTitle,
+          occurred_at: occurredAt,
+          study_progress_start: existing.study_progress_start,
+          study_progress_end: currentProgress,
+        });
+      }
+
+      latestStudyProgressByEntity.set(entityKey, currentProgress);
+    });
+
+    collapsedLogs.push(...studyDailyAggregates.values());
+
+    // 2. 정렬: occurred_at 기준 내림차순
+    const sorted = collapsedLogs.sort((a, b) => {
+      const dateA = new Date(a.occurred_at || a.created_at);
+      const dateB = new Date(b.occurred_at || b.created_at);
+      return dateB - dateA;
     });
 
     return sorted.reduce((acc, log) => {
@@ -180,10 +210,6 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
             ? clamp(safeNumber(seriesMetrics?.progress, payload.progress), 0, 100)
             : null;
 
-      const studyProgressContext = log.category === "study"
-        ? studyProgressContextByLogId.get(log.id)
-        : null;
-
       const progressStart = log.category === "reading"
         ? clamp(
           safeNumber(
@@ -194,7 +220,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           100,
         )
         : log.category === "study"
-          ? clamp(safeNumber(studyProgressContext?.progressStart, progress), 0, 100)
+          ? clamp(safeNumber(log.study_progress_start, progress), 0, 100)
         : type === "시리즈"
           ? clamp(safeNumber(progress, 0) - seriesProgressDelta, 0, 100)
         : progress;
@@ -206,7 +232,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         id: log.id,
         originalId: log.originalId || log.original_id,
         title: log.category === "study"
-          ? (studyProgressContext?.title || entity.title || log.title || "제목 없음")
+          ? (entity.title || log.title || "제목 없음")
           : log.title || entity.title || "제목 없음",
         time: formatTimeLabel(dateSource),
         accent,
