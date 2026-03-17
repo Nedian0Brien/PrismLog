@@ -1982,6 +1982,87 @@ const buildStudyTrendPoints = (study) => {
   ];
 };
 
+const countStudyCompletedItems = (study) => {
+  if (Array.isArray(study?.toc) && study.toc.length > 0) {
+    const walk = (items) => items.reduce(
+      (sum, entry) => sum + (entry.completed ? 1 : 0) + walk(entry.children || []),
+      0,
+    );
+    return walk(study.toc);
+  }
+  return Array.isArray(study?.completed) ? study.completed.filter(Boolean).length : 0;
+};
+
+const countStudyTotalItems = (study) => {
+  if (Array.isArray(study?.toc) && study.toc.length > 0) {
+    const walk = (items) => items.reduce(
+      (sum, entry) => sum + 1 + walk(entry.children || []),
+      0,
+    );
+    return walk(study.toc);
+  }
+  return Array.isArray(study?.chapters) ? study.chapters.length : 0;
+};
+
+const buildStudyActivityLabel = (activity, entityTitle) => {
+  const rawTitle = String(activity?.activityTitle || activity?.title || "").trim();
+  if (!rawTitle) return "학습 기록";
+  if (entityTitle && rawTitle === entityTitle) return "학습 시작";
+  return rawTitle;
+};
+
+export const groupStudiesByEntity = (studies) => {
+  const groups = new Map();
+  const sorted = [...(Array.isArray(studies) ? studies : [])].sort(
+    (a, b) => new Date(b.occurredAt || b.createdAt || 0) - new Date(a.occurredAt || a.createdAt || 0),
+  );
+
+  sorted.forEach((study) => {
+    const groupKey = study.entityId || study.id;
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, {
+        ...study,
+        id: study.id,
+        entityId: study.entityId || study.id,
+        title: study.entityTitle || study.title,
+        activityTitle: study.activityTitle || study.title,
+        date: study.occurredAt || study.createdAt,
+        startedAt: study.occurredAt || study.createdAt,
+        latestActivityAt: study.occurredAt || study.createdAt,
+        activities: [],
+      });
+    }
+
+    const current = groups.get(groupKey);
+    const activityAt = study.occurredAt || study.createdAt;
+    current.activities.push({
+      id: study.id,
+      title: buildStudyActivityLabel(study, current.title),
+      rawTitle: study.activityTitle || study.title,
+      summary: study.summary || "",
+      tags: Array.isArray(study.tags) ? study.tags : [],
+      progress: clamp(safeNumber(study.progress), 0, 100),
+      progressMode: study.progressMode || "page",
+      pagesRead: safeNumber(study.pagesRead || study.readPages),
+      pagesTotal: safeNumber(study.pagesTotal || study.pages),
+      completedCount: countStudyCompletedItems(study),
+      totalCount: countStudyTotalItems(study),
+      occurredAt: activityAt,
+    });
+
+    if (new Date(activityAt).getTime() < new Date(current.startedAt).getTime()) {
+      current.startedAt = activityAt;
+    }
+  });
+
+  return [...groups.values()]
+    .map((study) => ({
+      ...study,
+      activities: [...study.activities].sort((a, b) => new Date(b.occurredAt || 0) - new Date(a.occurredAt || 0)),
+    }))
+    .sort((a, b) => new Date(b.latestActivityAt || 0) - new Date(a.latestActivityAt || 0));
+};
+
 const formatReadingDuration = (minutes) => {
   const safeMinutes = Math.max(0, safeNumber(minutes, 0));
   if (safeMinutes <= 0) return "독서 시간 기록 대기";
@@ -3082,6 +3163,12 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
   const accent = COLORS.study.main;
   const isPageMode = item.progressMode === "page";
   const trendPoints = useMemo(() => buildStudyTrendPoints(item), [item]);
+  const activityTimeline = useMemo(
+    () => [...(Array.isArray(item.activities) ? item.activities : [])].sort((a, b) => new Date(b.occurredAt || 0) - new Date(a.occurredAt || 0)),
+    [item.activities],
+  );
+  const completedCount = countStudyCompletedItems(item);
+  const totalCount = countStudyTotalItems(item);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: 40 }}>
@@ -3155,7 +3242,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <Badge text="공부 중" color={accent} />
-                <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{formatRelativeTime(item.date)} 시작</span>
+                <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{formatRelativeTime(item.startedAt || item.date)} 시작</span>
               </div>
               <h2 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif", lineHeight: 1.2 }}>
                 {item.title}
@@ -3205,11 +3292,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
               <span style={{ color: COLORS.dark.text }}>
                 {isPageMode 
                   ? `${item.pagesRead} / ${item.pagesTotal}p` 
-                  : `${item.toc ? (function countDone(items) {
-                      return items.reduce((sum, i) => sum + (i.completed ? 1 : 0) + countDone(i.children || []), 0);
-                    })(item.toc) : item.completed.filter(Boolean).length} / ${item.toc ? (function countTotal(items) {
-                      return items.reduce((sum, i) => sum + 1 + countTotal(i.children || []), 0);
-                    })(item.toc) : item.chapters.length} 챕터`}
+                  : `${completedCount} / ${totalCount} 챕터`}
               </span>
             </div>
           </div>
@@ -3231,11 +3314,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: COLORS.dark.text }}>
                   {isPageMode 
                     ? `${Math.max(0, item.pagesTotal - item.pagesRead)}p` 
-                    : `${(function countTotal(items) {
-                        return items.reduce((sum, i) => sum + 1 + countTotal(i.children || []), 0);
-                      })(item.toc || []) - (function countDone(items) {
-                        return items.reduce((sum, i) => sum + (i.completed ? 1 : 0) + countDone(i.children || []), 0);
-                      })(item.toc || [])}개`}
+                    : `${Math.max(0, totalCount - completedCount)}개`}
                 </p>
               </div>
             </div>
@@ -3277,13 +3356,71 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
             <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>
               {isPageMode 
                 ? `${item.pagesRead}/${item.pagesTotal}p` 
-                : `${item.toc ? (function countDone(items) {
-                    return items.reduce((sum, i) => sum + (i.completed ? 1 : 0) + countDone(i.children || []), 0);
-                  })(item.toc) : item.completed.filter(Boolean).length} / ${item.toc ? (function countTotal(items) {
-                    return items.reduce((sum, i) => sum + 1 + countTotal(i.children || []), 0);
-                  })(item.toc) : item.chapters.length} 챕터`}
+                : `${completedCount} / ${totalCount} 챕터`}
             </p>
           </div>
+        </div>
+      </GlassCard>
+
+      <GlassCard glow={COLORS.study.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Study Timeline</p>
+            <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>공부 타임라인</h4>
+          </div>
+          {activityTimeline.length === 0 ? (
+            <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>아직 쌓인 공부 액티비티가 없습니다.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {activityTimeline.map((activity) => {
+                const isTimelinePage = activity.progressMode === "page";
+                return (
+                  <div
+                    key={activity.id}
+                    style={{
+                      borderRadius: 20,
+                      border: `1px solid ${accent}22`,
+                      background: `linear-gradient(180deg, rgba(255,255,255,0.035), ${accent}0d)`,
+                      padding: layout.isPhone ? "16px" : "18px 20px",
+                      boxShadow: "0 16px 30px rgba(0,0,0,0.12)",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+                          <Badge text="공부 액티비티" color={accent} />
+                          <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>
+                            {[formatMonthDayLabel(activity.occurredAt), formatTimeLabel(activity.occurredAt)].filter(Boolean).join(" · ")}
+                          </span>
+                        </div>
+                        <h5 style={{ margin: 0, fontSize: 17, color: COLORS.dark.text, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>
+                          {activity.title}
+                        </h5>
+                      </div>
+                      <strong style={{ fontSize: 24, lineHeight: 1, color: accent, fontFamily: "'Outfit', sans-serif" }}>
+                        {activity.progress}%
+                      </strong>
+                    </div>
+                    <p style={{ margin: "0 0 10px", fontSize: 13, color: COLORS.dark.textMuted }}>
+                      {isTimelinePage
+                        ? `${activity.pagesRead} / ${activity.pagesTotal}p`
+                        : `${activity.completedCount} / ${activity.totalCount} 챕터 완료`}
+                    </p>
+                    {activity.summary ? (
+                      <p style={{ margin: "0 0 10px", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.text }}>
+                        {activity.summary}
+                      </p>
+                    ) : null}
+                    {activity.tags.length > 0 ? (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {activity.tags.map((tag) => <Badge key={`${activity.id}-${tag}`} text={`#${tag}`} color={accent} />)}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </GlassCard>
 
@@ -3329,8 +3466,9 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
 };
 
 export const StudyPage = ({ studies, loading, onEdit, onSave, layout, initialDetailId = null }) => {
+  const groupedStudies = useMemo(() => groupStudiesByEntity(studies), [studies]);
   const [detailId, setDetailId] = useState(null);
-  const detail = studies.find(s => s.id === detailId);
+  const detail = groupedStudies.find((study) => study.id === detailId || study.entityId === detailId) || null;
   
   // 진행도 업데이트 모달 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -3419,13 +3557,13 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, layout, initialDet
       <h3 style={{ fontSize: 20, fontWeight: 800, color: COLORS.dark.text, margin: 0, fontFamily: "'Outfit', sans-serif" }}>
         <PenIcon size={20} color={COLORS.study.main} /> 공부 기록
       </h3>
-      {!loading && studies.length === 0 && (
+      {!loading && groupedStudies.length === 0 && (
         <GlassCard>
           <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>공부 기록이 없습니다.</p>
         </GlassCard>
       )}
       <div style={{ display: "grid", gridTemplateColumns: layout.isDesktop ? "repeat(2, minmax(0, 1fr))" : "1fr", gap: 16 }}>
-        {(studies || []).map(s => (
+        {groupedStudies.map((s) => (
           <GlassCard key={s.id} glow={COLORS.study.glow} style={{ padding: 0, cursor: "pointer", overflow: "hidden" }} onClick={() => setDetailId(s.id)}>
             <div style={{ display: "flex", alignItems: "center", minHeight: 124 }}>
               {/* (기존 이미지 섹션 코드 생략...) */}

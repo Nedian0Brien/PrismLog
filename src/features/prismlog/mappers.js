@@ -106,6 +106,8 @@ export const mapLogToUiItem = (log) => {
     ...combined,
     id: log.id,
     entityId: log.entity_id,
+    entityTitle: entity.title || "",
+    activityTitle: log.title || "",
     user_id: log.user_id,
     category: log.category,
     title,

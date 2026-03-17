@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NewLogForm } from "../forms";
 import { DashboardPage, ReadingGridCard, SettingsPage, TimelinePage } from "../pages";
-import { ReadingDetailPage, ReadingNoteModal, ReadingProgressModal } from "../pages/recordsPage";
+import { ReadingDetailPage, ReadingNoteModal, ReadingProgressModal, StudyPage, groupStudiesByEntity } from "../pages/recordsPage";
 
 const phoneLayout = {
   width: 390,
@@ -197,5 +197,65 @@ describe("PrismLog feature smoke", () => {
 
     expect(timelineHtml).toContain("테스트 독서 로그");
     expect(settingsHtml).toContain("설정");
+  });
+
+  it("groups study activities by entity and keeps activities in study timeline data", () => {
+    const studyLogs = [
+      {
+        id: "study-log-2",
+        entityId: "study-entity-1",
+        entityTitle: "운영체제 3회독",
+        activityTitle: "358p까지 공부",
+        title: "358p까지 공부",
+        summary: "메모리 관리 파트 복습",
+        progressMode: "page",
+        pagesRead: 358,
+        pagesTotal: 500,
+        progress: 72,
+        tags: ["cs"],
+        imageUrl: "",
+        occurredAt: "2026-03-16T11:20:00.000Z",
+        createdAt: "2026-03-16T11:20:00.000Z",
+        chapters: [],
+        completed: [],
+      },
+      {
+        id: "study-log-1",
+        entityId: "study-entity-1",
+        entityTitle: "운영체제 3회독",
+        activityTitle: "운영체제 3회독",
+        title: "운영체제 3회독",
+        summary: "학습 시작",
+        progressMode: "page",
+        pagesRead: 120,
+        pagesTotal: 500,
+        progress: 24,
+        tags: ["cs"],
+        imageUrl: "",
+        occurredAt: "2026-03-10T09:00:00.000Z",
+        createdAt: "2026-03-10T09:00:00.000Z",
+        chapters: [],
+        completed: [],
+      },
+    ];
+
+    const grouped = groupStudiesByEntity(studyLogs);
+    const html = renderToStaticMarkup(
+      <StudyPage
+        studies={studyLogs}
+        loading={false}
+        onEdit={() => {}}
+        onSave={async () => {}}
+        layout={phoneLayout}
+      />
+    );
+
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0].title).toBe("운영체제 3회독");
+    expect(grouped[0].activities).toHaveLength(2);
+    expect(grouped[0].activities[0].title).toBe("358p까지 공부");
+    expect(grouped[0].activities[1].title).toBe("학습 시작");
+    expect(html).toContain("운영체제 3회독");
+    expect(html).not.toContain("358p까지 공부</h4>");
   });
 });
