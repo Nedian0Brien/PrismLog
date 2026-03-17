@@ -101,6 +101,21 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
             is_session: true,
           });
         });
+      } else if (log.category === "culture" && (payload.type === "게임" || log.entity?.category === "게임") && Array.isArray(payload.game_sessions) && payload.game_sessions.length > 0) {
+        payload.game_sessions.forEach((session, idx) => {
+          const sessionDate = session.played_at || session.playedAt || session.date || log.occurred_at || log.created_at;
+          expandedLogs.push({
+            ...log,
+            id: `${log.id}-game-session-${idx}`,
+            original_id: log.id,
+            occurred_at: sessionDate,
+            session_payload: {
+              ...payload,
+              current_session: session,
+            },
+            is_session: true,
+          });
+        });
       } else {
         expandedLogs.push({ ...log, original_id: log.id });
       }
@@ -415,7 +430,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         seriesProgressDelta,
         watchedEpisodesToday,
         status: payload.status || (type === "게임" ? "플레이 중" : type === "시리즈" || type === "영화" ? "시청 중" : ""),
-        poster: entityMetadata.cover || entityMetadata.poster || payload.cover || payload.poster || null,
+        poster: entityMetadata.cover || entityMetadata.poster || entityMetadata.image_url || entityMetadata.imageUrl || payload.cover || payload.poster || payload.image_url || payload.imageUrl || null,
       };
 
       const existing = acc.find((group) => group.key === key);
