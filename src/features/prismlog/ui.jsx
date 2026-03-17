@@ -103,6 +103,7 @@ export const TimelineProgressBar = ({
   const safeStart = clamp(safeNumber(startValue, safeValue), 0, 100);
   const safeDelta = Math.max(0, safeValue - safeStart);
   const resolvedDeltaColor = deltaColor || accent;
+  const isComplete = safeValue >= 100;
 
   return (
     <div
@@ -121,13 +122,15 @@ export const TimelineProgressBar = ({
           inset: 0,
           width: `${visible ? safeValue : 0}%`,
           borderRadius: 999,
-          background: `linear-gradient(90deg, ${accent}45, ${accent}85)`,
+          background: isComplete
+            ? `linear-gradient(90deg, ${accent}85, ${accent})`
+            : `linear-gradient(90deg, ${accent}45, ${accent}85)`,
           boxShadow: boxShadow ? `0 0 12px ${accent}33` : "none",
           transition: "width 0.7s cubic-bezier(.16,1,.3,1)",
           transitionDelay,
         }}
       />
-      {safeDelta > 0 ? (
+      {!isComplete && safeDelta > 0 ? (
         <div
           style={{
             position: "absolute",
