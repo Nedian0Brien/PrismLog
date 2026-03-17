@@ -249,7 +249,8 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                     setStudyForm(prev => ({
                       ...prev,
                       title: entity.title,
-                      cover: entity.entity_metadata?.cover || "",
+                      cover: entity.entity_metadata?.cover || entity.entity_metadata?.imageUrl || "",
+                      imageUrl: entity.entity_metadata?.cover || entity.entity_metadata?.imageUrl || "",
                       pages: String(entity.entity_metadata?.pages_total || ""),
                       isbn: entity.entity_metadata?.isbn || "",
                       progressMode: entity.entity_metadata?.progress_mode || "page",
@@ -982,6 +983,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                 title: book.title || prev.title,
                 pages: book.pages_total ? String(book.pages_total) : prev.pages,
                 cover: book.cover_url || "",
+                imageUrl: book.cover_url || "",
                 isbn: book.isbn13 || book.isbn || "",
               }));
               setStudyStep("details");
@@ -1094,9 +1096,26 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
             <span style={{ fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: accent, fontFamily: "'Outfit', sans-serif" }}>
               {studyForm.isbn ? "TEXTBOOK SELECTED" : "MANUAL ENTRY"}
             </span>
-            <h3 style={{ margin: 0, fontSize: layout?.isPhone ? 24 : 28, lineHeight: 1.15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
-              {studyForm.title || "제목을 입력해 주세요"}
-            </h3>
+            {selectedEntity ? (
+              <h3 style={{ margin: 0, fontSize: layout?.isPhone ? 24 : 28, lineHeight: 1.15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+                {studyForm.title || "제목을 입력해 주세요"}
+              </h3>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <input
+                  value={studyForm.title}
+                  onChange={(e) => setStudyForm(prev => ({ ...prev, title: e.target.value }))}
+                  style={{ ...inputStyle, fontSize: 18, fontWeight: 800, padding: "10px 14px" }}
+                  placeholder="교재 또는 공부 제목..."
+                />
+                <input
+                  value={studyForm.cover || studyForm.imageUrl}
+                  onChange={(e) => setStudyForm(prev => ({ ...prev, cover: e.target.value, imageUrl: e.target.value }))}
+                  style={{ ...inputStyle, fontSize: 12, padding: "8px 12px" }}
+                  placeholder="이미지 URL (선택 사항)"
+                />
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
               {studyForm.isbn && <Badge text={`ISBN: ${studyForm.isbn}`} color={accent} />}
               {studyForm.pages && <Badge text={`${studyForm.pages} 페이지`} color={accent} />}
@@ -1179,10 +1198,13 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                 payload: {
                   goal: studyForm.goal.trim(),
                   cover: studyForm.cover || null,
+                  imageUrl: studyForm.cover || null, // Redundancy for Study UI
                   isbn: studyForm.isbn || null,
                   progress_mode: studyForm.progressMode,
                   pages_read: studyForm.readPages || null,
                   pages_total: studyForm.pages || null,
+                  pagesRead: studyForm.readPages || null, // Redundancy for Study UI
+                  pagesTotal: studyForm.pages || null, // Redundancy for Study UI
                   chapters,
                   completed: chapters.map(() => false),
                 },

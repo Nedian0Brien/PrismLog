@@ -40,7 +40,7 @@ export const mapLogToUiItem = (log) => {
   const title = log.title || entity.title || combined.title || "제목 없음";
 
   // 포스터/커버 이미지: UI에서 cover와 poster 두 이름을 모두 사용하므로 둘 다 제공
-  const cover = combined.cover || combined.poster || combined.image_url || null;
+  const cover = combined.cover || combined.poster || combined.image_url || combined.imageUrl || null;
 
   // --- 독서 데이터 가공 ---
   const pagesRead = safeNumber(combined.pages_read || combined.readPages);
@@ -107,8 +107,11 @@ export const mapLogToUiItem = (log) => {
     categoryLabel: typeLabel,
     cover, // 독서 탭용
     poster: cover, // 문화 탭용
+    imageUrl: cover, // 공부 탭 및 EditSheet 호환성용
     pages: pagesTotal,
+    pagesTotal, // Study UI 호환성용
     readPages: pagesRead,
+    pagesRead, // Study UI 호환성용
     progress,
     progressStart,
     progressEnd: progress,
