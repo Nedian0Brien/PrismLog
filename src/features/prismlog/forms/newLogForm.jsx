@@ -217,6 +217,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                 setStep("search");
               }}
               style={{
+                width: "100%",
                 padding: "20px", borderRadius: 24, border: `2px dashed ${accent}44`,
                 background: `${accent}08`, color: accent, cursor: "pointer",
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
@@ -232,8 +233,8 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
               <button
                 key={entity.id}
                 onClick={() => {
+                  // ... (기존 onClick 로직 동일)
                   setSelectedEntity(entity);
-                  // 엔티티 정보를 폼에 미리 채워넣음
                   if (category === "reading") {
                     setReadingForm(prev => ({ 
                       ...prev, 
@@ -269,6 +270,8 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                   setStep("details");
                 }}
                 style={{
+                  width: "100%",
+                  minWidth: 0,
                   padding: "14px", borderRadius: 24, border: `1px solid ${COLORS.dark.border}`,
                   background: "rgba(255,255,255,0.03)", color: COLORS.dark.text, cursor: "pointer",
                   display: "flex", alignItems: "center", gap: 14, textAlign: "left",
@@ -279,7 +282,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                     <img src={entity.entity_metadata.cover || entity.entity_metadata.poster} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="" />
                   )}
                 </div>
-                <div style={{ minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <h4 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{entity.title}</h4>
                   <p style={{ margin: 0, fontSize: 12, color: COLORS.dark.textMuted }}>{new Date(entity.updated_at).toLocaleDateString()} 업데이트</p>
                 </div>
