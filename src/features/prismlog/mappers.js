@@ -81,6 +81,18 @@ export const mapLogToUiItem = (log) => {
   let progress = safeNumber(combined.progress, 0);
   if (category === "reading" && pagesTotal > 0) {
     progress = clamp(Math.round((pagesRead / pagesTotal) * 100), 0, 100);
+  } else if (category === "study") {
+    const progressMode = combined.progress_mode || "page";
+    if (progressMode === "page" && pagesTotal > 0) {
+      progress = clamp(Math.round((pagesRead / pagesTotal) * 100), 0, 100);
+    } else {
+      const chapters = Array.isArray(combined.chapters) ? combined.chapters : [];
+      const completed = Array.isArray(combined.completed) ? combined.completed : [];
+      if (chapters.length > 0) {
+        const completedCount = completed.filter(Boolean).length;
+        progress = clamp(Math.round((completedCount / chapters.length) * 100), 0, 100);
+      }
+    }
   } else if (metrics) {
     progress = metrics.progress;
   }
@@ -112,6 +124,7 @@ export const mapLogToUiItem = (log) => {
     pagesTotal, // Study UI 호환성용
     readPages: pagesRead,
     pagesRead, // Study UI 호환성용
+    progressMode: combined.progressMode || combined.progress_mode || "page",
     progress,
     progressStart,
     progressEnd: progress,

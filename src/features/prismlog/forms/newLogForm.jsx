@@ -254,7 +254,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                       imageUrl: entity.entity_metadata?.cover || entity.entity_metadata?.imageUrl || "",
                       pages: String(entity.entity_metadata?.pages_total || ""),
                       isbn: entity.entity_metadata?.isbn || "",
-                      progressMode: entity.entity_metadata?.progress_mode || "page",
+                      progressMode: entity.entity_metadata?.progressMode || entity.entity_metadata?.progress_mode || "page",
                       resource: Array.isArray(entity.entity_metadata?.chapters) ? entity.entity_metadata.chapters.join("\n") : "",
                     }));
                     setStudyStep("details");
@@ -1204,6 +1204,7 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                   imageUrl: studyForm.cover || null, // Redundancy for Study UI
                   isbn: studyForm.isbn || null,
                   progress_mode: studyForm.progressMode,
+                  progressMode: studyForm.progressMode, // Redundancy for Study UI
                   pages_read: studyForm.readPages || null,
                   pages_total: studyForm.pages || null,
                   pagesRead: studyForm.readPages || null, // Redundancy for Study UI

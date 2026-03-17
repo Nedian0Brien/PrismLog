@@ -250,7 +250,7 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
     tags: "",
     progress: 0,
     hours: 0,
-    progressMode: "chapter",
+    progressMode: "page",
     pages: "",
     readPages: "",
   });
@@ -269,7 +269,7 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
       tags: (record.tags || []).map((tag) => `#${tag}`).join(" "),
       progress: safeNumber(record.progress),
       hours: safeNumber(record.hours),
-      progressMode: record.progressMode || "chapter",
+      progressMode: record.progressMode || record.progress_mode || "page",
       pages: String(record.pagesTotal || record.pages || ""),
       readPages: String(record.pagesRead || record.readPages || ""),
     });
@@ -313,11 +313,15 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
         payload: {
           goal: form.goal.trim(),
           image_url: form.imageUrl.trim() || null,
+          imageUrl: form.imageUrl.trim() || null, // Redundancy
           chapters,
           completed,
           progress_mode: form.progressMode,
+          progressMode: form.progressMode, // Redundancy
           pages_total: totalPages || null,
           pages_read: readPages || 0,
+          pagesTotal: totalPages || null, // Redundancy
+          pagesRead: readPages || 0, // Redundancy
           progress,
           hours: Math.max(0, safeNumber(form.hours)),
         },

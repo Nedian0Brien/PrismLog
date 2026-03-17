@@ -189,8 +189,15 @@ export default function PrismLog() {
         if (log.category === "reading") {
           title = `${log.title} · ${safeNumber(payload.progress)}% 읽음`;
         } else if (log.category === "study") {
-          const completed = Array.isArray(payload.completed) ? payload.completed.filter(Boolean).length : 0;
-          title = `${log.title} · ${completed}개 챕터 완료`;
+          const progressMode = payload.progress_mode || "page";
+          if (progressMode === "page") {
+            const read = safeNumber(payload.pages_read || payload.pagesRead);
+            const total = safeNumber(payload.pages_total || payload.pagesTotal);
+            title = total > 0 ? `${log.title} · ${Math.round((read / total) * 100)}% 진행` : log.title;
+          } else {
+            const completed = Array.isArray(payload.completed) ? payload.completed.filter(Boolean).length : 0;
+            title = `${log.title} · ${completed}개 챕터 완료`;
+          }
         } else if (log.category === "culture") {
           title = `${log.title} · ${normalizeCultureType(payload.type)} · ${payload.status || "상태 미설정"}`;
         }

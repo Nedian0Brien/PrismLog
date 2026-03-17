@@ -81,7 +81,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       // 5. 공부 진행도 처리
       const studyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
       const studyCompleted = Array.isArray(payload.completed) ? payload.completed.filter(Boolean).length : 0;
-      const studyProgressMode = payload.progress_mode || "chapter";
+      const studyProgressMode = payload.progressMode || payload.progress_mode || "page";
       const studyPagesTotal = safeNumber(entityMetadata.pages_total || payload.pages_total || payload.pages);
       const studyPagesRead = safeNumber(payload.pages_read || payload.readPages);
       let studyProgress = 0;
