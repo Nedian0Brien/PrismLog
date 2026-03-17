@@ -401,10 +401,30 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
             ? (seriesEpisodeCountToday > 0 ? `+${seriesEpisodeCountToday}화` : "")
             : "";
 
+      let gameMinutes = 0;
+      if (type === "게임") {
+        if (log.is_session && payload.current_session) {
+          gameMinutes = safeNumber(payload.current_session.duration_minutes ?? payload.current_session.durationMinutes, 0);
+        }
+        if (gameMinutes === 0 && payload.playtime) {
+          const pt = String(payload.playtime);
+          const hMatch = pt.match(/(\d+)\s*시간/);
+          const mMatch = pt.match(/(\d+)\s*분/);
+          if (hMatch || mMatch) {
+            if (hMatch) gameMinutes += parseInt(hMatch[1], 10) * 60;
+            if (mMatch) gameMinutes += parseInt(mMatch[1], 10);
+          } else {
+            const num = parseFloat(pt);
+            if (!isNaN(num)) gameMinutes = num * 60;
+          }
+        }
+      }
+
       const sectionKey = log.category === "reading" ? "reading" : log.category === "study" ? "study" : type === "시리즈" ? "series" : type === "게임" ? "game" : "movie";
 
       // 7. UI 아이템 객체 구성
       const item = {
+        gameMinutes,
         id: log.id,
         originalId: log.originalId || log.original_id,
         title: log.category === "study"
@@ -505,6 +525,38 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: COLORS.dark.textMuted, flex: 1 }}>{item.summary || "진행 정보 없음"}</p>
     )
   );
+
+  const renderGamePlaytime = (minutes, accent) => {
+    if (!minutes) return null;
+    const hours = Math.floor(minutes / 60);
+    const remainder = minutes % 60;
+    const donuts = [];
+    
+    for (let i = 0; i < hours; i++) {
+      donuts.push(100);
+    }
+    if (remainder > 0) {
+      donuts.push(Math.round((remainder / 60) * 100));
+    }
+    
+    return (
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
+        {donuts.map((pct, idx) => (
+          <div
+            key={idx}
+            style={{
+              width: 14,
+              height: 14,
+              borderRadius: "50%",
+              background: `conic-gradient(${accent} ${pct}%, rgba(255,255,255,0.1) ${pct}%)`,
+              maskImage: "radial-gradient(transparent 40%, black 41%)",
+              WebkitMaskImage: "radial-gradient(transparent 40%, black 41%)",
+            }}
+          />
+        ))}
+      </div>
+    );
+  };
 
   const renderTimelineProgress = (item, visible) => {
     const progressValue = item.progressEnd ?? item.progress ?? 0;
@@ -689,9 +741,13 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                     <span style={{ fontSize: layout.isPhone ? 34 : 54, lineHeight: 1, fontWeight: 800, letterSpacing: -2, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{group.dayNumber}</span>
                     <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{group.sideLabel}</span>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
+                  <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 10, minWidth: 0 }}>
                     {group.items.map((item) => {
                       const visible = visibleKeys[item.id] ?? false;
+                      const isGame = item.type === "게임" || item.sectionKey === "game";
+                      const isCompleted = isGame && item.status === "플레이 완료";
+                      const hasMemo = isGame && !!item.snippet && item.snippet !== item.summary;
+                      const isCompact = isGame && !isCompleted && !hasMemo;
                       return (
                       <button
                         key={item.id}
@@ -702,7 +758,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                         data-item-key={item.id}
                         onClick={() => onOpenDetail?.({ section: item.sectionKey, id: item.originalId || item.id })}
                         style={{
-                          width: "100%",
+                          width: isCompact ? "calc(50% - 5px)" : "100%",
                           maxWidth: "100%",
                           minWidth: 0,
                           border: `1px solid ${item.accent}2c`,
@@ -726,7 +782,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                           </div>
                           <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{item.time}</span>
                         </div>
-                        {item.poster ? (
+                        {item.poster && !isCompact ? (
                           <div style={{ display: "flex", gap: layout.isPhone ? 12 : 16, alignItems: "flex-start" }}>
                             <img
                               src={item.poster}
@@ -737,8 +793,15 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                               <h3 style={{ margin: "0 0 6px", fontSize: 18, lineHeight: 1.3, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
                               {item.progress !== null ? (
                                 renderTimelineProgress(item, visible)
+                              ) : isGame ? (
+                                <>
+                                  {item.gameMinutes > 0 ? renderGamePlaytime(item.gameMinutes, item.accent) : null}
+                                  {!isCompact && item.snippet && (
+                                    <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.snippet}</p>
+                                  )}
+                                </>
                               ) : (
-                                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.summary || "기록 메모 없음"}</p>
+                                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.snippet || item.summary || "기록 메모 없음"}</p>
                               )}
                             </div>
                           </div>
@@ -747,8 +810,15 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                             <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
                             {item.progress !== null ? (
                               renderTimelineProgress(item, visible)
+                            ) : isGame ? (
+                              <>
+                                {item.gameMinutes > 0 ? renderGamePlaytime(item.gameMinutes, item.accent) : null}
+                                {!isCompact && item.snippet && (
+                                  <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.snippet}</p>
+                                )}
+                              </>
                             ) : (
-                              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.summary || "기록 메모 없음"}</p>
+                              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.snippet || item.summary || "기록 메모 없음"}</p>
                             )}
                           </>
                         )}
