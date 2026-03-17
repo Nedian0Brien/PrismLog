@@ -2225,10 +2225,25 @@ export const groupStudiesByEntity = (studies) => {
   });
 
   return [...groups.values()]
-    .map((study) => ({
-      ...study,
-      activities: [...study.activities].sort((a, b) => new Date(b.occurredAt || 0) - new Date(a.occurredAt || 0)),
-    }))
+    .map((study) => {
+      const chronologicalActivities = [...study.activities].sort((a, b) => new Date(a.occurredAt || 0) - new Date(b.occurredAt || 0));
+      let previousProgress = 0;
+      const activities = chronologicalActivities.map((activity) => {
+        const nextProgress = clamp(safeNumber(activity.progress), 0, 100);
+        const progressStart = clamp(previousProgress, 0, 100);
+        const progressDelta = Math.max(0, nextProgress - progressStart);
+        previousProgress = nextProgress;
+        return {
+          ...activity,
+          progressStart,
+          progressDelta,
+        };
+      }).sort((a, b) => new Date(b.occurredAt || 0) - new Date(a.occurredAt || 0));
+      return {
+        ...study,
+        activities,
+      };
+    })
     .sort((a, b) => new Date(b.latestActivityAt || 0) - new Date(a.latestActivityAt || 0));
 };
 
@@ -3603,6 +3618,9 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
                       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                         {group.activities.map((activity) => {
                           const isTimelinePage = activity.progressMode === "page";
+                          const trackProgress = clamp(safeNumber(activity.progress), 0, 100);
+                          const deltaStart = clamp(safeNumber(activity.progressStart), 0, 100);
+                          const deltaWidth = Math.max(0, safeNumber(activity.progressDelta));
                           return (
                             <div
                               key={activity.id}
@@ -3630,12 +3648,46 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
                                 </div>
                               </div>
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                <ProgressBar value={activity.progress} color={accent} height={10} />
+                                <div style={{ position: "relative", height: 16, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      inset: 0,
+                                      width: `${timelineVisible ? trackProgress : 0}%`,
+                                      borderRadius: 999,
+                                      background: `linear-gradient(90deg, ${accent}45, ${accent}85)`,
+                                      transition: "width 0.7s cubic-bezier(.16,1,.3,1)",
+                                    }}
+                                  />
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      top: 0,
+                                      bottom: 0,
+                                      left: `${deltaStart}%`,
+                                      width: `${timelineVisible ? deltaWidth : 0}%`,
+                                      borderRadius: 999,
+                                      background: `linear-gradient(90deg, ${COLORS.study.light}, ${accent})`,
+                                      boxShadow: `0 0 18px ${COLORS.study.light}55`,
+                                      transition: "width 0.92s cubic-bezier(.16,1,.3,1)",
+                                    }}
+                                  />
+                                </div>
                                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                                   <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.textMuted }}>
                                     {isTimelinePage
                                       ? `${activity.pagesRead}p / ${activity.pagesTotal}p`
                                       : `${activity.completedCount} / ${activity.totalCount} 챕터 완료`}
+                                  </p>
+                                  {activity.progressDelta > 0 ? (
+                                    <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.study.light, fontFamily: "'Outfit', sans-serif" }}>
+                                      {`+${activity.progressDelta}%`}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                                  <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.textMuted }}>
+                                    {`${deltaStart}% → ${trackProgress}%`}
                                   </p>
                                   {activity.tags.length > 0 ? (
                                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -4409,6 +4461,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
 
   const sortedReading = useMemo(() => [...readingLogs].sort((a, b) => new Date(b.date) - new Date(a.date)), [readingLogs]);
   const sortedStudy = useMemo(() => [...studyLogs].sort((a, b) => new Date(b.date) - new Date(a.date)), [studyLogs]);
+  const groupedStudyEntities = useMemo(() => groupStudiesByEntity(sortedStudy), [sortedStudy]);
   const movieLogs = useMemo(() => cultureLogs.filter((item) => item.type === "영화").sort((a, b) => new Date(b.date) - new Date(a.date)), [cultureLogs]);
   const seriesLogs = useMemo(() => cultureLogs.filter((item) => item.type === "시리즈").sort((a, b) => new Date(b.date) - new Date(a.date)), [cultureLogs]);
   const gameLogs = useMemo(() => cultureLogs.filter((item) => item.type === "게임").sort((a, b) => new Date(b.date) - new Date(a.date)), [cultureLogs]);
@@ -4436,12 +4489,12 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       key: "study",
       label: "공부",
       description: "진척률과 챕터",
-      count: sortedStudy.length,
-      latestUpdatedAt: sortedStudy[0]?.date ? new Date(sortedStudy[0].date).getTime() : 0,
+      count: groupedStudyEntities.length,
+      latestUpdatedAt: groupedStudyEntities[0]?.date ? new Date(groupedStudyEntities[0].date).getTime() : 0,
       unit: "개",
       accent: COLORS.study.main,
       icon: <PenIcon color={COLORS.study.main} />,
-      previews: sortedStudy.slice(0, 3).map((study) => ({
+      previews: groupedStudyEntities.slice(0, 3).map((study) => ({
         id: study.id,
         title: study.title,
         image: study.imageUrl,
@@ -4502,7 +4555,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
   ].sort((a, b) => {
     if (b.latestUpdatedAt !== a.latestUpdatedAt) return b.latestUpdatedAt - a.latestUpdatedAt;
     return a.order - b.order;
-  })), [gameLogs, movieLogs, seriesLogs, sortedReading, sortedStudy]);
+  })), [gameLogs, groupedStudyEntities, movieLogs, seriesLogs, sortedReading]);
 
   const activeSection = sections.find((section) => section.key === selectedSection) || null;
   const mobileColumnOptions = [
