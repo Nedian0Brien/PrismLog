@@ -480,6 +480,7 @@ export default function PrismLog() {
         onUpdateSeriesProgress={updateSeriesProgress}
         onAddReading={addReadingProgress}
         onAddReadingNote={addReadingNote}
+        onAddStudy={saveLog}
         initialSection={recordsSection}
         initialDetailTarget={recordsDetailTarget}
         onSectionChange={(section) => {

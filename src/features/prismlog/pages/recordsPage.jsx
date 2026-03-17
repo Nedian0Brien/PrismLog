@@ -2999,9 +2999,86 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
   );
 };
 
+const StudyProgressModal = ({
+  item,
+  layout,
+  saving,
+  currentValue,
+  onValueChange,
+  onClose,
+  onSubmit,
+}) => {
+  if (!item) return null;
+  const accent = COLORS.study.main;
+  const isPageMode = item.progressMode === "page";
+  const total = isPageMode ? item.pagesTotal : item.chapters?.length || 0;
+
+  return (
+    <ModalShell
+      glow={COLORS.study.glow}
+      width="min(92vw, 430px)"
+      padding={layout.isPhone ? "22px 18px" : "24px 22px"}
+      onBackdropClick={onClose}
+      onClose={onClose}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div>
+          <p style={{ margin: "0 0 6px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+            Study Progress
+          </p>
+          <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+            공부 기록 추가
+          </h4>
+        </div>
+
+        <div>
+          <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>
+            {isPageMode ? "현재 공부한 페이지" : "완료한 챕터 수"}
+          </label>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", padding: "0 16px" }}>
+            <input
+              value={currentValue}
+              onChange={(e) => onValueChange(e.target.value.replace(/\D/g, ""))}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder={isPageMode ? "몇 페이지까지 공부했나요?" : "몇 개 챕터를 완료했나요?"}
+              style={{ width: "100%", border: "none", background: "transparent", color: COLORS.dark.text, fontSize: 15, outline: "none", fontFamily: "'Outfit', sans-serif" }}
+            />
+            <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>
+              {isPageMode ? "p." : "개"}
+            </span>
+          </div>
+          {total > 0 && (
+            <p style={{ margin: "8px 0 0", fontSize: 12, color: COLORS.dark.textMuted }}>
+              전체 {total}{isPageMode ? "p" : "개"} 중 현재 {currentValue}{isPageMode ? "p" : "개"}
+            </p>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
+          <button type="button" onClick={onClose} disabled={saving} style={{ minHeight: 44, padding: "0 16px", borderRadius: 14, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.textMuted, cursor: saving ? "wait" : "pointer", fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}>취소</button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={saving}
+            style={{
+              minHeight: 44, padding: "0 18px", borderRadius: 14, border: "none",
+              background: accent, color: "#1a1816",
+              cursor: saving ? "wait" : "pointer", fontWeight: 800, fontFamily: "'Pretendard', sans-serif"
+            }}
+          >
+            {saving ? "기록 중..." : "공부 기록 반영"}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+};
+
 /* ──────────── Page: Study ──────────── */
 /* ──────────── Study Detail Page ──────────── */
-const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
+const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
   const accent = COLORS.study.main;
   const isPageMode = item.progressMode === "page";
   const trendPoints = useMemo(() => buildStudyTrendPoints(item), [item]);
@@ -3018,6 +3095,26 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
           <span style={{ fontSize: 18 }}>←</span> 목록으로
         </button>
         <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => onAdd(item)}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 14,
+              border: "none",
+              background: accent,
+              color: "#1a1816",
+              fontSize: 13,
+              fontWeight: 800,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              boxShadow: `0 8px 20px ${accent}33`,
+              fontFamily: "'Pretendard', sans-serif",
+            }}
+          >
+            <PlusIcon size={16} /> 기록 추가
+          </button>
           <IconActionButton onClick={() => onEdit(item)} />
         </div>
       </div>
@@ -3231,15 +3328,91 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit }) => {
   );
 };
 
-export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = null }) => {
+export const StudyPage = ({ studies, loading, onEdit, onSave, layout, initialDetailId = null }) => {
   const [detailId, setDetailId] = useState(null);
   const detail = studies.find(s => s.id === detailId);
+  
+  // 진행도 업데이트 모달 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalItem, setModalItem] = useState(null);
+  const [inputValue, setInputValue] = useState("");
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     if (initialDetailId) setDetailId(initialDetailId);
   }, [initialDetailId]);
 
+  const openModal = (item) => {
+    setModalItem(item);
+    const initialValue = item.progressMode === "page" 
+      ? (item.pagesRead || 0) 
+      : (Array.isArray(item.completed) ? item.completed.filter(Boolean).length : 0);
+    setInputValue(String(initialValue));
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setModalItem(null);
+    setInputValue("");
+    setSaving(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!modalItem) return;
+    setSaving(true);
+    try {
+      const isPageMode = modalItem.progressMode === "page";
+      const val = safeNumber(inputValue);
+      
+      const payload = {
+        category: "study",
+        entity_id: modalItem.entityId,
+        title: isPageMode ? `${val}p까지 공부` : `${val}개 챕터 완료`,
+        summary: "",
+        tags: modalItem.tags || [],
+        payload: {
+          ...modalItem, // 기존 메타데이터 유지
+          progress_mode: modalItem.progressMode,
+          pages_read: isPageMode ? val : (modalItem.pagesRead || 0),
+          pages_total: modalItem.pagesTotal,
+          // 챕터 모드인 경우 completed 배열 업데이트 로직 필요 (여기선 단순 개수로 처리하거나 기존 배열 활용)
+          completed: !isPageMode 
+            ? Array.from({ length: modalItem.chapters?.length || 0 }, (_, i) => i < val)
+            : (modalItem.completed || []),
+        }
+      };
+
+      await onSave(payload);
+      closeModal();
+    } catch (err) {
+      console.error("Failed to save study progress", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (detail) {
-    return <StudyDetailPage item={detail} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} />;
+    return (
+      <>
+        <StudyDetailPage 
+          item={detail} 
+          layout={layout} 
+          onBack={() => setDetailId(null)} 
+          onEdit={onEdit}
+          onAdd={openModal}
+        />
+        <StudyProgressModal
+          item={modalItem}
+          layout={layout}
+          saving={saving}
+          currentValue={inputValue}
+          onValueChange={setInputValue}
+          onClose={closeModal}
+          onSubmit={handleSubmit}
+        />
+      </>
+    );
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -3255,6 +3428,7 @@ export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = 
         {(studies || []).map(s => (
           <GlassCard key={s.id} glow={COLORS.study.glow} style={{ padding: 0, cursor: "pointer", overflow: "hidden" }} onClick={() => setDetailId(s.id)}>
             <div style={{ display: "flex", alignItems: "center", minHeight: 124 }}>
+              {/* (기존 이미지 섹션 코드 생략...) */}
               <div style={{
                 padding: "14px 0 14px 16px",
                 flexShrink: 0,
@@ -3269,7 +3443,7 @@ export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = 
                   overflow: "hidden",
                   boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
                   border: `1px solid ${COLORS.study.main}22`,
-                  background: `linear-gradient(135deg, ${COLORS.study.main}33, ${COLORS.study.main}11)`,
+                  background: s.imageUrl ? COLORS.dark.surfaceSolid : `linear-gradient(135deg, ${COLORS.study.main}33, ${COLORS.study.main}11)`,
                   position: "relative",
                 }}>
                   {s.imageUrl ? (
@@ -3294,7 +3468,7 @@ export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = 
                           </>
                         ) : (
                           <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>
-                            {s.chapters.length}개 챕터
+                            {s.chapters?.length || 0}개 챕터
                           </span>
                         )}
                       </div>
@@ -3306,16 +3480,38 @@ export const StudyPage = ({ studies, loading, onEdit, layout, initialDetailId = 
                   <ProgressBar value={s.progress} color={COLORS.study.main} />
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, marginTop: 12 }}>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", maxHeight: 22, overflow: "hidden" }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", maxHeight: 22, overflow: "hidden", flex: 1 }}>
                     {s.tags.map(t => <Badge key={t} text={`#${t}`} color={COLORS.study.main} />)}
                   </div>
-                  <IconActionButton onClick={(e) => { e.stopPropagation(); onEdit(s); }} />
+                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openModal(s); }}
+                      style={{
+                        width: 34, height: 34, borderRadius: 10, border: "none",
+                        background: COLORS.study.main, color: "#1a1816",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: "pointer", boxShadow: `0 4px 12px ${COLORS.study.main}44`
+                      }}
+                    >
+                      <PlusIcon size={18} />
+                    </button>
+                    <IconActionButton onClick={(e) => { e.stopPropagation(); onEdit(s); }} />
+                  </div>
                 </div>
               </div>
             </div>
           </GlassCard>
         ))}
       </div>
+      <StudyProgressModal
+        item={modalItem}
+        layout={layout}
+        saving={saving}
+        currentValue={inputValue}
+        onValueChange={setInputValue}
+        onClose={closeModal}
+        onSubmit={handleSubmit}
+      />
     </div>
   );
 };
@@ -3702,7 +3898,7 @@ export const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
   );
 };
 
-export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, onAddReadingNote, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
+export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, onAddReadingNote, onAddStudy, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
   const [selectedSection, setSelectedSection] = useState(initialSection);
   const [mobileColumns, setMobileColumns] = useState(1);
   const [transitionDirection, setTransitionDirection] = useState(initialSection ? "forward" : "back");
@@ -3910,7 +4106,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       case "reading":
         return <ReadingPage books={sortedReading} loading={loading} onEdit={onEditReading} onAdd={onAddReading} onAddNote={onAddReadingNote} layout={layout} initialDetailId={initialDetailId} />;
       case "study":
-        return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} layout={layout} initialDetailId={initialDetailId} />;
+        return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} onSave={onAddStudy} layout={layout} initialDetailId={initialDetailId} />;
       case "movie":
         return <CulturePage items={movieLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="영화 기록" fixedType="영화" initialDetailId={initialDetailId} />;
       case "series":
