@@ -2144,12 +2144,30 @@ const buildReadingTrendPoints = (book) => {
 };
 
 const buildStudyTrendPoints = (study) => {
-  // 현재는 단순화하여 시작(0%)과 현재 진행률만 표시
-  // 추후 목차 완료 일시나 세션 기록이 추가되면 이를 기반으로 고도화 가능
-  return [
-    { label: "시작", progress: 0, dateKey: "study-start" },
-    { label: "현재", progress: clamp(safeNumber(study.progress), 0, 100), dateKey: "study-current" },
-  ];
+  const activities = (study && Array.isArray(study.activities))
+    ? [...study.activities].sort((a, b) => new Date(a.occurredAt || 0) - new Date(b.occurredAt || 0))
+    : [];
+
+  if (activities.length === 0) {
+    return [{ label: "현재", progress: clamp(safeNumber(study?.progress), 0, 100), dateKey: "study-current" }];
+  }
+
+  const points = [];
+  activities.forEach((activity, index) => {
+    const rawDate = activity.occurredAt;
+    const dateKey = getDateKey(rawDate) || `study-activity-${index}`;
+    const label = formatMonthDayLabel(rawDate) || "기록";
+    const startProgress = clamp(safeNumber(activity.progressStart), 0, 100);
+    const endProgress = clamp(safeNumber(activity.progress), 0, 100);
+    const previousPoint = points[points.length - 1];
+
+    if (!previousPoint || Math.abs(previousPoint.progress - startProgress) > 0.5) {
+      points.push({ label, progress: startProgress, dateKey: `${dateKey}-start-${index}` });
+    }
+    points.push({ label, progress: endProgress, dateKey: `${dateKey}-end-${index}` });
+  });
+
+  return points;
 };
 
 const countStudyCompletedItems = (study) => {
