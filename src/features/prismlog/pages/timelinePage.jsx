@@ -439,6 +439,86 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
     )
   );
 
+  const renderTimelineProgress = (item, visible) => {
+    const progressValue = item.progressEnd ?? item.progress ?? 0;
+    const progressStart = clamp(safeNumber(item.progressStart, progressValue), 0, 100);
+    const progressDelta = Math.max(0, progressValue - progressStart);
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: -2 }}>
+          {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
+          {progressDelta > 0 ? (
+            <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.9)", fontFamily: "'Outfit', sans-serif" }}>
+              {`+${Math.round(progressDelta)}%`}
+            </span>
+          ) : null}
+          <span style={{ fontSize: 13, fontWeight: 700, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
+        </div>
+        <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: `${visible ? progressValue : 0}%`,
+              borderRadius: 999,
+              background: `linear-gradient(90deg, ${item.accent}45, ${item.accent}85)`,
+              boxShadow: `0 0 12px ${item.accent}33`,
+              transition: "width 0.6s cubic-bezier(.16,1,.3,1)",
+              transitionDelay: "0.1s",
+            }}
+          />
+          {progressDelta > 0 ? (
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                bottom: 0,
+                left: `${progressStart}%`,
+                width: `${visible ? progressDelta : 0}%`,
+                borderRadius: 999,
+                background: `linear-gradient(90deg, rgba(255,255,255,0.42), ${item.accent})`,
+                boxShadow: `0 0 18px ${item.accent}55`,
+                transition: "width 0.7s cubic-bezier(.16,1,.3,1)",
+                transitionDelay: "1.1s",
+              }}
+            />
+          ) : null}
+          {progressValue >= 100 ? (
+            <div style={{ position: "absolute", right: 2, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f5f0eb", boxShadow: `0 0 12px ${item.accent}88` }} />
+            </div>
+          ) : null}
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {renderSeriesStats(item)}
+          </div>
+        </div>
+        {item.snippet ? (
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            {item.snippet}
+          </p>
+        ) : null}
+        {item.watchedEpisodesToday?.length > 0 ? (
+          <div style={{ minWidth: 0, width: "100%", maxWidth: "100%", overflow: "hidden" }}>
+            <div style={{ display: "flex", gap: 10, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", scrollSnapType: "x proximity", paddingBottom: 4 }}>
+              {item.watchedEpisodesToday.map((episode) => (
+                <div key={episode.id} style={{ width: 120, minWidth: 120, flexShrink: 0, display: "flex", flexDirection: "column", gap: 6, scrollSnapAlign: "start" }}>
+                  <div style={{ width: 120, height: 68, borderRadius: 10, overflow: "hidden", background: `linear-gradient(135deg, ${item.accent}24, rgba(255,255,255,0.05))`, border: `1px solid ${item.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {episode.stillUrl ? <img src={episode.stillUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{episode.code}</span>}
+                  </div>
+                  <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{episode.code}</p>
+                  <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.text, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{episode.title}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
   const calendarMonths = useMemo(() => {
     const counts = logs.reduce((acc, log) => {
       const key = getDateKey(log.occurred_at || log.created_at);
@@ -565,9 +645,6 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
                     {group.items.map((item) => {
                       const visible = visibleKeys[item.id] ?? false;
-                      const progressValue = item.progressEnd ?? item.progress ?? 0;
-                      const progressStart = clamp(safeNumber(item.progressStart, progressValue), 0, 100);
-                      const progressDelta = Math.max(0, progressValue - progressStart);
                       return (
                       <button
                         key={item.id}
@@ -612,60 +689,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                             <div style={{ minWidth: 0, flex: 1 }}>
                               <h3 style={{ margin: "0 0 6px", fontSize: 18, lineHeight: 1.3, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
                               {item.progress !== null ? (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                  <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: -2 }}>
-                                    {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
-                                    {progressDelta > 0 ? (
-                                      <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.9)", fontFamily: "'Outfit', sans-serif" }}>
-                                        {`+${Math.round(progressDelta)}%`}
-                                      </span>
-                                    ) : null}
-                                    <span style={{ fontSize: 13, fontWeight: 700, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
-                                  </div>
-                                  <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
-                                    {/* 1. 기존 진행률 (Solid) */}
-                                    <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${visible ? progressStart : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 12px ${item.accent}33`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.1s" }} />
-                                    
-                                    {progressDelta > 0 ? (
-                                      <>
-                                        {/* 2. 델타 가이드 (Light Leader) */}
-                                        <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `${item.accent}55`, boxShadow: `0 0 18px ${item.accent}44`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.6s" }} />
-                                        {/* 3. 델타 채우기 (Solid Follower) */}
-                                        <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 16px ${item.accent}66`, transition: "width 0.7s cubic-bezier(.16,1,.3,1)", transitionDelay: "1.1s" }} />
-                                      </>
-                                    ) : null}
-                                    {progressValue >= 100 ? (
-                                      <div style={{ position: "absolute", right: 2, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 4 }}>
-                                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f5f0eb", boxShadow: `0 0 12px ${item.accent}88` }} />
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                      {renderSeriesStats(item)}
-                                    </div>
-                                  </div>
-                                  {item.snippet ? (
-                                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                                      {item.snippet}
-                                    </p>
-                                  ) : null}
-                                  {item.watchedEpisodesToday?.length > 0 ? (
-                                    <div style={{ minWidth: 0, width: "100%", maxWidth: "100%", overflow: "hidden" }}>
-                                      <div style={{ display: "flex", gap: 10, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", scrollSnapType: "x proximity", paddingBottom: 4 }}>
-                                        {item.watchedEpisodesToday.map((episode) => (
-                                          <div key={episode.id} style={{ width: 120, minWidth: 120, flexShrink: 0, display: "flex", flexDirection: "column", gap: 6, scrollSnapAlign: "start" }}>
-                                            <div style={{ width: 120, height: 68, borderRadius: 10, overflow: "hidden", background: `linear-gradient(135deg, ${item.accent}24, rgba(255,255,255,0.05))`, border: `1px solid ${item.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                              {episode.stillUrl ? <img src={episode.stillUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{episode.code}</span>}
-                                            </div>
-                                            <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{episode.code}</p>
-                                            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.text, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{episode.title}</p>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  ) : null}
-                                </div>
+                                renderTimelineProgress(item, visible)
                               ) : (
                                 <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.summary || "기록 메모 없음"}</p>
                               )}
@@ -675,60 +699,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                           <>
                             <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
                             {item.progress !== null ? (
-                              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: -2 }}>
-                                  {progressValue >= 100 ? <span style={{ fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>완독</span> : null}
-                                  {progressDelta > 0 ? (
-                                    <span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.9)", fontFamily: "'Outfit', sans-serif" }}>
-                                      {`+${Math.round(progressDelta)}%`}
-                                    </span>
-                                  ) : null}
-                                  <span style={{ fontSize: 13, fontWeight: 700, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
-                                </div>
-                                <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
-                                  {/* 1. 기존 진행률 (Solid) */}
-                                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${visible ? progressStart : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 12px ${item.accent}33`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.1s" }} />
-                                  
-                                  {progressDelta > 0 ? (
-                                    <>
-                                      {/* 2. 델타 가이드 (Light Leader) */}
-                                      <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: `${item.accent}55`, boxShadow: `0 0 18px ${item.accent}44`, transition: "width 0.6s cubic-bezier(.16,1,.3,1)", transitionDelay: "0.6s" }} />
-                                      {/* 3. 델타 채우기 (Solid Follower) */}
-                                      <div style={{ position: "absolute", top: 0, bottom: 0, left: `${progressStart}%`, width: `${visible ? progressDelta : 0}%`, borderRadius: 999, background: item.accent, boxShadow: `0 0 16px ${item.accent}66`, transition: "width 0.7s cubic-bezier(.16,1,.3,1)", transitionDelay: "1.1s" }} />
-                                    </>
-                                  ) : null}
-                                  {progressValue >= 100 ? (
-                                    <div style={{ position: "absolute", right: 2, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 4 }}>
-                                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f5f0eb", boxShadow: `0 0 12px ${item.accent}88` }} />
-                                    </div>
-                                  ) : null}
-                                </div>
-                                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    {renderSeriesStats(item)}
-                                  </div>
-                                </div>
-                                {item.snippet ? (
-                                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                                    {item.snippet}
-                                  </p>
-                                ) : null}
-                                {item.watchedEpisodesToday?.length > 0 ? (
-                                  <div style={{ minWidth: 0, width: "100%", maxWidth: "100%", overflow: "hidden" }}>
-                                    <div style={{ display: "flex", gap: 10, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", scrollSnapType: "x proximity", paddingBottom: 4 }}>
-                                      {item.watchedEpisodesToday.map((episode) => (
-                                        <div key={episode.id} style={{ width: 120, minWidth: 120, flexShrink: 0, display: "flex", flexDirection: "column", gap: 6, scrollSnapAlign: "start" }}>
-                                          <div style={{ width: 120, height: 68, borderRadius: 10, overflow: "hidden", background: `linear-gradient(135deg, ${item.accent}24, rgba(255,255,255,0.05))`, border: `1px solid ${item.accent}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                            {episode.stillUrl ? <img src={episode.stillUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{episode.code}</span>}
-                                          </div>
-                                          <p style={{ margin: 0, fontSize: 11, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{episode.code}</p>
-                                          <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.text, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{episode.title}</p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ) : null}
-                              </div>
+                              renderTimelineProgress(item, visible)
                             ) : (
                               <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.summary || "기록 메모 없음"}</p>
                             )}
