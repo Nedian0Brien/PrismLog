@@ -88,6 +88,70 @@ export const ProgressBar = ({ value, color, height = 6 }) => (
   </div>
 );
 
+export const TimelineProgressBar = ({
+  value,
+  startValue = 0,
+  accent,
+  deltaColor,
+  visible = true,
+  height = 14,
+  transitionDelay = "0s",
+  deltaTransitionDelay = "0.22s",
+  boxShadow = true,
+}) => {
+  const safeValue = clamp(safeNumber(value), 0, 100);
+  const safeStart = clamp(safeNumber(startValue, safeValue), 0, 100);
+  const safeDelta = Math.max(0, safeValue - safeStart);
+  const resolvedDeltaColor = deltaColor || accent;
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        height,
+        borderRadius: 999,
+        background: "rgba(255,255,255,0.08)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: `${visible ? safeValue : 0}%`,
+          borderRadius: 999,
+          background: `linear-gradient(90deg, ${accent}45, ${accent}85)`,
+          boxShadow: boxShadow ? `0 0 12px ${accent}33` : "none",
+          transition: "width 0.7s cubic-bezier(.16,1,.3,1)",
+          transitionDelay,
+        }}
+      />
+      {safeDelta > 0 ? (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: `${safeStart}%`,
+            width: `${visible ? safeDelta : 0}%`,
+            borderRadius: 999,
+            background: resolvedDeltaColor,
+            boxShadow: boxShadow ? `0 0 18px ${resolvedDeltaColor}55` : "none",
+            transition: "width 0.92s cubic-bezier(.16,1,.3,1)",
+            transitionDelay: deltaTransitionDelay,
+          }}
+        />
+      ) : null}
+      {safeValue >= 100 ? (
+        <div style={{ position: "absolute", right: 2, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f5f0eb", boxShadow: `0 0 12px ${accent}88` }} />
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 export const ModalShell = ({
   children,
   glow,

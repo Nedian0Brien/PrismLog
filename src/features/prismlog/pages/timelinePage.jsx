@@ -13,7 +13,7 @@ import {
   ClockIcon,
   CalendarIcon,
 } from "../core";
-import { Badge, GlassCard, StatusBadge } from "../ui";
+import { Badge, GlassCard, StatusBadge, TimelineProgressBar } from "../ui";
 
 export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
   const [view, setView] = useState("feed");
@@ -115,6 +115,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
     const readingDailyAggregates = new Map();
     const studyDailyAggregates = new Map();
     const latestStudyProgressByEntity = new Map();
+    const latestStudyAmountByEntity = new Map();
     const collapsedLogs = [];
 
     chronologicalLogs.forEach((log) => {
@@ -199,9 +200,20 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       const dateKey = getDateKey(occurredAt);
       const entityKey = log.entity_id || log.id;
       const aggregateKey = `${dateKey}:${entityKey}`;
+      const payload = log.session_payload || log.payload || {};
+      const entity = log.entity || {};
+      const entityMetadata = entity.entity_metadata || {};
+      const studyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
+      const studyCompleted = Array.isArray(payload.completed) ? payload.completed.filter(Boolean).length : 0;
+      const studyProgressMode = payload.progressMode || payload.progress_mode || "page";
+      const studyPagesTotal = safeNumber(entityMetadata.pages_total || payload.pages_total || payload.pages);
+      const studyPagesRead = safeNumber(payload.pages_read || payload.readPages);
       const currentProgress = computeStudyProgress(log);
       const previousProgress = safeNumber(latestStudyProgressByEntity.get(entityKey), 0);
       const entityTitle = log.entity?.title || log.title || "제목 없음";
+      const amountMode = studyProgressMode === "page" && studyPagesTotal > 0 ? "page" : studyChapters.length > 0 ? "chapter" : "percent";
+      const currentAmount = amountMode === "page" ? studyPagesRead : amountMode === "chapter" ? studyCompleted : currentProgress;
+      const previousAmount = safeNumber(latestStudyAmountByEntity.get(entityKey), 0);
       const existing = studyDailyAggregates.get(aggregateKey);
 
       if (!existing) {
@@ -212,6 +224,10 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           occurred_at: occurredAt,
           study_progress_start: previousProgress,
           study_progress_end: currentProgress,
+          study_amount_mode: amountMode,
+          study_amount_start: previousAmount,
+          study_amount_end: currentAmount,
+          study_amount_total: amountMode === "page" ? studyPagesTotal : studyChapters.length,
         });
       } else {
         studyDailyAggregates.set(aggregateKey, {
@@ -222,10 +238,15 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           occurred_at: occurredAt,
           study_progress_start: existing.study_progress_start,
           study_progress_end: currentProgress,
+          study_amount_mode: existing.study_amount_mode,
+          study_amount_start: existing.study_amount_start,
+          study_amount_end: currentAmount,
+          study_amount_total: amountMode === "page" ? studyPagesTotal : studyChapters.length,
         });
       }
 
       latestStudyProgressByEntity.set(entityKey, currentProgress);
+      latestStudyAmountByEntity.set(entityKey, currentAmount);
     });
 
     collapsedLogs.push(...readingDailyAggregates.values());
@@ -257,6 +278,14 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
 
       // 4. 독서 세션 처리 (확장된 로그일 경우 현재 세션 정보 활용)
       const latestReadingSession = log.is_session ? payload.current_session : null;
+      const readingPagesRead = safeNumber(
+        latestReadingSession?.pages_read ?? latestReadingSession?.read_pages ?? latestReadingSession?.pagesRead,
+        0,
+      );
+      const readingPagesTotal = safeNumber(
+        latestReadingSession?.total_pages ?? latestReadingSession?.totalPages ?? payload.pages_total ?? payload.pages,
+        0,
+      );
 
       // 5. 공부 진행도 처리
       const studyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
@@ -335,6 +364,27 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         : type === "시리즈"
           ? clamp(safeNumber(progress, 0) - seriesProgressDelta, 0, 100)
         : progress;
+      const deltaColor = log.category === "reading"
+        ? COLORS.reading.progressSoft
+        : log.category === "study"
+          ? COLORS.study.light
+          : `${accent}cc`;
+      const studyAmountDelta = Math.max(0, safeNumber(log.study_amount_end) - safeNumber(log.study_amount_start));
+      const absoluteDeltaLabel = log.category === "reading"
+        ? (readingPagesRead > 0 ? `+${readingPagesRead}p` : "")
+        : log.category === "study"
+          ? (
+              studyAmountDelta <= 0
+                ? ""
+                : log.study_amount_mode === "page"
+                  ? `+${studyAmountDelta}p`
+                  : log.study_amount_mode === "chapter"
+                    ? `+${studyAmountDelta}챕터`
+                    : `+${Math.max(0, safeNumber(log.study_progress_end) - safeNumber(log.study_progress_start))}%`
+            )
+          : type === "시리즈"
+            ? (seriesEpisodeCountToday > 0 ? `+${seriesEpisodeCountToday}화` : "")
+            : "";
 
       const sectionKey = log.category === "reading" ? "reading" : log.category === "study" ? "study" : type === "시리즈" ? "series" : type === "게임" ? "game" : "movie";
 
@@ -351,7 +401,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         type,
         categoryLabel: log.category === "reading" ? "독서" : log.category === "study" ? "공부" : type,
         summary: log.category === "reading"
-          ? `${payload.pages_read || studyPagesRead || 0} / ${studyPagesTotal > 0 ? `${studyPagesTotal}p` : "?"}`
+          ? `${readingPagesRead || 0} / ${readingPagesTotal > 0 ? `${readingPagesTotal}p` : "?"}`
           : log.category === "study"
             ? (studyProgressMode === "page" && studyPagesTotal > 0 ? `${studyPagesRead} / ${studyPagesTotal}p` : `${studyChapters.length}개 챕터`)
             : payload.playtime || payload.status || "",
@@ -359,6 +409,8 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         progress,
         progressStart,
         progressEnd: progress ?? 0,
+        deltaColor,
+        absoluteDeltaLabel,
         seriesEpisodeCountToday,
         seriesProgressDelta,
         watchedEpisodesToday,
@@ -455,42 +507,22 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           ) : null}
           <span style={{ fontSize: 13, fontWeight: 700, color: item.accent, fontFamily: "'Outfit', sans-serif" }}>{`${progressValue}%`}</span>
         </div>
-        <div style={{ position: "relative", height: 14, borderRadius: 999, background: "rgba(255,255,255,0.08)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)", overflow: "hidden" }}>
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: `${visible ? progressValue : 0}%`,
-              borderRadius: 999,
-              background: `linear-gradient(90deg, ${item.accent}45, ${item.accent}85)`,
-              boxShadow: `0 0 12px ${item.accent}33`,
-              transition: "width 0.6s cubic-bezier(.16,1,.3,1)",
-              transitionDelay: "0.1s",
-            }}
-          />
-          {progressDelta > 0 ? (
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                left: `${progressStart}%`,
-                width: `${visible ? progressDelta : 0}%`,
-                borderRadius: 999,
-                background: `linear-gradient(90deg, rgba(255,255,255,0.42), ${item.accent})`,
-                boxShadow: `0 0 18px ${item.accent}55`,
-                transition: "width 0.7s cubic-bezier(.16,1,.3,1)",
-                transitionDelay: "1.1s",
-              }}
-            />
-          ) : null}
-          {progressValue >= 100 ? (
-            <div style={{ position: "absolute", right: 2, top: "50%", transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f5f0eb", boxShadow: `0 0 12px ${item.accent}88` }} />
-            </div>
-          ) : null}
-        </div>
+        <TimelineProgressBar
+          value={progressValue}
+          startValue={progressStart}
+          accent={item.accent}
+          deltaColor={item.deltaColor}
+          visible={visible}
+          height={14}
+          transitionDelay="0.1s"
+          deltaTransitionDelay="1.1s"
+        />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          {item.absoluteDeltaLabel ? (
+            <span style={{ display: "inline-flex", alignItems: "center", padding: "6px 10px", borderRadius: 999, background: `${item.accent}18`, border: `1px solid ${item.accent}22`, fontSize: 11, fontWeight: 700, color: COLORS.dark.text }}>
+              {item.absoluteDeltaLabel}
+            </span>
+          ) : null}
           <div style={{ flex: 1, minWidth: 0 }}>
             {renderSeriesStats(item)}
           </div>

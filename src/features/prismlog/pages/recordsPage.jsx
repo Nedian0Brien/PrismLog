@@ -37,6 +37,7 @@ import {
   GlassCard,
   ModalShell,
   ProgressBar,
+  TimelineProgressBar,
   ReadingProgressEditor,
   IconActionButton,
   Badge,
@@ -2617,7 +2618,6 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                     : "";
                   const trackProgress = group.session ? clamp(safeNumber(group.session.toProgress), 0, 100) : 0;
                   const deltaStart = group.session ? clamp(safeNumber(group.session.fromProgress), 0, 100) : 0;
-                  const deltaWidth = group.session ? Math.max(0, trackProgress - deltaStart) : 0;
                   return (
                     <div
                       key={`reading-timeline-${group.dateKey}`}
@@ -2671,31 +2671,15 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                             </div>
 
                             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                              <div style={{ position: "relative", height: 16, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                                <div
-                                  style={{
-                                    position: "absolute",
-                                    inset: 0,
-                                    width: `${timelineVisible ? trackProgress : 0}%`,
-                                    borderRadius: 999,
-                                    background: `linear-gradient(90deg, ${accent}45, ${accent}85)`,
-                                    transition: "width 0.7s cubic-bezier(.16,1,.3,1)",
-                                  }}
-                                />
-                                <div
-                                  style={{
-                                    position: "absolute",
-                                    top: 0,
-                                    bottom: 0,
-                                    left: `${deltaStart}%`,
-                                    width: `${timelineVisible ? deltaWidth : 0}%`,
-                                    borderRadius: 999,
-                                    background: `linear-gradient(90deg, ${COLORS.reading.progressSoft}, ${accent})`,
-                                    boxShadow: `0 0 18px ${COLORS.reading.progressSoft}55`,
-                                    transition: "width 0.92s cubic-bezier(.16,1,.3,1)",
-                                  }}
-                                />
-                              </div>
+                              <TimelineProgressBar
+                                value={trackProgress}
+                                startValue={deltaStart}
+                                accent={accent}
+                                deltaColor={COLORS.reading.progressSoft}
+                                visible={timelineVisible}
+                                height={16}
+                                boxShadow={false}
+                              />
                               <div style={{ display: "flex", justifyContent: "flex-start", gap: 10, alignItems: "center" }}>
                                 <p style={{ margin: 0, fontSize: 12, lineHeight: 1, color: COLORS.dark.textMuted }}>
                                   {`${safeNumber(group.session.fromPages)}p → ${safeNumber(group.session.toPages)}p (+${safeNumber(group.session.pagesRead)}p)`}
@@ -3620,7 +3604,6 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
                           const isTimelinePage = activity.progressMode === "page";
                           const trackProgress = clamp(safeNumber(activity.progress), 0, 100);
                           const deltaStart = clamp(safeNumber(activity.progressStart), 0, 100);
-                          const deltaWidth = Math.max(0, safeNumber(activity.progressDelta));
                           return (
                             <div
                               key={activity.id}
@@ -3653,31 +3636,15 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
                                 </div>
                               </div>
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                <div style={{ position: "relative", height: 16, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-                                  <div
-                                    style={{
-                                      position: "absolute",
-                                      inset: 0,
-                                      width: `${timelineVisible ? trackProgress : 0}%`,
-                                      borderRadius: 999,
-                                      background: `linear-gradient(90deg, ${accent}45, ${accent}85)`,
-                                      transition: "width 0.7s cubic-bezier(.16,1,.3,1)",
-                                    }}
-                                  />
-                                  <div
-                                    style={{
-                                      position: "absolute",
-                                      top: 0,
-                                      bottom: 0,
-                                      left: `${deltaStart}%`,
-                                      width: `${timelineVisible ? deltaWidth : 0}%`,
-                                      borderRadius: 999,
-                                      background: `linear-gradient(90deg, ${COLORS.study.light}, ${accent})`,
-                                      boxShadow: `0 0 18px ${COLORS.study.light}55`,
-                                      transition: "width 0.92s cubic-bezier(.16,1,.3,1)",
-                                    }}
-                                  />
-                                </div>
+                                <TimelineProgressBar
+                                  value={trackProgress}
+                                  startValue={deltaStart}
+                                  accent={accent}
+                                  deltaColor={COLORS.study.light}
+                                  visible={timelineVisible}
+                                  height={16}
+                                  boxShadow={false}
+                                />
                                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                                   <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.textMuted }}>
                                     {isTimelinePage
