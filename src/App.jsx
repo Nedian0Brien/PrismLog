@@ -470,6 +470,12 @@ export default function PrismLog() {
     setTimeout(() => setGlowEffect(null), 1200);
   }, [updateLog]);
 
+  const deleteStudyActivity = useCallback(async (logId) => {
+    await deleteLog(logId);
+    setGlowEffect(COLORS.study.main);
+    setTimeout(() => setGlowEffect(null), 1200);
+  }, [deleteLog]);
+
   const openCultureEdit = useCallback((item) => {
     setEditingCulture(item);
   }, []);
@@ -509,6 +515,7 @@ export default function PrismLog() {
         onAddReadingNote={addReadingNote}
         onAddStudy={saveLog}
         onUpdateStudyActivityDate={updateStudyActivityDate}
+        onDeleteStudyActivity={deleteStudyActivity}
         initialSection={recordsSection}
         initialDetailTarget={recordsDetailTarget}
         onSectionChange={(section) => {

@@ -2408,7 +2408,7 @@ export const ReadingNoteModal = ({ book, layout, saving, error, page, note, onPa
   );
 };
 
-const StudyTimelineEditModal = ({ activity, layout, saving, error, onClose, onSubmit }) => {
+const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onClose, onSubmit, onDelete }) => {
   const [dateValue, setDateValue] = useState("");
   const [timeValue, setTimeValue] = useState("");
   const accent = COLORS.study.main;
@@ -2467,7 +2467,7 @@ const StudyTimelineEditModal = ({ activity, layout, saving, error, onClose, onSu
         <button
           type="button"
           onClick={() => onSubmit?.(combineDateAndTimeInputs(dateValue, timeValue, activity.occurredAt))}
-          disabled={saving || !dateValue}
+          disabled={saving || deleting || !dateValue}
           style={{
             minHeight: 48,
             borderRadius: 16,
@@ -2475,11 +2475,28 @@ const StudyTimelineEditModal = ({ activity, layout, saving, error, onClose, onSu
             background: accent,
             color: "#1a1816",
             fontWeight: 800,
-            cursor: saving ? "wait" : "pointer",
+            cursor: saving || deleting ? "wait" : "pointer",
             fontFamily: "'Pretendard', sans-serif",
           }}
         >
           {saving ? "저장 중..." : "날짜/시간 저장"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete?.(activity)}
+          disabled={saving || deleting}
+          style={{
+            minHeight: 46,
+            borderRadius: 16,
+            border: "1px solid rgba(230,57,70,0.28)",
+            background: "rgba(230,57,70,0.08)",
+            color: "#f3b7bd",
+            fontWeight: 800,
+            cursor: saving || deleting ? "wait" : "pointer",
+            fontFamily: "'Pretendard', sans-serif",
+          }}
+        >
+          {deleting ? "삭제 중..." : "기록 삭제"}
         </button>
       </div>
     </ModalShell>
@@ -3454,13 +3471,14 @@ const StudyProgressModal = ({
 
 /* ──────────── Page: Study ──────────── */
 /* ──────────── Study Detail Page ──────────── */
-const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivityDate }) => {
+const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivityDate, onDeleteActivity }) => {
   const accent = COLORS.study.main;
   const isPageMode = item.progressMode === "page";
   const trendPoints = useMemo(() => buildStudyTrendPoints(item), [item]);
   const [visibleTimelineKeys, setVisibleTimelineKeys] = useState({});
   const [editingActivity, setEditingActivity] = useState(null);
   const [activitySaving, setActivitySaving] = useState(false);
+  const [activityDeleting, setActivityDeleting] = useState(false);
   const [activityError, setActivityError] = useState("");
   const timelineEntryRefs = useRef({});
   const timelineGroups = useMemo(() => buildStudyTimelineGroups(item), [item]);
@@ -3474,6 +3492,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
   useEffect(() => {
     setEditingActivity(null);
     setActivitySaving(false);
+    setActivityDeleting(false);
     setActivityError("");
   }, [item.id]);
 
@@ -3853,9 +3872,10 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
         activity={editingActivity}
         layout={layout}
         saving={activitySaving}
+        deleting={activityDeleting}
         error={activityError}
         onClose={() => {
-          if (activitySaving) return;
+          if (activitySaving || activityDeleting) return;
           setEditingActivity(null);
           setActivityError("");
         }}
@@ -3872,12 +3892,25 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
             setActivitySaving(false);
           }
         }}
+        onDelete={async (activity) => {
+          if (!activity?.id || !window.confirm("이 기록을 삭제할까요?")) return;
+          setActivityDeleting(true);
+          setActivityError("");
+          try {
+            await onDeleteActivity?.(activity.id);
+            setEditingActivity(null);
+          } catch (error) {
+            setActivityError(error instanceof Error ? error.message : "삭제 중 오류가 발생했습니다.");
+          } finally {
+            setActivityDeleting(false);
+          }
+        }}
       />
     </div>
   );
 };
 
-export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdateActivityDate, layout, initialDetailId = null }) => {
+export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdateActivityDate, onDeleteActivity, layout, initialDetailId = null }) => {
   const groupedStudies = useMemo(() => groupStudiesByEntity(studies), [studies]);
   const [detailId, setDetailId] = useState(null);
   const detail = groupedStudies.find((study) => study.id === detailId || study.entityId === detailId) || null;
@@ -3952,6 +3985,7 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdateActivityDa
           onEdit={onEdit}
           onAdd={openModal}
           onUpdateActivityDate={onUpdateActivityDate}
+          onDeleteActivity={onDeleteActivity}
         />
         <StudyProgressModal
           item={modalItem}
@@ -4518,7 +4552,7 @@ export const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
   );
 };
 
-export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, onAddReadingNote, onAddStudy, onUpdateStudyActivityDate, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
+export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, onAddReadingNote, onAddStudy, onUpdateStudyActivityDate, onDeleteStudyActivity, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
   const [selectedSection, setSelectedSection] = useState(initialSection);
   const [mobileColumns, setMobileColumns] = useState(1);
   const [transitionDirection, setTransitionDirection] = useState(initialSection ? "forward" : "back");
@@ -4727,7 +4761,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       case "reading":
         return <ReadingPage books={sortedReading} loading={loading} onEdit={onEditReading} onAdd={onAddReading} onAddNote={onAddReadingNote} layout={layout} initialDetailId={initialDetailId} />;
       case "study":
-        return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} onSave={onAddStudy} onUpdateActivityDate={onUpdateStudyActivityDate} layout={layout} initialDetailId={initialDetailId} />;
+        return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} onSave={onAddStudy} onUpdateActivityDate={onUpdateStudyActivityDate} onDeleteActivity={onDeleteStudyActivity} layout={layout} initialDetailId={initialDetailId} />;
       case "movie":
         return <CulturePage items={movieLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="영화 기록" fixedType="영화" initialDetailId={initialDetailId} />;
       case "series":
