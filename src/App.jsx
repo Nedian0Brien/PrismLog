@@ -79,6 +79,14 @@ const serializeReadingNote = (note) => ({
   text: String(note?.text || "").trim(),
 });
 
+const serializeGameSession = (session) => ({
+  id: session?.id || "",
+  date: session?.date || session?.played_at || session?.playedAt || new Date().toISOString(),
+  played_at: session?.played_at || session?.playedAt || session?.date || new Date().toISOString(),
+  duration_minutes: Math.max(0, Math.round(safeNumber(session?.duration_minutes ?? session?.durationMinutes, 0))),
+  note: String(session?.note || "").trim(),
+});
+
 export default function PrismLog() {
   const initialRoute = useMemo(
     () => parseAppRoute(typeof window !== "undefined" ? window.location.pathname : "/"),
@@ -487,6 +495,59 @@ export default function PrismLog() {
     setTimeout(() => setGlowEffect(null), 1200);
   }, [updateLog]);
 
+  const addGameSession = useCallback(async (game, sessionInput) => {
+    const durationMinutes = Math.max(0, Math.round(safeNumber(sessionInput?.durationMinutes)));
+    const playedAtRaw = String(sessionInput?.playedAt || "").trim();
+    const note = String(sessionInput?.note || "").trim();
+    if (durationMinutes <= 0) {
+      throw new Error("플레이 시간은 1분 이상이어야 합니다.");
+    }
+    if (!playedAtRaw) {
+      throw new Error("플레이 날짜를 입력해 주세요.");
+    }
+    const playedAt = playedAtRaw.length <= 10 ? `${playedAtRaw}T12:00:00` : playedAtRaw;
+    const playedTime = new Date(playedAt).getTime();
+    if (!Number.isFinite(playedTime)) {
+      throw new Error("플레이 날짜 형식이 올바르지 않습니다.");
+    }
+
+    const sessions = Array.isArray(game.gameSessions)
+      ? game.gameSessions.map(serializeGameSession)
+      : [];
+    sessions.unshift({
+      id: `game-session-${Date.now()}`,
+      date: playedAt,
+      played_at: playedAt,
+      duration_minutes: durationMinutes,
+      note,
+    });
+
+    const totalMinutes = sessions.reduce((sum, session) => sum + Math.max(0, Math.round(safeNumber(session.duration_minutes))), 0);
+    const playtimeLabel = totalMinutes > 0
+      ? `${Math.floor(totalMinutes / 60)}시간 ${String(totalMinutes % 60).padStart(2, "0")}분`
+      : (game.playtime || "");
+
+    await updateLog(game.id, {
+      payload: {
+        type: game.type || "게임",
+        status: game.status || "플레이 중",
+        playtime: playtimeLabel || null,
+        rating: clamp(safeNumber(game.rating), 0, 5),
+        poster: game.poster || null,
+        release_date: game.releaseDate || null,
+        overview: game.overview || game.summary || null,
+        tmdb_id: game.tmdbId || null,
+        igdb_id: game.igdbId || null,
+        source_provider: game.sourceProvider || null,
+        source_id: game.sourceId || null,
+        game_sessions: sessions,
+        last_played_at: playedAt,
+      },
+    });
+    setGlowEffect(COLORS.game.main);
+    setTimeout(() => setGlowEffect(null), 1200);
+  }, [updateLog]);
+
   const updateSeriesProgress = useCallback(async (logId, payload) => {
     await updateLog(logId, { payload });
     setGlowEffect(COLORS.series.main);
@@ -511,6 +572,7 @@ export default function PrismLog() {
         onEditStudy={openStudyEdit}
         onEditCulture={openCultureEdit}
         onUpdateSeriesProgress={updateSeriesProgress}
+        onAddGameSession={addGameSession}
         onAddReading={addReadingProgress}
         onAddReadingNote={addReadingNote}
         onAddStudy={saveLog}

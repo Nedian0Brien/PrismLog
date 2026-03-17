@@ -13,6 +13,7 @@ import {
   SeriesPlatformIcon,
   DAYS_KO,
   formatMonthDayLabel,
+  formatDurationLabel,
   formatTimeLabel,
   formatRelativeTime,
   getDateKey,
@@ -785,6 +786,98 @@ const FloatingSeriesProgressToast = ({ toast, visible, animatedProgress }) => {
         </div>
       </div>
     </div>
+  );
+};
+
+const buildGameCalendarMonths = (sessions) => {
+  const normalized = Array.isArray(sessions) ? sessions : [];
+  const counts = normalized.reduce((acc, session) => {
+    const key = getDateKey(session.playedAt || session.date);
+    if (!key) return acc;
+    acc.set(key, (acc.get(key) || 0) + 1);
+    return acc;
+  }, new Map());
+  const monthKeys = [...new Set(normalized
+    .map((session) => getDateKey(session.playedAt || session.date))
+    .filter(Boolean)
+    .map((dateKey) => dateKey.slice(0, 7))
+  )];
+  if (monthKeys.length === 0) {
+    monthKeys.push(getDateKey(new Date()).slice(0, 7));
+  }
+  return monthKeys
+    .slice(-3)
+    .reverse()
+    .map((monthKey) => {
+      const [year, month] = monthKey.split("-").map(Number);
+      const monthDate = new Date(year, month - 1, 1);
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const startOffset = monthDate.getDay();
+      const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+      const cells = Array.from({ length: totalCells }, (_, index) => {
+        const day = index - startOffset + 1;
+        if (day < 1 || day > daysInMonth) return null;
+        const date = new Date(year, month - 1, day);
+        const dateKey = getDateKey(date);
+        return {
+          dateKey,
+          day,
+          count: counts.get(dateKey) || 0,
+        };
+      });
+      return {
+        key: monthKey,
+        label: `${year}년 ${month}월`,
+        cells,
+      };
+    });
+};
+
+export const GamePlayLogModal = ({
+  item,
+  layout,
+  saving,
+  error,
+  durationMinutes,
+  playedDate,
+  note,
+  onDurationChange,
+  onPlayedDateChange,
+  onNoteChange,
+  onClose,
+  onSubmit,
+}) => {
+  const accent = COLORS.game.main;
+  return (
+    <ModalShell glow={COLORS.game.glow} width="min(92vw, 430px)" padding={layout.isPhone ? "22px 18px" : "24px 22px"} onBackdropClick={onClose} onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div>
+          <p style={{ margin: "0 0 6px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Gameplay Log</p>
+          <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>게임 플레이 기록</h4>
+          <p style={{ margin: "8px 0 0", fontSize: 13, color: COLORS.dark.textMuted }}>
+            {item?.title || "게임"}에 오늘 플레이한 시간을 남깁니다.
+          </p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: layout?.isTabletUp ? "repeat(2, minmax(0, 1fr))" : "1fr", gap: 12 }}>
+          <div>
+            <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>플레이 시간(분)</label>
+            <input value={durationMinutes} onChange={(event) => onDurationChange?.(event.target.value)} type="number" min="1" step="1" style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 14px" }} placeholder="예: 90" />
+          </div>
+          <div>
+            <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>플레이 날짜</label>
+            <input value={playedDate} onChange={(event) => onPlayedDateChange?.(event.target.value)} type="date" style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 14px" }} />
+          </div>
+        </div>
+        <div>
+          <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>플레이 메모</label>
+          <textarea value={note} onChange={(event) => onNoteChange?.(event.target.value)} style={{ width: "100%", minHeight: 116, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "14px", resize: "vertical" }} placeholder="오늘 진행한 콘텐츠, 인상 깊은 장면, 플레이 감상을 남겨 보세요." />
+        </div>
+        {error ? <p style={{ margin: 0, fontSize: 12, color: "#f8b4bb" }}>{error}</p> : null}
+        <button type="button" onClick={onSubmit} disabled={saving} style={{ minHeight: 52, borderRadius: 16, border: "none", background: accent, color: "#141821", fontSize: 14, fontWeight: 800, cursor: saving ? "not-allowed" : "pointer", boxShadow: `0 14px 28px ${COLORS.game.glow}` }}>
+          {saving ? "저장 중..." : "플레이 기록 저장"}
+        </button>
+      </div>
+    </ModalShell>
   );
 };
 
@@ -4171,10 +4264,179 @@ const MediaDetailPage = ({ item, layout, onBack, onEdit }) => {
   );
 };
 
+export const GameDetailPage = ({ item, layout, onBack, onEdit, onAddSession }) => {
+  const accent = COLORS.game.main;
+  const sessions = useMemo(
+    () => (Array.isArray(item.gameSessions) ? [...item.gameSessions].sort((a, b) => new Date(b.playedAt || b.date) - new Date(a.playedAt || a.date)) : []),
+    [item.gameSessions]
+  );
+  const totalMinutes = sessions.reduce((sum, session) => sum + safeNumber(session.durationMinutes), 0);
+  const calendarMonths = useMemo(() => buildGameCalendarMonths(sessions), [sessions]);
+  const lastPlayedAt = sessions[0]?.playedAt || sessions[0]?.date || item.lastPlayedAt || "";
+  const actionButton = (
+    <button
+      type="button"
+      onClick={() => onAddSession?.(item)}
+      style={{
+        minHeight: 40,
+        padding: "0 14px",
+        borderRadius: 999,
+        border: `1px solid ${accent}40`,
+        background: `${accent}18`,
+        color: accent,
+        fontSize: 12,
+        fontWeight: 800,
+        cursor: "pointer",
+      }}
+    >
+      + 새 기록
+    </button>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18, paddingBottom: 40 }}>
+      <DetailTopBar accent={accent} backLabel="게임 목록" onBack={onBack} onEdit={() => onEdit(item)} primaryAction={actionButton} />
+
+      <FeatureDetailHeroShell
+        layout={layout}
+        accent={accent}
+        glow={COLORS.game.glow}
+        imageSrc={item.poster}
+        imageAlt={`${item.title} 포스터`}
+        fallback={<GamepadIcon size={42} color={accent} />}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Game Detail</p>
+            <h2 style={{ margin: "0 0 6px", fontSize: layout.isPhone ? 24 : 30, lineHeight: 1.15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{item.title}</h2>
+            <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>
+              {[item.status, item.releaseDate ? formatMonthDayLabel(item.releaseDate) : "", lastPlayedAt ? `${formatMonthDayLabel(lastPlayedAt)} 플레이` : ""].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <StatusBadge status={item.status} />
+            {item.rating > 0 ? <RatingStars rating={item.rating} size={14} /> : null}
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+          {[
+            { label: "누적 플레이", value: formatDurationLabel(totalMinutes) },
+            { label: "플레이 횟수", value: `${sessions.length}회` },
+            { label: "최근 플레이", value: lastPlayedAt ? formatMonthDayLabel(lastPlayedAt) : "기록 대기" },
+          ].map((metric) => (
+            <div key={metric.label} style={{ padding: "14px 16px", borderRadius: 18, border: `1px solid ${accent}22`, background: `linear-gradient(135deg, ${accent}12, rgba(255,255,255,0.03))` }}>
+              <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>{metric.label}</p>
+              <strong style={{ fontSize: 20, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{metric.value}</strong>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(item.tags || []).map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
+        </div>
+
+        {(item.summary || item.overview) ? (
+          <GlassCard style={{ padding: "16px 18px" }}>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: COLORS.dark.text }}>
+              {item.summary || item.overview}
+            </p>
+          </GlassCard>
+        ) : null}
+      </FeatureDetailHeroShell>
+
+      <GlassCard glow={COLORS.game.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
+          <div>
+            <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Play Calendar</p>
+            <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>플레이 캘린더</h4>
+          </div>
+          <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>기록한 날짜마다 칸이 진해집니다.</span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          {calendarMonths.map((month) => (
+            <div key={month.key} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <strong style={{ fontSize: 15, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{month.label}</strong>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 6 }}>
+                {DAYS_KO.map((day) => (
+                  <span key={`${month.key}-${day}`} style={{ fontSize: 11, color: COLORS.dark.textMuted, textAlign: "center" }}>{day}</span>
+                ))}
+                {month.cells.map((cell, index) => (
+                  <div
+                    key={`${month.key}-${cell?.dateKey || index}`}
+                    style={{
+                      aspectRatio: "1 / 1",
+                      minHeight: 38,
+                      borderRadius: 12,
+                      border: `1px solid ${cell ? `${accent}${cell.count > 0 ? "44" : "16"}` : COLORS.dark.border}`,
+                      background: !cell
+                        ? "transparent"
+                        : cell.count > 0
+                          ? `linear-gradient(135deg, ${accent}${cell.count > 1 ? "55" : "28"}, rgba(255,255,255,0.05))`
+                          : "rgba(255,255,255,0.03)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 2,
+                    }}
+                  >
+                    {cell ? (
+                      <>
+                        <strong style={{ fontSize: 13, color: cell.count > 0 ? COLORS.dark.text : COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{cell.day}</strong>
+                        <span style={{ fontSize: 10, color: cell.count > 0 ? accent : "transparent" }}>{cell.count > 0 ? `${cell.count}회` : "."}</span>
+                      </>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+
+      <GlassCard glow={COLORS.game.glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+          <div>
+            <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Play Feed</p>
+            <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>플레이 로그</h4>
+          </div>
+          <button type="button" onClick={() => onAddSession?.(item)} style={{ minHeight: 38, padding: "0 14px", borderRadius: 999, border: `1px solid ${accent}40`, background: `${accent}16`, color: accent, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
+            + 새 기록
+          </button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {sessions.length === 0 ? (
+            <GlassCard style={{ padding: "14px 16px" }}>
+              <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>아직 플레이 로그가 없습니다.</p>
+            </GlassCard>
+          ) : sessions.map((session) => (
+            <div key={session.id} style={{ padding: "14px 16px", borderRadius: 18, border: `1px solid ${accent}20`, background: "rgba(255,255,255,0.03)", display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <strong style={{ fontSize: 16, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{formatDurationLabel(session.durationMinutes)}</strong>
+                <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>
+                  {[formatMonthDayLabel(session.playedAt || session.date), formatTimeLabel(session.playedAt || session.date)].filter(Boolean).join(" · ")}
+                </span>
+              </div>
+              {session.note ? <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.text }}>{session.note}</p> : null}
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    </div>
+  );
+};
+
 /* ──────────── Page: Culture ──────────── */
-export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, layout, title = "문화생활", fixedType = null, initialDetailId = null }) => {
+export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, onAddGameSession, layout, title = "문화생활", fixedType = null, initialDetailId = null }) => {
   const [filter, setFilter] = useState(fixedType || "전체");
   const [detailId, setDetailId] = useState(null);
+  const [gameLogItem, setGameLogItem] = useState(null);
+  const [gameLogDuration, setGameLogDuration] = useState("");
+  const [gameLogDate, setGameLogDate] = useState(getDateKey(new Date()));
+  const [gameLogNote, setGameLogNote] = useState("");
+  const [gameLogSaving, setGameLogSaving] = useState(false);
+  const [gameLogError, setGameLogError] = useState("");
   const filters = ["전체", ...CULTURE_TYPES];
 
   useEffect(() => {
@@ -4199,8 +4461,67 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
     if (initialDetailId) setDetailId(initialDetailId);
   }, [initialDetailId]);
 
+  const openGameLogModal = useCallback((item) => {
+    setGameLogItem(item);
+    setGameLogDuration("");
+    setGameLogDate(getDateKey(new Date()));
+    setGameLogNote("");
+    setGameLogError("");
+  }, []);
+
+  const closeGameLogModal = useCallback(() => {
+    if (gameLogSaving) return;
+    setGameLogItem(null);
+    setGameLogDuration("");
+    setGameLogDate(getDateKey(new Date()));
+    setGameLogNote("");
+    setGameLogError("");
+  }, [gameLogSaving]);
+
+  const submitGameLog = useCallback(async () => {
+    if (!gameLogItem) return;
+    setGameLogSaving(true);
+    setGameLogError("");
+    try {
+      await onAddGameSession?.(gameLogItem, {
+        durationMinutes: gameLogDuration,
+        playedAt: gameLogDate,
+        note: gameLogNote,
+      });
+      closeGameLogModal();
+    } catch (error) {
+      setGameLogError(error instanceof Error ? error.message : "플레이 기록 저장 실패");
+    } finally {
+      setGameLogSaving(false);
+    }
+  }, [closeGameLogModal, gameLogDate, gameLogDuration, gameLogItem, gameLogNote, onAddGameSession]);
+
   if (detailItem?.type === "시리즈") {
     return <SeriesDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} onUpdateSeriesProgress={onUpdateSeriesProgress} />;
+  }
+
+  if (detailItem?.type === "게임") {
+    return (
+      <>
+        <GameDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} onAddSession={openGameLogModal} />
+        {gameLogItem ? (
+          <GamePlayLogModal
+            item={gameLogItem}
+            layout={layout}
+            saving={gameLogSaving}
+            error={gameLogError}
+            durationMinutes={gameLogDuration}
+            playedDate={gameLogDate}
+            note={gameLogNote}
+            onDurationChange={setGameLogDuration}
+            onPlayedDateChange={setGameLogDate}
+            onNoteChange={setGameLogNote}
+            onClose={closeGameLogModal}
+            onSubmit={submitGameLog}
+          />
+        ) : null}
+      </>
+    );
   }
 
   if (detailItem) {
@@ -4320,12 +4641,34 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
                 <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>
-                  {c.playtime || "기록 대기"}
+                  {c.playtime || (c.totalGameMinutes > 0 ? formatDurationLabel(c.totalGameMinutes) : "기록 대기")}
                 </span>
                 <strong style={{ fontSize: 16, color: accent, fontFamily: "'Outfit', sans-serif" }}>
                   {c.status || "미설정"}
                 </strong>
               </div>
+              {c.type === "게임" ? (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openGameLogModal(c);
+                  }}
+                  style={{
+                    minHeight: 38,
+                    borderRadius: 14,
+                    border: `1px solid ${accent}36`,
+                    background: `${accent}16`,
+                    color: accent,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    boxShadow: `0 10px 20px ${glow}`,
+                  }}
+                >
+                  새 기록
+                </button>
+              ) : null}
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                 {c.tags.map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
               </div>
@@ -4333,6 +4676,22 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
           );
         })}
       </div>
+      {gameLogItem ? (
+        <GamePlayLogModal
+          item={gameLogItem}
+          layout={layout}
+          saving={gameLogSaving}
+          error={gameLogError}
+          durationMinutes={gameLogDuration}
+          playedDate={gameLogDate}
+          note={gameLogNote}
+          onDurationChange={setGameLogDuration}
+          onPlayedDateChange={setGameLogDate}
+          onNoteChange={setGameLogNote}
+          onClose={closeGameLogModal}
+          onSubmit={submitGameLog}
+        />
+      ) : null}
     </div>
   );
 };
@@ -4552,7 +4911,7 @@ export const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
   );
 };
 
-export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddReading, onAddReadingNote, onAddStudy, onUpdateStudyActivityDate, onDeleteStudyActivity, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
+export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddGameSession, onAddReading, onAddReadingNote, onAddStudy, onUpdateStudyActivityDate, onDeleteStudyActivity, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
   const [selectedSection, setSelectedSection] = useState(initialSection);
   const [mobileColumns, setMobileColumns] = useState(1);
   const [transitionDirection, setTransitionDirection] = useState(initialSection ? "forward" : "back");
@@ -4763,11 +5122,11 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       case "study":
         return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} onSave={onAddStudy} onUpdateActivityDate={onUpdateStudyActivityDate} onDeleteActivity={onDeleteStudyActivity} layout={layout} initialDetailId={initialDetailId} />;
       case "movie":
-        return <CulturePage items={movieLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="영화 기록" fixedType="영화" initialDetailId={initialDetailId} />;
+        return <CulturePage items={movieLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} onAddGameSession={onAddGameSession} layout={layout} title="영화 기록" fixedType="영화" initialDetailId={initialDetailId} />;
       case "series":
-        return <CulturePage items={seriesLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="시리즈 기록" fixedType="시리즈" initialDetailId={initialDetailId} />;
+        return <CulturePage items={seriesLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} onAddGameSession={onAddGameSession} layout={layout} title="시리즈 기록" fixedType="시리즈" initialDetailId={initialDetailId} />;
       case "game":
-        return <CulturePage items={gameLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} layout={layout} title="게임 기록" fixedType="게임" initialDetailId={initialDetailId} />;
+        return <CulturePage items={gameLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} onAddGameSession={onAddGameSession} layout={layout} title="게임 기록" fixedType="게임" initialDetailId={initialDetailId} />;
       default:
         return null;
     }

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NewLogForm } from "../forms";
 import { DashboardPage, ReadingGridCard, SettingsPage, TimelinePage } from "../pages";
-import { ReadingDetailPage, ReadingNoteModal, ReadingProgressModal, StudyPage, groupStudiesByEntity } from "../pages/recordsPage";
+import { GameDetailPage, GamePlayLogModal, ReadingDetailPage, ReadingNoteModal, ReadingProgressModal, StudyPage, groupStudiesByEntity } from "../pages/recordsPage";
 
 const phoneLayout = {
   width: 390,
@@ -197,6 +197,63 @@ describe("PrismLog feature smoke", () => {
 
     expect(timelineHtml).toContain("테스트 독서 로그");
     expect(settingsHtml).toContain("설정");
+  });
+
+  it("renders game detail page and gameplay log modal", () => {
+    const game = {
+      id: "game-detail-1",
+      type: "게임",
+      title: "하데스 II",
+      status: "플레이 중",
+      rating: 4.5,
+      tags: ["로그라이크"],
+      poster: "",
+      releaseDate: "2026-03-01",
+      summary: "탈출 루트를 다시 깎는 중",
+      gameSessions: [
+        {
+          id: "game-session-1",
+          date: "2026-03-15T12:00:00.000Z",
+          playedAt: "2026-03-15T12:00:00.000Z",
+          durationMinutes: 95,
+          note: "보스 패턴 연습",
+        },
+      ],
+    };
+
+    const detailHtml = renderToStaticMarkup(
+      <GameDetailPage
+        item={game}
+        layout={phoneLayout}
+        onBack={() => {}}
+        onEdit={() => {}}
+        onAddSession={() => {}}
+      />
+    );
+    const modalHtml = renderToStaticMarkup(
+      <GamePlayLogModal
+        item={game}
+        layout={phoneLayout}
+        saving={false}
+        error=""
+        durationMinutes="95"
+        playedDate="2026-03-15"
+        note="보스 패턴 연습"
+        onDurationChange={() => {}}
+        onPlayedDateChange={() => {}}
+        onNoteChange={() => {}}
+        onClose={() => {}}
+        onSubmit={() => {}}
+      />
+    );
+
+    expect(detailHtml).toContain("Game Detail");
+    expect(detailHtml).toContain("플레이 캘린더");
+    expect(detailHtml).toContain("플레이 로그");
+    expect(detailHtml).toContain("하데스 II");
+    expect(modalHtml).toContain("게임 플레이 기록");
+    expect(modalHtml).toContain("플레이 시간(분)");
+    expect(modalHtml).toContain("플레이 날짜");
   });
 
   it("groups study activities by entity and keeps activities in study timeline data", () => {

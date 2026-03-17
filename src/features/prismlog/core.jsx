@@ -638,6 +638,7 @@ export const createCultureFormState = () => ({
   runtime: null,
   seasons: [],
   episodeWatchDates: {},
+  gameSessions: [],
   platformKey: "",
   platformLabel: "",
 });
@@ -721,6 +722,9 @@ export const buildCulturePayload = (form) => {
     platform_label: normalizedType === "시리즈" ? getSeriesPlatformLabel(form.platformKey, form.platformLabel) || null : null,
     source_provider: form.sourceProvider || null,
     source_id: form.sourceId || null,
+    game_sessions: normalizedType === "게임"
+      ? (Array.isArray(form.gameSessions) && form.gameSessions.length > 0 ? form.gameSessions : null)
+      : null,
   };
 };
 
@@ -780,6 +784,15 @@ export const formatTimeLabel = (isoLike) => {
   const date = new Date(isoLike);
   if (Number.isNaN(date.getTime())) return "";
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+};
+
+export const formatDurationLabel = (minutes) => {
+  const safeMinutes = Math.max(0, Math.round(safeNumber(minutes, 0)));
+  if (safeMinutes <= 0) return "0분";
+  if (safeMinutes < 60) return `${safeMinutes}분`;
+  const hours = Math.floor(safeMinutes / 60);
+  const restMinutes = safeMinutes % 60;
+  return restMinutes > 0 ? `${hours}시간 ${restMinutes}분` : `${hours}시간`;
 };
 
 /**

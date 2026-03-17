@@ -480,6 +480,7 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
       runtime: record.runtime ?? null,
       seasons: record.seasons || [],
       episodeWatchDates: record.episodeWatchDates || {},
+      gameSessions: Array.isArray(record.gameSessions) ? record.gameSessions : [],
     });
     setEnriching(false);
     setMessage("");
@@ -530,7 +531,7 @@ export const CultureEditSheet = ({ open, record, onClose, onSave, onDelete, layo
         title: form.title.trim(),
         summary: form.summary.trim(),
         tags: parseTags(form.tags),
-        payload: buildCulturePayload({ ...form, overview: form.summary }),
+        payload: buildCulturePayload({ ...form, overview: form.summary, gameSessions: form.gameSessions }),
       });
       setMessage("저장 완료");
     } catch (error) {

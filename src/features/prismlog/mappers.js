@@ -66,6 +66,19 @@ export const mapLogToUiItem = (log) => {
     date: n.date || n.created_at,
   }));
 
+  const rawGameSessions = Array.isArray(combined.game_sessions) ? combined.game_sessions : (Array.isArray(combined.gameSessions) ? combined.gameSessions : []);
+  const gameSessions = rawGameSessions.map((session) => ({
+    ...session,
+    date: session.date || session.played_at || session.playedAt || session.created_at || null,
+    playedAt: session.played_at || session.playedAt || session.date || null,
+    durationMinutes: safeNumber(session.duration_minutes || session.durationMinutes),
+    note: String(session.note || "").trim(),
+  }));
+  const totalGameMinutes = gameSessions.reduce((sum, session) => sum + safeNumber(session.durationMinutes), 0);
+  const derivedGamePlaytime = cultureType === "게임" && totalGameMinutes > 0
+    ? `${Math.floor(totalGameMinutes / 60)}시간 ${String(totalGameMinutes % 60).padStart(2, "0")}분`
+    : "";
+
   // --- 시리즈 데이터 가공 ---
   const seasons = normalizeSeriesSeasons(combined.seasons);
   const episodeWatchDates = normalizeEpisodeWatchDates(combined.episode_watch_dates || combined.episodeWatchDates);
@@ -132,9 +145,13 @@ export const mapLogToUiItem = (log) => {
     progressEnd: progress,
     readingSessions,
     readingNotes,
+    gameSessions,
     seasons,
     episodeWatchDates,
     hours: safeNumber(combined.hours, 0),
+    totalGameMinutes,
+    lastPlayedAt: gameSessions[0]?.playedAt || gameSessions[0]?.date || combined.last_played_at || combined.lastPlayedAt || null,
+    playtime: cultureType === "게임" ? (combined.playtime || derivedGamePlaytime || null) : combined.playtime,
     occurredAt: log.occurred_at || log.created_at,
     createdAt: log.created_at,
     updatedAt: log.updated_at,
