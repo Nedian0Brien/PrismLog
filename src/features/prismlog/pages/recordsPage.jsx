@@ -4281,15 +4281,16 @@ export const GameDetailPage = ({ item, layout, onBack, onEdit, onAddSession }) =
         minHeight: 40,
         padding: "0 14px",
         borderRadius: 999,
-        border: `1px solid ${accent}40`,
+        border: `1px solid ${accent}66`,
         background: `${accent}18`,
         color: accent,
         fontSize: 12,
         fontWeight: 800,
         cursor: "pointer",
+        fontFamily: "'Pretendard', sans-serif",
       }}
     >
-      + 새 기록
+      + 게임 기록
     </button>
   );
 
@@ -4401,8 +4402,8 @@ export const GameDetailPage = ({ item, layout, onBack, onEdit, onAddSession }) =
             <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Play Feed</p>
             <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>플레이 로그</h4>
           </div>
-          <button type="button" onClick={() => onAddSession?.(item)} style={{ minHeight: 38, padding: "0 14px", borderRadius: 999, border: `1px solid ${accent}40`, background: `${accent}16`, color: accent, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>
-            + 새 기록
+          <button type="button" onClick={() => onAddSession?.(item)} style={{ minHeight: 40, padding: "0 14px", borderRadius: 999, border: `1px solid ${accent}66`, background: `${accent}18`, color: accent, fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "'Pretendard', sans-serif" }}>
+            + 게임 기록
           </button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -4647,30 +4648,33 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
                   {c.status || "미설정"}
                 </strong>
               </div>
-              {c.type === "게임" ? (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    openGameLogModal(c);
-                  }}
-                  style={{
-                    minHeight: 38,
-                    borderRadius: 14,
-                    border: `1px solid ${accent}36`,
-                    background: `${accent}16`,
-                    color: accent,
-                    fontSize: 12,
-                    fontWeight: 800,
-                    cursor: "pointer",
-                    boxShadow: `0 10px 20px ${glow}`,
-                  }}
-                >
-                  새 기록
-                </button>
-              ) : null}
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                {c.tags.map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-end", marginTop: "auto" }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
+                  {(c.tags || []).map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
+                </div>
+                {c.type === "게임" ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openGameLogModal(c);
+                    }}
+                    style={{
+                      minHeight: 36,
+                      padding: "0 12px",
+                      borderRadius: 12,
+                      border: `1px solid ${accent}55`,
+                      background: `${accent}16`,
+                      color: accent,
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      fontFamily: "'Pretendard', sans-serif",
+                    }}
+                  >
+                    + 기록
+                  </button>
+                ) : null}
               </div>
             </FeatureCardShell>
           );
