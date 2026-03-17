@@ -63,8 +63,6 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
   const [studyForm, setStudyForm] = useState({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "", progressMode: "page", pages: "", readPages: "", cover: "", isbn: "" });
   const [studyStep, setStudyStep] = useState("search");
   const [studySearchComposing, setStudySearchComposing] = useState(false);
-  const [studyEnriching, setStudyEnriching] = useState(false);
-  const [studyPageMessage, setStudyPageMessage] = useState("");
   const [cultureForm, setCultureForm] = useState(createCultureFormState);
   const [cultureStep, setCultureStep] = useState("search");
   const [cultureSearchComposing, setCultureSearchComposing] = useState(false);
@@ -144,8 +142,6 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
     setStudyForm({ title: "", resource: "", goal: "", imageUrl: "", retrospect: "", tags: "", progressMode: "page", pages: "", readPages: "", cover: "", isbn: "" });
     setStudyStep("search");
     setStudySearchComposing(false);
-    setStudyEnriching(false);
-    setStudyPageMessage("");
     setCultureForm(createCultureFormState());
     setCultureStep("search");
     setCultureSearchComposing(false);
@@ -990,6 +986,18 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
               }));
               setStudyStep("details");
               setStep("details");
+              
+              const isbn = book.isbn13 || book.isbn;
+              if (isbn) {
+                try {
+                  const enrichment = await fetchReadingEnrichment(apiBaseUrl, isbn);
+                  if (enrichment?.pages_total) {
+                    setStudyForm(prev => ({ ...prev, pages: String(enrichment.pages_total) }));
+                  }
+                } catch (error) {
+                  console.error("study page enrichment failed", error);
+                }
+              }
             }}
           />
 
@@ -1093,45 +1101,6 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
               {studyForm.isbn && <Badge text={`ISBN: ${studyForm.isbn}`} color={accent} />}
               {studyForm.pages && <Badge text={`${studyForm.pages} 페이지`} color={accent} />}
             </div>
-            {studyForm.isbn && (
-              <button
-                type="button"
-                disabled={studyEnriching}
-                onClick={async () => {
-                  setStudyEnriching(true);
-                  setStudyPageMessage("");
-                  try {
-                    const data = await fetchReadingEnrichment(apiBaseUrl, studyForm.isbn);
-                    if (data?.pages_total) {
-                      setStudyForm(prev => ({ ...prev, pages: String(data.pages_total) }));
-                      setStudyPageMessage(`페이지 정보를 불러왔습니다. (${data.pages_total}p)`);
-                    } else {
-                      setStudyPageMessage("페이지 정보를 찾지 못했습니다.");
-                    }
-                  } catch (err) {
-                    setStudyPageMessage("정보를 불러오는 중 오류가 발생했습니다.");
-                  } finally {
-                    setStudyEnriching(false);
-                  }
-                }}
-                style={{
-                  alignSelf: "flex-start",
-                  marginTop: 6,
-                  padding: "6px 12px",
-                  borderRadius: 10,
-                  border: `1px solid ${accent}44`,
-                  background: `${accent}16`,
-                  color: accent,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: studyEnriching ? "not-allowed" : "pointer",
-                  fontFamily: "'Pretendard', sans-serif",
-                }}
-              >
-                {studyEnriching ? "불러오는 중..." : "페이지 정보 자동 보강"}
-              </button>
-            )}
-            {studyPageMessage && <p style={{ margin: "4px 0 0", fontSize: 12, color: studyPageMessage.includes("실패") ? "#f8b4bb" : accent }}>{studyPageMessage}</p>}
           </div>
         </div>
 
