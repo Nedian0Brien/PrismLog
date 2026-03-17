@@ -58,6 +58,45 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       return dateB - dateA;
     });
 
+    const studyProgressContextByLogId = new Map();
+    const chronologicalLogs = [...sorted].sort((a, b) => {
+      const dateA = new Date(a.occurred_at || a.created_at);
+      const dateB = new Date(b.occurred_at || b.created_at);
+      return dateA - dateB;
+    });
+
+    chronologicalLogs.forEach((log) => {
+      if (log.category !== "study") return;
+      const payload = log.session_payload || log.payload || {};
+      const entity = log.entity || {};
+      const entityMetadata = entity.entity_metadata || {};
+      const studyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
+      const studyCompleted = Array.isArray(payload.completed) ? payload.completed.filter(Boolean).length : 0;
+      const studyProgressMode = payload.progressMode || payload.progress_mode || "page";
+      const studyPagesTotal = safeNumber(entityMetadata.pages_total || payload.pages_total || payload.pages);
+      const studyPagesRead = safeNumber(payload.pages_read || payload.readPages);
+      let studyProgress = 0;
+      if (studyProgressMode === "page" && studyPagesTotal > 0) {
+        studyProgress = Math.round((studyPagesRead / studyPagesTotal) * 100);
+      } else if (studyChapters.length > 0) {
+        studyProgress = Math.round((studyCompleted / studyChapters.length) * 100);
+      } else {
+        studyProgress = clamp(safeNumber(payload.progress), 0, 100);
+      }
+
+      const contextKey = log.entity_id || log.id;
+      const previousProgress = safeNumber(studyProgressContextByLogId.get(contextKey)?.currentProgress, 0);
+      studyProgressContextByLogId.set(log.id, {
+        title: entity.title || log.title || "제목 없음",
+        progressStart: previousProgress,
+        progressDelta: Math.max(0, studyProgress - previousProgress),
+        currentProgress: studyProgress,
+      });
+      studyProgressContextByLogId.set(contextKey, {
+        currentProgress: studyProgress,
+      });
+    });
+
     return sorted.reduce((acc, log) => {
       const dateSource = log.occurred_at || log.created_at;
       const key = getDateKey(dateSource);
@@ -141,6 +180,10 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
             ? clamp(safeNumber(seriesMetrics?.progress, payload.progress), 0, 100)
             : null;
 
+      const studyProgressContext = log.category === "study"
+        ? studyProgressContextByLogId.get(log.id)
+        : null;
+
       const progressStart = log.category === "reading"
         ? clamp(
           safeNumber(
@@ -150,6 +193,8 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           0,
           100,
         )
+        : log.category === "study"
+          ? clamp(safeNumber(studyProgressContext?.progressStart, progress), 0, 100)
         : type === "시리즈"
           ? clamp(safeNumber(progress, 0) - seriesProgressDelta, 0, 100)
         : progress;
@@ -160,7 +205,9 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       const item = {
         id: log.id,
         originalId: log.originalId || log.original_id,
-        title: log.title || entity.title || "제목 없음",
+        title: log.category === "study"
+          ? (studyProgressContext?.title || entity.title || log.title || "제목 없음")
+          : log.title || entity.title || "제목 없음",
         time: formatTimeLabel(dateSource),
         accent,
         sectionKey,
