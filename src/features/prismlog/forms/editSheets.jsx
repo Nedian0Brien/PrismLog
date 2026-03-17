@@ -306,7 +306,7 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
     setSaving(true);
     setMessage("");
     try {
-      await onSave(record.id, {
+      await onSave(record, {
         title: form.title.trim(),
         summary: form.retrospect.trim(),
         tags: parseTags(form.tags),

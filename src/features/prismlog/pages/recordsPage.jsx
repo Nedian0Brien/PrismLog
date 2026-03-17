@@ -2293,6 +2293,38 @@ const buildReadingTimelineGroups = (book) => {
     .sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey));
 };
 
+const buildStudyTimelineGroups = (study) => {
+  const groups = new Map();
+  const ensureGroup = (dateKey, rawDate) => {
+    if (!groups.has(dateKey)) {
+      const date = new Date(rawDate);
+      groups.set(dateKey, {
+        dateKey,
+        rawDate,
+        dateLabel: formatMonthDayLabel(rawDate),
+        dayNumber: Number.isNaN(date.getTime()) ? "" : String(date.getDate()).padStart(2, "0"),
+        sideLabel: Number.isNaN(date.getTime()) ? "" : `${date.getMonth() + 1}월 · ${DAYS_KO[date.getDay()]}요일`,
+        activities: [],
+      });
+    }
+    return groups.get(dateKey);
+  };
+
+  (Array.isArray(study.activities) ? study.activities : []).forEach((activity) => {
+    const rawDate = activity.occurredAt;
+    const dateKey = getDateKey(rawDate);
+    if (!dateKey) return;
+    ensureGroup(dateKey, rawDate).activities.push(activity);
+  });
+
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      activities: [...group.activities].sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt)),
+    }))
+    .sort((a, b) => new Date(b.dateKey) - new Date(a.dateKey));
+};
+
 export const ReadingNoteModal = ({ book, layout, saving, error, page, note, onPageChange, onNoteChange, onClose, onSubmit }) => {
   if (!book) return null;
   const accent = COLORS.reading.main;
@@ -3318,12 +3350,39 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
   const accent = COLORS.study.main;
   const isPageMode = item.progressMode === "page";
   const trendPoints = useMemo(() => buildStudyTrendPoints(item), [item]);
-  const activityTimeline = useMemo(
-    () => [...(Array.isArray(item.activities) ? item.activities : [])].sort((a, b) => new Date(b.occurredAt || 0) - new Date(a.occurredAt || 0)),
-    [item.activities],
-  );
+  const [visibleTimelineKeys, setVisibleTimelineKeys] = useState({});
+  const timelineEntryRefs = useRef({});
+  const timelineGroups = useMemo(() => buildStudyTimelineGroups(item), [item]);
   const completedCount = countStudyCompletedItems(item);
   const totalCount = countStudyTotalItems(item);
+
+  useEffect(() => {
+    setVisibleTimelineKeys({});
+  }, [item.id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || timelineGroups.length === 0) return undefined;
+    if (typeof window.IntersectionObserver === "undefined") {
+      setVisibleTimelineKeys(
+        timelineGroups.reduce((acc, group) => ({ ...acc, [group.dateKey]: true }), {}),
+      );
+      return undefined;
+    }
+    const observer = new window.IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const key = entry.target.getAttribute("data-timeline-key");
+        if (!key) return;
+        setVisibleTimelineKeys((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+      });
+    }, { threshold: 0.28, rootMargin: "0px 0px -10% 0px" });
+
+    timelineGroups.forEach((group) => {
+      const node = timelineEntryRefs.current[group.dateKey];
+      if (node) observer.observe(node);
+    });
+    return () => observer.disconnect();
+  }, [timelineGroups]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: 40 }}>
@@ -3489,57 +3548,117 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd }) => {
             <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Study Timeline</p>
             <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>공부 타임라인</h4>
           </div>
-          {activityTimeline.length === 0 ? (
+          {timelineGroups.length === 0 ? (
             <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>아직 쌓인 공부 액티비티가 없습니다.</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {activityTimeline.map((activity) => {
-                const isTimelinePage = activity.progressMode === "page";
-                return (
-                  <div
-                    key={activity.id}
-                    style={{
-                      borderRadius: 20,
-                      border: `1px solid ${accent}22`,
-                      background: `linear-gradient(180deg, rgba(255,255,255,0.035), ${accent}0d)`,
-                      padding: layout.isPhone ? "16px" : "18px 20px",
-                      boxShadow: "0 16px 30px rgba(0,0,0,0.12)",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
-                          <Badge text="공부 액티비티" color={accent} />
-                          <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>
-                            {[formatMonthDayLabel(activity.occurredAt), formatTimeLabel(activity.occurredAt)].filter(Boolean).join(" · ")}
-                          </span>
-                        </div>
-                        <h5 style={{ margin: 0, fontSize: 17, color: COLORS.dark.text, fontWeight: 800, fontFamily: "'Pretendard', sans-serif" }}>
-                          {activity.title}
-                        </h5>
+            <div style={{ position: "relative", paddingLeft: layout.isPhone ? 0 : 8 }}>
+              <div style={{
+                position: "absolute",
+                top: 0,
+                bottom: 0,
+                left: layout.isPhone ? 17 : 118,
+                width: 2,
+                borderRadius: 999,
+                background: `linear-gradient(180deg, ${accent}cc, ${accent}44)`,
+                boxShadow: `0 0 18px ${accent}22`,
+              }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                {timelineGroups.map((group, index) => {
+                  const timelineVisible = visibleTimelineKeys[group.dateKey] ?? false;
+                  return (
+                    <div
+                      key={`study-timeline-${group.dateKey}`}
+                      ref={(node) => {
+                        timelineEntryRefs.current[group.dateKey] = node;
+                      }}
+                      data-timeline-key={group.dateKey}
+                      style={{
+                        position: "relative",
+                        display: "grid",
+                        gridTemplateColumns: layout.isPhone ? "1fr" : "88px minmax(0, 1fr)",
+                        gap: layout.isPhone ? 10 : 20,
+                        paddingLeft: layout.isPhone ? 38 : 0,
+                        paddingBottom: index === timelineGroups.length - 1 ? 0 : 6,
+                        opacity: timelineVisible ? 1 : 0.38,
+                        transform: timelineVisible ? "translateY(0)" : "translateY(18px)",
+                        transition: "opacity 0.5s ease, transform 0.7s cubic-bezier(.16,1,.3,1)",
+                      }}
+                    >
+                      <div style={{
+                        position: "absolute",
+                        left: layout.isPhone ? 11 : 111,
+                        top: layout.isPhone ? 18 : 22,
+                        width: 14,
+                        height: 14,
+                        borderRadius: "50%",
+                        background: `linear-gradient(135deg, ${COLORS.study.light}, ${accent})`,
+                        border: `2px solid ${COLORS.dark.bg}`,
+                        boxShadow: `0 0 0 6px ${accent}12, 0 0 18px ${accent}22`,
+                        zIndex: 1,
+                      }} />
+                      <div style={{ display: "flex", flexDirection: layout.isPhone ? "row" : "column", alignItems: layout.isPhone ? "baseline" : "flex-end", gap: layout.isPhone ? 8 : 0, paddingTop: layout.isPhone ? 6 : 2, paddingRight: layout.isPhone ? 0 : 10 }}>
+                        <span style={{ fontSize: layout.isPhone ? 34 : 54, lineHeight: 1, fontWeight: 800, letterSpacing: -2, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{group.dayNumber}</span>
+                        <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{group.sideLabel}</span>
                       </div>
-                      <strong style={{ fontSize: 24, lineHeight: 1, color: accent, fontFamily: "'Outfit', sans-serif" }}>
-                        {activity.progress}%
-                      </strong>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {group.activities.map((activity) => {
+                          const isTimelinePage = activity.progressMode === "page";
+                          return (
+                            <div
+                              key={activity.id}
+                              style={{
+                                borderRadius: 22,
+                                border: `1px solid ${accent}2c`,
+                                background: `linear-gradient(180deg, rgba(255,255,255,0.03), ${accent}12)`,
+                                padding: layout.isPhone ? "16px" : "18px 20px",
+                                boxShadow: "0 18px 34px rgba(0,0,0,0.14)",
+                              }}
+                            >
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, marginBottom: 12 }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 0.5, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Study Activity</p>
+                                  <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1, fontWeight: 800, fontFamily: "'Pretendard', sans-serif", color: COLORS.dark.text }}>
+                                    {activity.title}
+                                  </h3>
+                                </div>
+                                <div style={{ textAlign: "right", display: "flex", alignItems: "baseline", gap: 8 }}>
+                                  <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{formatTimeLabel(activity.occurredAt)}</span>
+                                  <strong style={{ fontSize: 42, fontWeight: 800, color: accent, fontFamily: "'Outfit', sans-serif", lineHeight: 1, display: "flex", alignItems: "baseline" }}>
+                                    <span>{activity.progress}</span>
+                                    <span style={{ fontSize: 18, marginLeft: 1 }}>%</span>
+                                  </strong>
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                <ProgressBar value={activity.progress} color={accent} height={10} />
+                                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                                  <p style={{ margin: 0, fontSize: 12, lineHeight: 1.4, color: COLORS.dark.textMuted }}>
+                                    {isTimelinePage
+                                      ? `${activity.pagesRead}p / ${activity.pagesTotal}p`
+                                      : `${activity.completedCount} / ${activity.totalCount} 챕터 완료`}
+                                  </p>
+                                  {activity.tags.length > 0 ? (
+                                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                                      {activity.tags.map((tag) => <Badge key={`${activity.id}-${tag}`} text={`#${tag}`} color={accent} />)}
+                                    </div>
+                                  ) : null}
+                                </div>
+                                {activity.summary ? (
+                                  <div style={{ borderRadius: 16, padding: "12px 14px", background: "rgba(255,255,255,0.03)", border: `1px solid ${accent}16` }}>
+                                    <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.text }}>
+                                      {activity.summary}
+                                    </p>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <p style={{ margin: "0 0 10px", fontSize: 13, color: COLORS.dark.textMuted }}>
-                      {isTimelinePage
-                        ? `${activity.pagesRead} / ${activity.pagesTotal}p`
-                        : `${activity.completedCount} / ${activity.totalCount} 챕터 완료`}
-                    </p>
-                    {activity.summary ? (
-                      <p style={{ margin: "0 0 10px", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.text }}>
-                        {activity.summary}
-                      </p>
-                    ) : null}
-                    {activity.tags.length > 0 ? (
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {activity.tags.map((tag) => <Badge key={`${activity.id}-${tag}`} text={`#${tag}`} color={accent} />)}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -3765,6 +3884,86 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, layout, initialDet
   );
 };
 
+const MediaDetailPage = ({ item, layout, onBack, onEdit }) => {
+  const tone = getCultureTone(item.type);
+  const accent = tone.main;
+  const metaItems = [
+    item.type,
+    item.status,
+    item.playtime,
+    item.releaseDate ? formatMonthDayLabel(item.releaseDate) : "",
+  ].filter(Boolean);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18, paddingBottom: 40 }}>
+      <DetailTopBar
+        accent={accent}
+        backLabel={`${item.type} 목록`}
+        onBack={onBack}
+        onEdit={() => onEdit(item)}
+      />
+
+      <FeatureDetailHeroShell
+        layout={layout}
+        accent={accent}
+        glow={tone.glow}
+        imageSrc={item.poster}
+        imageAlt={`${item.title} 포스터`}
+        fallback={item.type === "게임" ? <GamepadIcon size={42} color={accent} /> : <FilmIcon size={42} color={accent} />}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+              {item.type === "게임" ? "Game Detail" : "Media Detail"}
+            </p>
+            <h2 style={{ margin: "0 0 6px", fontSize: layout.isPhone ? 24 : 30, lineHeight: 1.15, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>
+              {item.title}
+            </h2>
+            <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>
+              {metaItems.join(" · ")}
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <StatusBadge status={item.status} />
+            {item.rating > 0 ? <RatingStars rating={item.rating} size={14} /> : null}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {(item.tags || []).map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
+        </div>
+
+        <div style={{
+          padding: "14px 16px",
+          borderRadius: 18,
+          border: `1px solid ${accent}22`,
+          background: `linear-gradient(135deg, ${accent}14, rgba(255,255,255,0.03))`,
+          display: "grid",
+          gridTemplateColumns: layout.isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))",
+          gap: 12,
+        }}>
+          <div>
+            <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>현재 상태</p>
+            <strong style={{ fontSize: 20, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{item.status || "미설정"}</strong>
+          </div>
+          <div>
+            <p style={{ margin: "0 0 4px", fontSize: 11, color: COLORS.dark.textMuted }}>진행 정보</p>
+            <strong style={{ fontSize: 20, color: accent, fontFamily: "'Outfit', sans-serif" }}>{item.playtime || (item.rating > 0 ? `${item.rating.toFixed(1)} / 5` : "기록 대기")}</strong>
+          </div>
+        </div>
+
+        {(item.summary || item.overview) ? (
+          <GlassCard style={{ padding: "16px 18px" }}>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.8, color: COLORS.dark.text }}>
+              {item.summary || item.overview}
+            </p>
+          </GlassCard>
+        ) : null}
+      </FeatureDetailHeroShell>
+    </div>
+  );
+};
+
 /* ──────────── Page: Culture ──────────── */
 export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, layout, title = "문화생활", fixedType = null, initialDetailId = null }) => {
   const [filter, setFilter] = useState(fixedType || "전체");
@@ -3795,6 +3994,10 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
 
   if (detailItem?.type === "시리즈") {
     return <SeriesDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} onUpdateSeriesProgress={onUpdateSeriesProgress} />;
+  }
+
+  if (detailItem) {
+    return <MediaDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} />;
   }
 
   return (
@@ -3883,20 +4086,43 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, la
               </div>
             </FeatureCardShell>
           ) : (
-            <CompactMediaPosterCard
+            <FeatureCardShell
               key={c.id}
+              layout={layout}
               accent={accent}
               glow={glow}
-              title={c.title}
-              poster={c.poster}
-              posterAlt={`${c.title} 포스터`}
+              imageSrc={c.poster}
+              imageAlt={`${c.title} 포스터`}
               fallback={posterNode}
-              status={c.status}
-              metaText={c.playtime ? `${c.type} · ${c.playtime}` : c.type}
-              rating={c.rating}
-              tags={c.tags}
-              onEdit={(event) => { event.stopPropagation(); onEdit(c); }}
-            />
+              onOpen={() => setDetailId(c.id)}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <StatusBadge status={c.status} />
+                <IconActionButton onClick={(event) => { event.stopPropagation(); onEdit(c); }} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <h4 style={{ fontSize: 18, fontWeight: 800, lineHeight: 1.2, color: COLORS.dark.text, margin: "0 0 6px", fontFamily: "'Outfit', sans-serif" }}>
+                  {c.title}
+                </h4>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 11, letterSpacing: 0.6, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>
+                    {c.type}
+                  </span>
+                  {c.rating > 0 ? <RatingStars rating={c.rating} size={12} /> : null}
+                </div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
+                <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>
+                  {c.playtime || "기록 대기"}
+                </span>
+                <strong style={{ fontSize: 16, color: accent, fontFamily: "'Outfit', sans-serif" }}>
+                  {c.status || "미설정"}
+                </strong>
+              </div>
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {c.tags.map((tag) => <Badge key={tag} text={`#${tag}`} color={accent} />)}
+              </div>
+            </FeatureCardShell>
           );
         })}
       </div>

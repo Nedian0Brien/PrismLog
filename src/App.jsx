@@ -249,6 +249,17 @@ export default function PrismLog() {
     await fetchLogs();
   }, [fetchLogs]);
 
+  const updateEntity = useCallback(async (entityId, patch) => {
+    const response = await fetch(`${API_BASE_URL}/api/v1/logs/entities/${entityId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    await response.json();
+    await fetchLogs();
+  }, [fetchLogs]);
+
   const deleteLog = useCallback(async (logId) => {
     const response = await fetch(`${API_BASE_URL}/api/v1/logs/${logId}`, {
       method: "DELETE",
@@ -436,12 +447,22 @@ export default function PrismLog() {
     setEditingStudy(study);
   }, []);
 
-  const saveStudyEdit = useCallback(async (logId, patch) => {
-    await updateLog(logId, patch);
+  const saveStudyEdit = useCallback(async (record, patch) => {
+    if (!record?.id) throw new Error("study record id is required");
+    const entityPayload = {
+      title: patch.title,
+      entity_metadata: patch.payload || {},
+    };
+
+    if (record.entityId) {
+      await updateEntity(record.entityId, entityPayload);
+    }
+
+    await updateLog(record.id, patch);
     setEditingStudy(null);
     setGlowEffect(COLORS.study.main);
     setTimeout(() => setGlowEffect(null), 1200);
-  }, [updateLog]);
+  }, [updateEntity, updateLog]);
 
   const openCultureEdit = useCallback((item) => {
     setEditingCulture(item);
