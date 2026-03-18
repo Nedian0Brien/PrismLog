@@ -440,7 +440,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           : log.category === "study"
             ? (studyProgressMode === "page" && studyPagesTotal > 0 ? `${studyPagesRead} / ${studyPagesTotal}p` : `${studyChapters.length}개 챕터`)
             : payload.playtime || payload.status || "",
-        snippet: (log.is_session && payload.current_session?.note) ? payload.current_session.note : (log.summary || ""),
+        snippet: (log.is_session && payload.current_session?.note) ? payload.current_session.note : (type === "게임" ? "" : (log.summary || "")),
         progress,
         progressStart,
         progressEnd: progress ?? 0,
