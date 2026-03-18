@@ -253,6 +253,59 @@ describe("PrismLog feature smoke", () => {
     expect(timelineHtml).toContain("S1 · E1");
   });
 
+  it("assigns unique timeline item keys for series entries split across watched dates", () => {
+    const timelineLogs = [
+      {
+        id: "timeline-series-2",
+        category: "culture",
+        title: "안도르",
+        created_at: "2026-03-10T09:00:00.000Z",
+        entity: {
+          title: "안도르",
+          category: "시리즈",
+          entity_metadata: {
+            title: "안도르",
+            type: "시리즈",
+            seasons: [
+              {
+                season_number: 1,
+                episodes: [
+                  { episode_number: 1, name: "E1" },
+                  { episode_number: 2, name: "E2" },
+                ],
+              },
+            ],
+          },
+        },
+        payload: {
+          type: "시리즈",
+          watched_episode_count: 2,
+          progress: 100,
+          seasons: [
+            {
+              season_number: 1,
+              episodes: [
+                { episode_number: 1, name: "E1" },
+                { episode_number: 2, name: "E2" },
+              ],
+            },
+          ],
+          episode_watch_dates: {
+            "1-1": "2026-03-17T21:00:00.000Z",
+            "1-2": "2026-03-18T22:00:00.000Z",
+          },
+        },
+      },
+    ];
+
+    const timelineHtml = renderToStaticMarkup(
+      <TimelinePage logs={timelineLogs} loading={false} layout={phoneLayout} />
+    );
+
+    expect(timelineHtml).toContain('data-item-key="timeline-series-2-series-2026-03-19"');
+    expect(timelineHtml).toContain('data-item-key="timeline-series-2-series-2026-03-18"');
+  });
+
   it("renders game detail page and gameplay log modal", () => {
     const game = {
       id: "game-detail-1",

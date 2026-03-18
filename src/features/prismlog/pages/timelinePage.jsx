@@ -230,11 +230,13 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         watchEntries.forEach(({ watchDate, dateKey }) => {
           const entityKey = log.entity_id || log.original_id || log.id;
           const aggregateKey = `${dateKey}:${entityKey}`;
+          const timelineItemId = `${entityKey}-series-${dateKey}`;
           const existing = seriesDailyAggregates.get(aggregateKey);
 
           if (!existing) {
             seriesDailyAggregates.set(aggregateKey, {
               ...log,
+              id: timelineItemId,
               original_id: entityKey,
               occurred_at: watchDate,
             });
