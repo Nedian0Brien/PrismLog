@@ -2505,12 +2505,16 @@ export const ReadingNoteModal = ({ book, layout, saving, error, page, note, onPa
 };
 
 const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onClose, onSubmit, onDelete }) => {
+  const [titleValue, setTitleValue] = useState("");
+  const [summaryValue, setSummaryValue] = useState("");
   const [dateValue, setDateValue] = useState("");
   const [timeValue, setTimeValue] = useState("");
   const accent = COLORS.study.main;
 
   useEffect(() => {
     if (!activity) return;
+    setTitleValue(activity.title || "");
+    setSummaryValue(activity.summary || "");
     setDateValue(toDateInputValue(activity.occurredAt));
     setTimeValue(toTimeInputValue(activity.occurredAt));
   }, [activity]);
@@ -2528,8 +2532,30 @@ const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onC
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ paddingRight: 44 }}>
           <p style={{ margin: "0 0 6px", fontSize: 11, letterSpacing: 1, color: accent, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Study Activity</p>
-          <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>기록 날짜/시간 수정</h4>
+          <h4 style={{ margin: 0, fontSize: 22, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>공부 활동 수정</h4>
           <p style={{ margin: "8px 0 0", fontSize: 13, lineHeight: 1.6, color: COLORS.dark.textMuted }}>{activity.title}</p>
+        </div>
+
+        <div>
+          <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>활동 제목</label>
+          <input
+            type="text"
+            value={titleValue}
+            onChange={(event) => setTitleValue(event.target.value)}
+            placeholder="예: 공부 시작, 120p까지 공부"
+            style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none" }}
+          />
+        </div>
+
+        <div>
+          <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>메모</label>
+          <textarea
+            value={summaryValue}
+            onChange={(event) => setSummaryValue(event.target.value)}
+            placeholder="이 활동에 대한 메모를 남겨보세요."
+            rows={5}
+            style={{ width: "100%", borderRadius: 16, border: `1px solid ${accent}24`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "14px 16px", fontSize: 13, lineHeight: 1.65, resize: "vertical", outline: "none", fontFamily: "'Pretendard', sans-serif" }}
+          />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 12 }}>
@@ -2562,8 +2588,12 @@ const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onC
 
         <button
           type="button"
-          onClick={() => onSubmit?.(combineDateAndTimeInputs(dateValue, timeValue, activity.occurredAt))}
-          disabled={saving || deleting || !dateValue}
+          onClick={() => onSubmit?.({
+            title: titleValue.trim(),
+            summary: summaryValue.trim(),
+            occurred_at: combineDateAndTimeInputs(dateValue, timeValue, activity.occurredAt),
+          })}
+          disabled={saving || deleting || !dateValue || !titleValue.trim()}
           style={{
             minHeight: 48,
             borderRadius: 16,
@@ -2575,7 +2605,7 @@ const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onC
             fontFamily: "'Pretendard', sans-serif",
           }}
         >
-          {saving ? "저장 중..." : "날짜/시간 저장"}
+          {saving ? "저장 중..." : "활동 저장"}
         </button>
         <button
           type="button"
@@ -3567,7 +3597,7 @@ const StudyProgressModal = ({
 
 /* ──────────── Page: Study ──────────── */
 /* ──────────── Study Detail Page ──────────── */
-const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivityDate, onDeleteActivity }) => {
+const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity, onDeleteActivity }) => {
   const accent = COLORS.study.main;
   const isPageMode = item.progressMode === "page";
   const trendPoints = useMemo(() => buildStudyTrendPoints(item), [item]);
@@ -3975,12 +4005,12 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
           setEditingActivity(null);
           setActivityError("");
         }}
-        onSubmit={async (nextOccurredAt) => {
-          if (!editingActivity || !nextOccurredAt) return;
+        onSubmit={async (patch) => {
+          if (!editingActivity || !patch?.occurred_at || !patch?.title) return;
           setActivitySaving(true);
           setActivityError("");
           try {
-            await onUpdateActivityDate?.(editingActivity.id, nextOccurredAt);
+            await onUpdateActivity?.(editingActivity.id, patch);
             setEditingActivity(null);
           } catch (error) {
             setActivityError(error instanceof Error ? error.message : "저장 중 오류가 발생했습니다.");
@@ -4006,7 +4036,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
   );
 };
 
-export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdateActivityDate, onDeleteActivity, layout, initialDetailId = null }) => {
+export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdateActivity, onDeleteActivity, layout, initialDetailId = null }) => {
   const groupedStudies = useMemo(() => groupStudiesByEntity(studies), [studies]);
   const [detailId, setDetailId] = useState(null);
   const detail = groupedStudies.find((study) => study.id === detailId || study.entityId === detailId) || null;
@@ -4080,7 +4110,7 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdateActivityDa
           onBack={() => setDetailId(null)} 
           onEdit={onEdit}
           onAdd={openModal}
-          onUpdateActivityDate={onUpdateActivityDate}
+          onUpdateActivity={onUpdateActivity}
           onDeleteActivity={onDeleteActivity}
         />
         <StudyProgressModal
@@ -4918,7 +4948,7 @@ export const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
   );
 };
 
-export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddGameSession, onAddReading, onAddReadingNote, onAddStudy, onUpdateStudyActivityDate, onDeleteStudyActivity, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
+export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddGameSession, onAddReading, onAddReadingNote, onAddStudy, onUpdateStudyActivity, onDeleteStudyActivity, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
   const [selectedSection, setSelectedSection] = useState(initialSection);
   const [mobileColumns, setMobileColumns] = useState(1);
   const [transitionDirection, setTransitionDirection] = useState(initialSection ? "forward" : "back");
@@ -5127,7 +5157,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       case "reading":
         return <ReadingPage books={sortedReading} loading={loading} onEdit={onEditReading} onAdd={onAddReading} onAddNote={onAddReadingNote} layout={layout} initialDetailId={initialDetailId} />;
       case "study":
-        return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} onSave={onAddStudy} onUpdateActivityDate={onUpdateStudyActivityDate} onDeleteActivity={onDeleteStudyActivity} layout={layout} initialDetailId={initialDetailId} />;
+        return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} onSave={onAddStudy} onUpdateActivity={onUpdateStudyActivity} onDeleteActivity={onDeleteStudyActivity} layout={layout} initialDetailId={initialDetailId} />;
       case "movie":
         return <CulturePage items={movieLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} onAddGameSession={onAddGameSession} layout={layout} title="영화 기록" fixedType="영화" initialDetailId={initialDetailId} />;
       case "series":
