@@ -199,6 +199,60 @@ describe("PrismLog feature smoke", () => {
     expect(settingsHtml).toContain("설정");
   });
 
+  it("renders series episodes on the watched date in timeline", () => {
+    const timelineLogs = [
+      {
+        id: "timeline-series-1",
+        category: "culture",
+        title: "세브란스",
+        created_at: "2026-03-10T09:00:00.000Z",
+        entity: {
+          title: "세브란스",
+          category: "시리즈",
+          entity_metadata: {
+            title: "세브란스",
+            type: "시리즈",
+            seasons: [
+              {
+                season_number: 1,
+                episodes: [
+                  { episode_number: 1, name: "좋은 소식입니다" },
+                  { episode_number: 2, name: "반쪽짜리 루틴" },
+                ],
+              },
+            ],
+          },
+        },
+        payload: {
+          type: "시리즈",
+          watched_episode_count: 2,
+          progress: 100,
+          seasons: [
+            {
+              season_number: 1,
+              episodes: [
+                { episode_number: 1, name: "좋은 소식입니다" },
+                { episode_number: 2, name: "반쪽짜리 루틴" },
+              ],
+            },
+          ],
+          episode_watch_dates: {
+            "1-1": "2026-03-18T21:00:00.000Z",
+            "1-2": "2026-03-18T22:00:00.000Z",
+          },
+        },
+      },
+    ];
+
+    const timelineHtml = renderToStaticMarkup(
+      <TimelinePage logs={timelineLogs} loading={false} layout={phoneLayout} />
+    );
+
+    expect(timelineHtml).toContain("세브란스");
+    expect(timelineHtml).toContain("+2화");
+    expect(timelineHtml).toContain("S1 · E1");
+  });
+
   it("renders game detail page and gameplay log modal", () => {
     const game = {
       id: "game-detail-1",

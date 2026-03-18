@@ -441,7 +441,7 @@ const buildSeriesProgressTrend = (episodeWatchDates, totalEpisodes) => {
   if (!entries.length || totalEpisodes <= 0) return [];
 
   const countsByDate = entries.reduce((acc, isoLike) => {
-    const dateKey = String(isoLike).slice(0, 10);
+    const dateKey = getDateKey(isoLike);
     if (!dateKey) return acc;
     acc[dateKey] = (acc[dateKey] || 0) + 1;
     return acc;

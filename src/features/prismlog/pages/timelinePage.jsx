@@ -129,6 +129,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
 
     const readingDailyAggregates = new Map();
     const studyDailyAggregates = new Map();
+    const seriesDailyAggregates = new Map();
     const latestStudyProgressByEntity = new Map();
     const latestStudyAmountByEntity = new Map();
     const collapsedLogs = [];
@@ -206,6 +207,52 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         return;
       }
 
+      const payload = log.session_payload || log.payload || {};
+      const cultureType = log.category === "culture"
+        ? normalizeCultureType(payload.type || log.entity?.category)
+        : null;
+
+      if (log.category === "culture" && cultureType === "시리즈") {
+        const seriesWatchDates = normalizeEpisodeWatchDates(payload.episode_watch_dates || payload.episodeWatchDates);
+        const watchEntries = Object.entries(seriesWatchDates)
+          .map(([, watchDate]) => ({
+            watchDate,
+            dateKey: getDateKey(watchDate),
+          }))
+          .filter((entry) => Boolean(entry.dateKey))
+          .sort((a, b) => new Date(a.watchDate) - new Date(b.watchDate));
+
+        if (watchEntries.length === 0) {
+          collapsedLogs.push(log);
+          return;
+        }
+
+        watchEntries.forEach(({ watchDate, dateKey }) => {
+          const entityKey = log.entity_id || log.original_id || log.id;
+          const aggregateKey = `${dateKey}:${entityKey}`;
+          const existing = seriesDailyAggregates.get(aggregateKey);
+
+          if (!existing) {
+            seriesDailyAggregates.set(aggregateKey, {
+              ...log,
+              original_id: entityKey,
+              occurred_at: watchDate,
+            });
+            return;
+          }
+
+          const existingTime = new Date(existing.occurred_at || existing.created_at).getTime();
+          const nextTime = new Date(watchDate).getTime();
+          if (Number.isFinite(nextTime) && (!Number.isFinite(existingTime) || nextTime > existingTime)) {
+            seriesDailyAggregates.set(aggregateKey, {
+              ...existing,
+              occurred_at: watchDate,
+            });
+          }
+        });
+        return;
+      }
+
       if (log.category !== "study") {
         collapsedLogs.push(log);
         return;
@@ -215,7 +262,6 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       const dateKey = getDateKey(occurredAt);
       const entityKey = log.entity_id || log.id;
       const aggregateKey = `${dateKey}:${entityKey}`;
-      const payload = log.session_payload || log.payload || {};
       const entity = log.entity || {};
       const entityMetadata = entity.entity_metadata || {};
       const studyChapters = Array.isArray(payload.chapters) ? payload.chapters : [];
@@ -266,6 +312,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
 
     collapsedLogs.push(...readingDailyAggregates.values());
     collapsedLogs.push(...studyDailyAggregates.values());
+    collapsedLogs.push(...seriesDailyAggregates.values());
 
     // 2. 정렬: occurred_at 기준 내림차순
     const sorted = collapsedLogs.sort((a, b) => {
@@ -333,7 +380,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         ? seriesMetrics.seasons.flatMap((season) => (
           Array.isArray(season?.episodes) 
             ? season.episodes
-                .filter((episode) => seriesWatchDates[`${season.seasonNumber}-${episode.episodeNumber}`]?.slice(0, 10) === key)
+                .filter((episode) => getDateKey(seriesWatchDates[`${season.seasonNumber}-${episode.episodeNumber}`]) === key)
                 .map((episode) => ({
                   id: `${log.id}-${season.seasonNumber}-${episode.episodeNumber}`,
                   title: episode.name || `EP ${episode.episodeNumber}`,
