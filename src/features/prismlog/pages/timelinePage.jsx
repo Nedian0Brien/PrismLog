@@ -539,21 +539,35 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       donuts.push(Math.round((remainder / 60) * 100));
     }
     
+    let playtimeLabel = "";
+    if (hours > 0 && remainder > 0) {
+      playtimeLabel = `${hours}시간 ${remainder}분`;
+    } else if (hours > 0) {
+      playtimeLabel = `${hours}시간`;
+    } else {
+      playtimeLabel = `${remainder}분`;
+    }
+
     return (
-      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
-        {donuts.map((pct, idx) => (
-          <div
-            key={idx}
-            style={{
-              width: 14,
-              height: 14,
-              borderRadius: "50%",
-              background: `conic-gradient(${accent} ${pct}%, rgba(255,255,255,0.1) ${pct}%)`,
-              maskImage: "radial-gradient(transparent 40%, black 41%)",
-              WebkitMaskImage: "radial-gradient(transparent 40%, black 41%)",
-            }}
-          />
-        ))}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          {donuts.map((pct, idx) => (
+            <div
+              key={idx}
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: "50%",
+                background: `conic-gradient(${accent} ${pct}%, rgba(255,255,255,0.1) ${pct}%)`,
+                maskImage: "radial-gradient(transparent 40%, black 41%)",
+                WebkitMaskImage: "radial-gradient(transparent 40%, black 41%)",
+              }}
+            />
+          ))}
+        </div>
+        <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>
+          {playtimeLabel}
+        </span>
       </div>
     );
   };
@@ -782,7 +796,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                           </div>
                           <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{item.time}</span>
                         </div>
-                        {item.poster && !isCompact ? (
+                        {item.poster ? (
                           <div style={{ display: "flex", gap: layout.isPhone ? 12 : 16, alignItems: "flex-start" }}>
                             <img
                               src={item.poster}
