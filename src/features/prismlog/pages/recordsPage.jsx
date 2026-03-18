@@ -2253,8 +2253,9 @@ const buildStudyTrendPoints = (study) => {
     const startProgress = clamp(safeNumber(activity.progressStart), 0, 100);
     const endProgress = clamp(safeNumber(activity.progress), 0, 100);
     const previousPoint = points[points.length - 1];
+    const hasDelta = Math.abs(endProgress - startProgress) > 0.5;
 
-    if (!previousPoint || Math.abs(previousPoint.progress - startProgress) > 0.5) {
+    if (hasDelta && (!previousPoint || Math.abs(previousPoint.progress - startProgress) > 0.5)) {
       points.push({ label, progress: startProgress, dateKey: `${dateKey}-start-${index}` });
     }
     points.push({ label, progress: endProgress, dateKey: `${dateKey}-end-${index}` });
@@ -2288,7 +2289,7 @@ const countStudyTotalItems = (study) => {
 const buildStudyActivityLabel = (activity, entityTitle) => {
   const rawTitle = String(activity?.activityTitle || activity?.title || "").trim();
   if (!rawTitle) return "학습 기록";
-  if (entityTitle && rawTitle === entityTitle) return "학습 시작";
+  if (entityTitle && rawTitle === entityTitle) return "공부 시작";
   return rawTitle;
 };
 
@@ -2340,9 +2341,11 @@ export const groupStudiesByEntity = (studies) => {
     .map((study) => {
       const chronologicalActivities = [...study.activities].sort((a, b) => new Date(a.occurredAt || 0) - new Date(b.occurredAt || 0));
       let previousProgress = 0;
-      const activities = chronologicalActivities.map((activity) => {
+      const activities = chronologicalActivities.map((activity, index) => {
         const nextProgress = clamp(safeNumber(activity.progress), 0, 100);
-        const progressStart = clamp(previousProgress, 0, 100);
+        const progressStart = index === 0
+          ? nextProgress
+          : clamp(previousProgress, 0, 100);
         const progressDelta = Math.max(0, nextProgress - progressStart);
         previousProgress = nextProgress;
         return {

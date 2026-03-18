@@ -311,7 +311,7 @@ describe("PrismLog feature smoke", () => {
     expect(grouped[0].title).toBe("운영체제 3회독");
     expect(grouped[0].activities).toHaveLength(2);
     expect(grouped[0].activities[0].title).toBe("358p까지 공부");
-    expect(grouped[0].activities[1].title).toBe("학습 시작");
+    expect(grouped[0].activities[1].title).toBe("공부 시작");
     expect(html).toContain("운영체제 3회독");
     expect(html).not.toContain("358p까지 공부</h4>");
   });
