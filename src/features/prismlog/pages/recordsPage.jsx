@@ -56,6 +56,49 @@ import {
 } from "../ui";
 
 /* ──────────── Interactive Study ToC ──────────── */
+const tocToIndentedText = (items, depth = 0) => {
+  if (!items || !items.length) return "";
+  return items.map((item) => {
+    const indent = "\t".repeat(depth);
+    const line = `${indent}${item.title}${item.completed ? " [v]" : ""}`;
+    const childrenText = tocToIndentedText(item.children, depth + 1);
+    return childrenText ? `${line}\n${childrenText}` : line;
+  }).join("\n");
+};
+
+const parseIndentedTextToToc = (text) => {
+  const lines = text.split("\n").filter(line => line.trim() !== "");
+  const root = [];
+  const stack = [{ depth: -1, children: root }];
+
+  lines.forEach((line) => {
+    const indentMatch = line.match(/^(\s*)/);
+    const indent = indentMatch ? indentMatch[1] : "";
+    // 탭은 1, 공백 2개는 1 수준으로 계산 (유연하게)
+    const depth = indent.replace(/\t/g, "  ").length / 2;
+    const cleanTitle = line.trim();
+    const isCompleted = cleanTitle.endsWith("[v]");
+    const title = isCompleted ? cleanTitle.replace("[v]", "").trim() : cleanTitle;
+
+    const newNode = {
+      id: `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      title,
+      completed: isCompleted,
+      notes: "",
+      children: [],
+    };
+
+    while (stack.length > 1 && stack[stack.length - 1].depth >= depth) {
+      stack.pop();
+    }
+
+    stack[stack.length - 1].children.push(newNode);
+    stack.push({ depth, children: newNode.children });
+  });
+
+  return root;
+};
+
 const StudyToCItem = ({ item, depth = 0, onUpdate, onDelete, onAddChild, onDragStart, onDragOver, onDrop, accent }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempTitle, setLegacyTitle] = useState(item.title);
@@ -3610,6 +3653,81 @@ const StudyProgressModal = ({
   );
 };
 
+const StudyToCTextEditorModal = ({ isOpen, initialToc, onClose, onSave, accent }) => {
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setText(tocToIndentedText(initialToc || []));
+    }
+  }, [isOpen, initialToc]);
+
+  if (!isOpen) return null;
+
+  return (
+    <ModalShell isOpen={isOpen} onClose={onClose} title="학습 목차 전체 편집">
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted, lineHeight: 1.6 }}>
+          줄바꿈으로 목차를 구분하며, <strong>탭(Tab)</strong> 또는 공백으로 하위 목차를 지정할 수 있습니다.<br />
+          제목 끝에 <code>[v]</code>를 붙이면 완료 상태로 표시됩니다.
+        </p>
+        <textarea
+          autoFocus
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="예:&#10;1장. 서론&#10;  1.1 배경&#10;  1.2 목적 [v]&#10;2장. 본론"
+          style={{
+            width: "100%",
+            minHeight: 320,
+            background: "rgba(0,0,0,0.2)",
+            border: `1px solid ${accent}22`,
+            borderRadius: 12,
+            padding: "16px",
+            color: COLORS.dark.text,
+            fontSize: 14,
+            fontFamily: "'Pretendard', monospace",
+            outline: "none",
+            resize: "vertical",
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Tab") {
+              e.preventDefault();
+              const start = e.target.selectionStart;
+              const end = e.target.selectionEnd;
+              const value = e.target.value;
+              setText(`${value.substring(0, start)}\t${value.substring(end)}`);
+              setTimeout(() => {
+                e.target.selectionStart = start + 1;
+                e.target.selectionEnd = start + 1;
+              }, 0);
+            }
+          }}
+        />
+        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          <button
+            onClick={() => onSave(parseIndentedTextToToc(text))}
+            style={{
+              flex: 1, padding: "14px", borderRadius: 12, border: "none",
+              background: accent, color: "#1a1816", fontWeight: 800, cursor: "pointer",
+            }}
+          >
+            변경사항 적용
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              padding: "14px 20px", borderRadius: 12, border: "none",
+              background: "rgba(255,255,255,0.05)", color: COLORS.dark.text, fontWeight: 700, cursor: "pointer",
+            }}
+          >
+            취소
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+};
+
 /* ──────────── Page: Study ──────────── */
 /* ──────────── Study Detail Page ──────────── */
 const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity, onDeleteActivity, onUpdate }) => {
@@ -3618,6 +3736,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
   const trendPoints = useMemo(() => buildStudyTrendPoints(item), [item]);
   const [visibleTimelineKeys, setVisibleTimelineKeys] = useState({});
   const [editingActivity, setEditingActivity] = useState(null);
+  const [isTocEditorOpen, setIsTocEditorOpen] = useState(false);
   const [activitySaving, setActivitySaving] = useState(false);
   const [activityDeleting, setActivityDeleting] = useState(false);
   const [activityError, setActivityError] = useState("");
@@ -3632,6 +3751,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
 
   useEffect(() => {
     setEditingActivity(null);
+    setIsTocEditorOpen(false);
     setActivitySaving(false);
     setActivityDeleting(false);
     setActivityError("");
@@ -3998,7 +4118,25 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>TABLE OF CONTENTS</h4>
-          <p style={{ margin: 0, fontSize: 11, color: accent, fontWeight: 700 }}>* 자동 저장됨</p>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              onClick={() => setIsTocEditorOpen(true)}
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "none",
+                padding: "6px 12px",
+                borderRadius: 8,
+                color: accent,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "'Pretendard', sans-serif",
+              }}
+            >
+              목차 수정
+            </button>
+            <p style={{ margin: 0, fontSize: 11, color: accent, fontWeight: 700 }}>* 자동 저장됨</p>
+          </div>
         </div>
         <StudyAccordion key={item.id} study={item} onSaveToc={(nextToc) => {
           // 실시간 저장을 위해 부모의 onUpdate 호출
@@ -4054,6 +4192,28 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
           } finally {
             setActivityDeleting(false);
           }
+        }}
+      />
+
+      <StudyToCTextEditorModal
+        isOpen={isTocEditorOpen}
+        initialToc={item.toc}
+        accent={accent}
+        onClose={() => setIsTocEditorOpen(false)}
+        onSave={(nextToc) => {
+          onUpdate?.(item, {
+            category: "study",
+            title: item.title,
+            summary: item.summary,
+            tags: item.tags,
+            payload: {
+              ...(item.payload || {}),
+              toc: nextToc,
+              chapters: nextToc.map(t => t.title),
+              completed: nextToc.map(t => t.completed),
+            }
+          });
+          setIsTocEditorOpen(false);
         }}
       />
     </div>
