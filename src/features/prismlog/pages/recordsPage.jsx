@@ -1,5 +1,9 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
+  CATEGORY_KEYS,
+  CATEGORY_META,
+  buildHeatmapMatrix,
+  buildTrendSeries,
   API_BASE_URL,
   buildCulturePayload,
   COLORS,
@@ -34,6 +38,11 @@ import {
   ChevronDown,
 } from "../core";
 import {
+  SpectrumRing,
+  Heatmap,
+  DistributionBarChart,
+  CategoryToggleChips,
+  TrendLineChart,
   HalfDonutChart,
   GlassCard,
   ModalShell,
@@ -894,7 +903,6 @@ const SeriesProgressTrendChart = ({
 }) => {
   const [displayedProgress, setDisplayedProgress] = useState(points[points.length - 1]?.progress ?? 0);
   const displayedProgressRef = useRef(points[points.length - 1]?.progress ?? 0);
-  if (!points.length) return null;
 
   const width = 220;
   const height = 104;
@@ -912,7 +920,7 @@ const SeriesProgressTrendChart = ({
   const animatedProgressLabel = `${Math.round(displayedProgress)}%`;
 
   const linePath = coordinates.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
-  const areaPath = `${linePath} L ${coordinates[coordinates.length - 1].x} ${height - paddingY} L ${coordinates[0].x} ${height - paddingY} Z`;
+  const areaPath = `${linePath} L ${coordinates[coordinates.length - 1]?.x || 0} ${height - paddingY} L ${coordinates[0]?.x || 0} ${height - paddingY} Z`;
 
   useEffect(() => {
     displayedProgressRef.current = displayedProgress;
@@ -943,6 +951,8 @@ const SeriesProgressTrendChart = ({
     rafId = window.requestAnimationFrame(step);
     return () => window.cancelAnimationFrame(rafId);
   }, [points]);
+
+  if (!points.length) return null;
 
   return (
     <div style={{

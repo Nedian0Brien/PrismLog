@@ -575,7 +575,7 @@ export default function PrismLog() {
         onAddGameSession={addGameSession}
         onAddReading={addReadingProgress}
         onAddReadingNote={addReadingNote}
-        onAddStudy={addStudyLog}
+        onAddStudy={saveLog}
         onUpdateStudy={saveStudyEdit}
         onUpdateStudyActivity={updateStudyActivity}
         onDeleteStudyActivity={deleteStudyActivity}
