@@ -200,6 +200,11 @@ export const StudyAccordion = ({ study, onSaveToc }) => {
   const accent = COLORS.study.main;
   const dragItem = useRef(null);
 
+  // 프롭이 변경될 때 상태 동기화 (상세 페이지 전환 대응)
+  useEffect(() => {
+    setToc(study.toc || []);
+  }, [study.toc]);
+
   // 트리 평탄화 및 항목 찾기 유틸리티
   const findAndAction = (items, id, action) => {
     return items.map((item) => {
@@ -3597,7 +3602,7 @@ const StudyProgressModal = ({
 
 /* ──────────── Page: Study ──────────── */
 /* ──────────── Study Detail Page ──────────── */
-const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity, onDeleteActivity }) => {
+const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity, onDeleteActivity, onUpdate }) => {
   const accent = COLORS.study.main;
   const isPageMode = item.progressMode === "page";
   const trendPoints = useMemo(() => buildStudyTrendPoints(item), [item]);
@@ -3985,12 +3990,21 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
           <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>TABLE OF CONTENTS</h4>
           <p style={{ margin: 0, fontSize: 11, color: accent, fontWeight: 700 }}>* 자동 저장됨</p>
         </div>
-        <StudyAccordion study={item} onSaveToc={(nextToc) => {
-          // 실시간 저장을 위해 onEdit 시트에 넘겨주는 data를 구성하여 호출하거나
-          // 별도의 저장 함수가 필요함.
-          // 여기서는 '수정' 버튼을 눌러 저장하는 기존 방식을 유지하되,
-          // 상세 페이지에서 toc 상태가 변경되었음을 인지할 수 있도록 처리함.
-          // (현 시점에서는 UI 반영 위주, 실제 영구 저장은 '수정' 버튼 클릭 후 완료 시 수행)
+        <StudyAccordion key={item.id} study={item} onSaveToc={(nextToc) => {
+          // 실시간 저장을 위해 부모의 onUpdate 호출
+          onUpdate?.(item, {
+            category: "study",
+            title: item.title,
+            summary: item.summary,
+            tags: item.tags,
+            payload: {
+              ...(item.payload || {}),
+              toc: nextToc,
+              // 하위 호환성을 위해 chapters/completed도 업데이트 (평탄화된 버전으로)
+              chapters: nextToc.map(t => t.title),
+              completed: nextToc.map(t => t.completed),
+            }
+          });
         }} />
       </div>
 
@@ -4036,7 +4050,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
   );
 };
 
-export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdateActivity, onDeleteActivity, layout, initialDetailId = null }) => {
+export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdateActivity, onDeleteActivity, layout, initialDetailId = null }) => {
   const groupedStudies = useMemo(() => groupStudiesByEntity(studies), [studies]);
   const [detailId, setDetailId] = useState(null);
   const detail = groupedStudies.find((study) => study.id === detailId || study.entityId === detailId) || null;
@@ -4110,6 +4124,7 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdateActivity, 
           onBack={() => setDetailId(null)} 
           onEdit={onEdit}
           onAdd={openModal}
+          onUpdate={onUpdate}
           onUpdateActivity={onUpdateActivity}
           onDeleteActivity={onDeleteActivity}
         />
@@ -4948,7 +4963,7 @@ export const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
   );
 };
 
-export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddGameSession, onAddReading, onAddReadingNote, onAddStudy, onUpdateStudyActivity, onDeleteStudyActivity, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
+export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddGameSession, onAddReading, onAddReadingNote, onAddStudy, onUpdateStudy, onUpdateStudyActivity, onDeleteStudyActivity, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
   const [selectedSection, setSelectedSection] = useState(initialSection);
   const [mobileColumns, setMobileColumns] = useState(1);
   const [transitionDirection, setTransitionDirection] = useState(initialSection ? "forward" : "back");
@@ -5157,7 +5172,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       case "reading":
         return <ReadingPage books={sortedReading} loading={loading} onEdit={onEditReading} onAdd={onAddReading} onAddNote={onAddReadingNote} layout={layout} initialDetailId={initialDetailId} />;
       case "study":
-        return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} onSave={onAddStudy} onUpdateActivity={onUpdateStudyActivity} onDeleteActivity={onDeleteStudyActivity} layout={layout} initialDetailId={initialDetailId} />;
+        return <StudyPage studies={sortedStudy} loading={loading} onEdit={onEditStudy} onSave={onAddStudy} onUpdate={onUpdateStudy} onUpdateActivity={onUpdateStudyActivity} onDeleteActivity={onDeleteStudyActivity} layout={layout} initialDetailId={initialDetailId} />;
       case "movie":
         return <CulturePage items={movieLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} onAddGameSession={onAddGameSession} layout={layout} title="영화 기록" fixedType="영화" initialDetailId={initialDetailId} />;
       case "series":

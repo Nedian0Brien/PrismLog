@@ -306,16 +306,19 @@ export const StudyEditSheet = ({ open, record, onClose, onSave, onDelete, layout
     setSaving(true);
     setMessage("");
     try {
+      const oldPayload = record.payload || {};
       await onSave(record, {
         title: form.title.trim(),
         summary: form.retrospect.trim(),
         tags: parseTags(form.tags),
         payload: {
+          ...oldPayload,
           goal: form.goal.trim(),
           image_url: form.imageUrl.trim() || null,
           imageUrl: form.imageUrl.trim() || null, // Redundancy
           chapters,
           completed,
+          toc: null, // 텍스트 편집기로 수정했으므로 기존 트리형 TOC는 초기화 (매퍼에서 재생성됨)
           progress_mode: form.progressMode,
           progressMode: form.progressMode, // Redundancy
           pages_total: totalPages || null,

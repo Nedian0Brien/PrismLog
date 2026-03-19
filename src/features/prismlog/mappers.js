@@ -90,6 +90,19 @@ export const mapLogToUiItem = (log) => {
     progress: combined.progress,
   }) : null;
 
+  // --- 공부 TOC 데이터 가공 (트리 구조로 통합) ---
+  let toc = Array.isArray(combined.toc) ? combined.toc : [];
+  if (toc.length === 0 && Array.isArray(combined.chapters) && combined.chapters.length > 0) {
+    const completedArr = Array.isArray(combined.completed) ? combined.completed : [];
+    toc = combined.chapters.map((chapterTitle, idx) => ({
+      id: `node-legacy-${idx}`,
+      title: chapterTitle,
+      completed: !!completedArr[idx],
+      notes: "",
+      children: [],
+    }));
+  }
+
   // 진행률 계산
   let progress = safeNumber(combined.progress, 0);
   if (category === "reading" && pagesTotal > 0) {
@@ -99,11 +112,27 @@ export const mapLogToUiItem = (log) => {
     if (progressMode === "page" && pagesTotal > 0) {
       progress = clamp(Math.round((pagesRead / pagesTotal) * 100), 0, 100);
     } else {
-      const chapters = Array.isArray(combined.chapters) ? combined.chapters : [];
-      const completed = Array.isArray(combined.completed) ? combined.completed : [];
-      if (chapters.length > 0) {
-        const completedCount = completed.filter(Boolean).length;
-        progress = clamp(Math.round((completedCount / chapters.length) * 100), 0, 100);
+      if (toc.length > 0) {
+        const walk = (items) => items.reduce(
+          (sum, entry) => sum + (entry.completed ? 1 : 0) + walk(entry.children || []),
+          0,
+        );
+        const walkTotal = (items) => items.reduce(
+          (sum, entry) => sum + 1 + walkTotal(entry.children || []),
+          0,
+        );
+        const completedCount = walk(toc);
+        const totalCount = walkTotal(toc);
+        if (totalCount > 0) {
+          progress = clamp(Math.round((completedCount / totalCount) * 100), 0, 100);
+        }
+      } else {
+        const chapters = Array.isArray(combined.chapters) ? combined.chapters : [];
+        const completed = Array.isArray(combined.completed) ? combined.completed : [];
+        if (chapters.length > 0) {
+          const completedCount = completed.filter(Boolean).length;
+          progress = clamp(Math.round((completedCount / chapters.length) * 100), 0, 100);
+        }
       }
     }
   } else if (metrics) {
@@ -148,6 +177,7 @@ export const mapLogToUiItem = (log) => {
     gameSessions,
     seasons,
     episodeWatchDates,
+    toc, // 가공된 목차 데이터 추가
     hours: safeNumber(combined.hours, 0),
     totalGameMinutes,
     lastPlayedAt: gameSessions[0]?.playedAt || gameSessions[0]?.date || combined.last_played_at || combined.lastPlayedAt || null,
