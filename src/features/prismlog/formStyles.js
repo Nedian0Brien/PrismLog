@@ -20,6 +20,8 @@ export const getFormInputStyle = () => ({
   fontFamily: "'Pretendard', sans-serif",
   transition: "border-color 0.2s",
   boxSizing: "border-box",
+  display: "block",
+  minWidth: 0,
 });
 
 export const getSplitFieldStyle = (layout) => ({

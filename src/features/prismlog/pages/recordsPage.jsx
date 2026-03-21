@@ -908,6 +908,22 @@ export const GamePlayLogModal = ({
   onSubmit,
 }) => {
   const accent = COLORS.game.main;
+  
+  const h = Math.floor((Number(durationMinutes) || 0) / 60);
+  const m = (Number(durationMinutes) || 0) % 60;
+  
+  const handleHoursChange = (e) => {
+    const val = e.target.value.replace(/\D/g, "");
+    const total = (Number(val) * 60) + m;
+    onDurationChange?.(total > 0 ? String(total) : "");
+  };
+
+  const handleMinutesChange = (e) => {
+    const val = e.target.value.replace(/\D/g, "");
+    const total = (h * 60) + Number(val);
+    onDurationChange?.(total > 0 ? String(total) : "");
+  };
+
   return (
     <ModalShell glow={COLORS.game.glow} width="min(92vw, 430px)" padding={layout.isPhone ? "22px 18px" : "24px 22px"} onBackdropClick={onClose} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -919,23 +935,35 @@ export const GamePlayLogModal = ({
           </p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: layout?.isTabletUp ? "repeat(2, minmax(0, 1fr))" : "1fr", gap: 12 }}>
-          <div>
-            <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>플레이 시간(분)</label>
-            <input value={durationMinutes} onChange={(event) => onDurationChange?.(event.target.value)} type="number" min="1" step="1" style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 14px" }} placeholder="예: 90" />
+          <div style={{ minWidth: 0 }}>
+            <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>플레이 시간</label>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 52, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", padding: "0 14px" }}>
+                <input value={h > 0 ? h : ""} onChange={handleHoursChange} type="text" inputMode="numeric" pattern="[0-9]*" style={{ width: "100%", border: "none", background: "transparent", color: COLORS.dark.text, fontSize: 15, outline: "none", fontFamily: "'Outfit', sans-serif", padding: 0 }} placeholder="0" />
+                <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>시간</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 52, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", padding: "0 14px" }}>
+                <input value={m > 0 || h === 0 ? m : ""} onChange={handleMinutesChange} type="text" inputMode="numeric" pattern="[0-9]*" style={{ width: "100%", border: "none", background: "transparent", color: COLORS.dark.text, fontSize: 15, outline: "none", fontFamily: "'Outfit', sans-serif", padding: 0 }} placeholder="0" />
+                <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>분</span>
+              </div>
+            </div>
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>플레이 날짜</label>
-            <input value={playedDate} onChange={(event) => onPlayedDateChange?.(event.target.value)} type="date" style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 14px" }} />
+            <input value={playedDate} onChange={(event) => onPlayedDateChange?.(event.target.value)} type="date" style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box", display: "block", minWidth: 0, fontFamily: "'Outfit', sans-serif" }} />
           </div>
         </div>
         <div>
           <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>플레이 메모</label>
-          <textarea value={note} onChange={(event) => onNoteChange?.(event.target.value)} style={{ width: "100%", minHeight: 116, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "14px", resize: "vertical" }} placeholder="오늘 진행한 콘텐츠, 인상 깊은 장면, 플레이 감상을 남겨 보세요." />
+          <textarea value={note} onChange={(event) => onNoteChange?.(event.target.value)} style={{ width: "100%", minHeight: 116, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "14px", resize: "vertical", boxSizing: "border-box", outline: "none", fontFamily: "'Pretendard', sans-serif", fontSize: 13, lineHeight: 1.6 }} placeholder="오늘 진행한 콘텐츠, 인상 깊은 장면, 플레이 감상을 남겨 보세요." />
         </div>
         {error ? <p style={{ margin: 0, fontSize: 12, color: "#f8b4bb" }}>{error}</p> : null}
-        <button type="button" onClick={onSubmit} disabled={saving} style={{ minHeight: 52, borderRadius: 16, border: "none", background: accent, color: "#141821", fontSize: 14, fontWeight: 800, cursor: saving ? "not-allowed" : "pointer", boxShadow: `0 14px 28px ${COLORS.game.glow}` }}>
-          {saving ? "저장 중..." : "플레이 기록 저장"}
-        </button>
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button type="button" onClick={onClose} disabled={saving} style={{ minHeight: 44, padding: "0 16px", borderRadius: 14, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.textMuted, cursor: saving ? "wait" : "pointer", fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}>취소</button>
+          <button type="button" onClick={onSubmit} disabled={saving} style={{ minHeight: 44, padding: "0 18px", borderRadius: 14, border: "none", background: accent, color: "#141821", fontSize: 14, fontWeight: 800, cursor: saving ? "not-allowed" : "pointer", boxShadow: `0 14px 28px ${COLORS.game.glow}`, fontFamily: "'Pretendard', sans-serif" }}>
+            {saving ? "저장 중..." : "플레이 기록 저장"}
+          </button>
+        </div>
       </div>
     </ModalShell>
   );
@@ -2620,22 +2648,22 @@ const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onC
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>기록 날짜</label>
             <input
               type="date"
               value={dateValue}
               onChange={(event) => setDateValue(event.target.value)}
-              style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none" }}
+              style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box", display: "block", minWidth: 0, fontFamily: "'Outfit', sans-serif" }}
             />
           </div>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>기록 시간</label>
             <input
               type="time"
               value={timeValue}
               onChange={(event) => setTimeValue(event.target.value)}
-              style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none" }}
+              style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box", display: "block", minWidth: 0, fontFamily: "'Outfit', sans-serif" }}
             />
           </div>
         </div>
