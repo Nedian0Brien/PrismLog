@@ -344,7 +344,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       const latestReadingSession = log.is_session ? payload.current_session : null;
       const readingPagesRead = safeNumber(
         latestReadingSession?.pages_read ?? latestReadingSession?.read_pages ?? latestReadingSession?.pagesRead,
-        0,
+        log.is_session ? 0 : safeNumber(payload.pages_read ?? payload.readPages)
       );
       const readingPagesTotal = safeNumber(
         latestReadingSession?.total_pages ?? latestReadingSession?.totalPages ?? payload.pages_total ?? payload.pages,
@@ -418,7 +418,9 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         ? clamp(
           safeNumber(
             latestReadingSession?.from_progress ?? latestReadingSession?.fromProgress,
-            Math.max(0, safeNumber(progress, 0) - safeNumber(latestReadingSession?.progress_delta ?? latestReadingSession?.progressDelta, 0)),
+            log.is_session 
+              ? Math.max(0, safeNumber(progress, 0) - safeNumber(latestReadingSession?.progress_delta ?? latestReadingSession?.progressDelta, 0))
+              : 0
           ),
           0,
           100,

@@ -469,6 +469,26 @@ export const buildReadingPayload = (form) => {
   const progress = isPercentMode
     ? progressValue
     : pages > 0 ? clamp(Math.round((readPages / pages) * 100), 0, 100) : 0;
+    
+  const initialSessions = [];
+  if (readPages > 0 || progress > 0) {
+    const nowIso = new Date().toISOString();
+    initialSessions.push({
+      id: `reading-session-${nowIso.slice(0, 10)}`,
+      date: nowIso,
+      from_pages: 0,
+      to_pages: readPages,
+      total_pages: pages,
+      pages_read: readPages,
+      from_progress: 0,
+      to_progress: progress,
+      progress_delta: progress,
+      started_at: nowIso,
+      ended_at: nowIso,
+      duration_minutes: 0,
+    });
+  }
+
   return {
     author: form.author.trim(),
     publisher: form.publisher.trim() || null,
@@ -493,6 +513,7 @@ export const buildReadingPayload = (form) => {
     progress,
     rating: clamp(safeNumber(form.rating), 0, 5),
     review: form.review.trim(),
+    reading_sessions: initialSessions,
   };
 };
 

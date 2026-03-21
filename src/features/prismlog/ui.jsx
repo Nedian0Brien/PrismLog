@@ -130,7 +130,7 @@ export const TimelineProgressBar = ({
           transitionDelay,
         }}
       />
-      {!isComplete && safeDelta > 0 ? (
+      {safeDelta > 0 ? (
         <div
           style={{
             position: "absolute",
