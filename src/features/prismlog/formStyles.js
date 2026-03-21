@@ -22,6 +22,7 @@ export const getFormInputStyle = () => ({
   boxSizing: "border-box",
   display: "block",
   minWidth: 0,
+  WebkitAppearance: "none",
 });
 
 export const getSplitFieldStyle = (layout) => ({

@@ -939,18 +939,18 @@ export const GamePlayLogModal = ({
             <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>플레이 시간</label>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 52, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", padding: "0 14px" }}>
-                <input value={h > 0 ? h : ""} onChange={handleHoursChange} type="text" inputMode="numeric" pattern="[0-9]*" style={{ width: "100%", border: "none", background: "transparent", color: COLORS.dark.text, fontSize: 15, outline: "none", fontFamily: "'Outfit', sans-serif", padding: 0 }} placeholder="0" />
-                <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>시간</span>
+                <input value={h > 0 ? h : ""} onChange={handleHoursChange} type="text" inputMode="numeric" pattern="[0-9]*" style={{ width: "100%", border: "none", background: "transparent", color: COLORS.dark.text, fontSize: 15, outline: "none", fontFamily: "'Outfit', sans-serif", padding: 0, minWidth: 0 }} placeholder="0" />
+                <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>시간</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 52, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", padding: "0 14px" }}>
-                <input value={m > 0 || h === 0 ? m : ""} onChange={handleMinutesChange} type="text" inputMode="numeric" pattern="[0-9]*" style={{ width: "100%", border: "none", background: "transparent", color: COLORS.dark.text, fontSize: 15, outline: "none", fontFamily: "'Outfit', sans-serif", padding: 0 }} placeholder="0" />
-                <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>분</span>
+                <input value={m > 0 || h === 0 ? m : ""} onChange={handleMinutesChange} type="text" inputMode="numeric" pattern="[0-9]*" style={{ width: "100%", border: "none", background: "transparent", color: COLORS.dark.text, fontSize: 15, outline: "none", fontFamily: "'Outfit', sans-serif", padding: 0, minWidth: 0 }} placeholder="0" />
+                <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0 }}>분</span>
               </div>
             </div>
           </div>
           <div style={{ minWidth: 0 }}>
             <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>플레이 날짜</label>
-            <input value={playedDate} onChange={(event) => onPlayedDateChange?.(event.target.value)} type="date" style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box", display: "block", minWidth: 0, fontFamily: "'Outfit', sans-serif" }} />
+            <input value={playedDate} onChange={(event) => onPlayedDateChange?.(event.target.value)} type="date" style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box", display: "block", minWidth: 0, WebkitAppearance: "none", fontFamily: "'Outfit', sans-serif" }} />
           </div>
         </div>
         <div>
@@ -2207,6 +2207,7 @@ export const ReadingProgressModal = ({
                   boxSizing: "border-box",
                   display: "block",
                   minWidth: 0,
+                  WebkitAppearance: "none",
                   fontFamily: "'Outfit', sans-serif",
                 }}
               />
@@ -2231,6 +2232,7 @@ export const ReadingProgressModal = ({
                   boxSizing: "border-box",
                   display: "block",
                   minWidth: 0,
+                  WebkitAppearance: "none",
                   fontFamily: "'Outfit', sans-serif",
                 }}
               />
@@ -2654,7 +2656,7 @@ const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onC
               type="date"
               value={dateValue}
               onChange={(event) => setDateValue(event.target.value)}
-              style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box", display: "block", minWidth: 0, fontFamily: "'Outfit', sans-serif" }}
+              style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box", display: "block", minWidth: 0, WebkitAppearance: "none", fontFamily: "'Outfit', sans-serif" }}
             />
           </div>
           <div style={{ minWidth: 0 }}>
@@ -2663,7 +2665,7 @@ const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onC
               type="time"
               value={timeValue}
               onChange={(event) => setTimeValue(event.target.value)}
-              style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box", display: "block", minWidth: 0, fontFamily: "'Outfit', sans-serif" }}
+              style={{ width: "100%", minHeight: 52, borderRadius: 16, border: `1px solid ${accent}28`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box", display: "block", minWidth: 0, WebkitAppearance: "none", fontFamily: "'Outfit', sans-serif" }}
             />
           </div>
         </div>
