@@ -1201,7 +1201,8 @@ export const NewLogForm = ({ category, onSubmit, layout, apiBaseUrl, isOpen }) =
                 payload: {
                   goal: studyForm.goal.trim(),
                   cover: studyForm.cover || null,
-                  imageUrl: studyForm.cover || null, // Redundancy for Study UI
+                  imageUrl: studyForm.cover || null,
+                  image_url: studyForm.cover || null,
                   isbn: studyForm.isbn || null,
                   progress_mode: studyForm.progressMode,
                   progressMode: studyForm.progressMode, // Redundancy for Study UI

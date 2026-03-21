@@ -185,6 +185,13 @@ export const mapLogToUiItem = (log) => {
     occurredAt: log.occurred_at || log.created_at,
     createdAt: log.created_at,
     updatedAt: log.updated_at,
+    // 원본 데이터 보존 (엔티티 메타데이터와 로그 페이로드를 합쳐서 관리)
+    payload: {
+      ...entity.entity_metadata,
+      ...log.payload,
+      image_url: entity.entity_metadata?.image_url || log.payload?.image_url || cover,
+      imageUrl: entity.entity_metadata?.image_url || log.payload?.image_url || cover,
+    },
   };
 };
 

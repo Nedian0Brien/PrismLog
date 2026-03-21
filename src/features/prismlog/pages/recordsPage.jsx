@@ -254,8 +254,11 @@ export const StudyAccordion = ({ study, onSaveToc }) => {
 
   // 프롭이 변경될 때 상태 동기화 (상세 페이지 전환 대응)
   useEffect(() => {
-    setToc(study.toc || []);
-  }, [study.toc]);
+    const next = study.toc || [];
+    if (JSON.stringify(next) !== JSON.stringify(toc)) {
+      setToc(next);
+    }
+  }, [study.toc, toc]);
 
   // 트리 평탄화 및 항목 찾기 유틸리티
   const findAndAction = (items, id, action) => {
@@ -3658,9 +3661,12 @@ const StudyToCTextEditorModal = ({ isOpen, initialToc, onClose, onSave, accent }
 
   useEffect(() => {
     if (isOpen) {
-      setText(tocToIndentedText(initialToc || []));
+      const nextText = tocToIndentedText(initialToc || []);
+      if (nextText !== text) {
+        setText(nextText);
+      }
     }
-  }, [isOpen, initialToc]);
+  }, [isOpen, initialToc, text]);
 
   if (!isOpen) return null;
 
@@ -3692,13 +3698,44 @@ const StudyToCTextEditorModal = ({ isOpen, initialToc, onClose, onSave, accent }
           onKeyDown={(e) => {
             if (e.key === "Tab") {
               e.preventDefault();
-              const start = e.target.selectionStart;
-              const end = e.target.selectionEnd;
-              const value = e.target.value;
-              setText(`${value.substring(0, start)}\t${value.substring(end)}`);
+              const { selectionStart: start, selectionEnd: end, value } = e.target;
+              
+              // 선택 영역의 시작 줄의 시작점과 끝 줄의 끝점을 찾음
+              const startPos = value.lastIndexOf("\n", start - 1) + 1;
+              let endPos = value.indexOf("\n", end);
+              if (endPos === -1) endPos = value.length;
+
+              const targetText = value.substring(startPos, endPos);
+              const lines = targetText.split("\n");
+              let newText;
+
+              if (e.shiftKey) {
+                // 내어쓰기 (Shift + Tab)
+                newText = lines.map(line => line.replace(/^(\t| {2})/, "")).join("\n");
+              } else {
+                // 들여쓰기 (Tab)
+                newText = lines.map(line => `\t${line}`).join("\n");
+              }
+
+              // 실행 취소(Undo) 스택을 보존하기 위해 execCommand 사용 시도
+              // 선택 영역을 줄 단위로 확장
+              e.target.setSelectionRange(startPos, endPos);
+              
+              if (!document.execCommand("insertText", false, newText)) {
+                // execCommand 실패 시 fallback (React 상태 직접 업데이트)
+                const newValue = value.substring(0, startPos) + newText + value.substring(endPos);
+                setText(newValue);
+              }
+
+              // 변경된 텍스트 길이에 맞춰 선택 영역 재설정
+              const diff = newText.length - targetText.length;
               setTimeout(() => {
-                e.target.selectionStart = start + 1;
-                e.target.selectionEnd = start + 1;
+                // 선택 영역 유지 (내용이 변했으므로 위치 재계산)
+                const newEnd = end + diff;
+                // 시작점은 들여쓰기가 추가된 경우 한 칸 뒤로, 내어쓰기된 경우 앞으로 조절
+                const firstLineDiff = newText.split("\n")[0].length - lines[0].length;
+                const newStart = Math.max(startPos, start + firstLineDiff);
+                e.target.setSelectionRange(newStart, newEnd);
               }, 0);
             }
           }}
@@ -4139,16 +4176,10 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
           </div>
         </div>
         <StudyAccordion key={item.id} study={item} onSaveToc={(nextToc) => {
-          // 실시간 저장을 위해 부모의 onUpdate 호출
+          // 변경된 차분(delta) 데이터만 전송
           onUpdate?.(item, {
-            category: "study",
-            title: item.title,
-            summary: item.summary,
-            tags: item.tags,
             payload: {
-              ...(item.payload || {}),
               toc: nextToc,
-              // 하위 호환성을 위해 chapters/completed도 업데이트 (평탄화된 버전으로)
               chapters: nextToc.map(t => t.title),
               completed: nextToc.map(t => t.completed),
             }
@@ -4202,12 +4233,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
         onClose={() => setIsTocEditorOpen(false)}
         onSave={(nextToc) => {
           onUpdate?.(item, {
-            category: "study",
-            title: item.title,
-            summary: item.summary,
-            tags: item.tags,
             payload: {
-              ...(item.payload || {}),
               toc: nextToc,
               chapters: nextToc.map(t => t.title),
               completed: nextToc.map(t => t.completed),
@@ -4482,15 +4508,15 @@ const MediaDetailPage = ({ item, layout, onBack, onEdit }) => {
   );
 };
 
-export const GameDetailPage = ({ item, layout, onBack, onEdit, onAddSession }) => {
+export const GameDetailPage = ({ item, layout, onBack, onEdit, onAddSession, onEditSession }) => {
   const accent = COLORS.game.main;
   const sessions = useMemo(
-    () => (Array.isArray(item.gameSessions) ? [...item.gameSessions].sort((a, b) => new Date(b.playedAt || b.date) - new Date(a.playedAt || a.date)) : []),
+    () => (Array.isArray(item.gameSessions) ? [...item.gameSessions].sort((a, b) => new Date(b.playedAt || b.played_at || b.date) - new Date(a.playedAt || a.played_at || a.date)) : []),
     [item.gameSessions]
   );
-  const totalMinutes = sessions.reduce((sum, session) => sum + safeNumber(session.durationMinutes), 0);
+  const totalMinutes = sessions.reduce((sum, session) => sum + safeNumber(session.durationMinutes || session.duration_minutes), 0);
   const calendarMonths = useMemo(() => buildGameCalendarMonths(sessions), [sessions]);
-  const lastPlayedAt = sessions[0]?.playedAt || sessions[0]?.date || item.lastPlayedAt || "";
+  const lastPlayedAt = sessions[0]?.playedAt || sessions[0]?.played_at || sessions[0]?.date || item.lastPlayedAt || "";
   const actionButton = (
     <button
       type="button"
@@ -4630,11 +4656,21 @@ export const GameDetailPage = ({ item, layout, onBack, onEdit, onAddSession }) =
               <p style={{ margin: 0, fontSize: 13, color: COLORS.dark.textMuted }}>아직 플레이 로그가 없습니다.</p>
             </GlassCard>
           ) : sessions.map((session) => (
-            <div key={session.id} style={{ padding: "14px 16px", borderRadius: 18, border: `1px solid ${accent}20`, background: "rgba(255,255,255,0.03)", display: "flex", flexDirection: "column", gap: 8 }}>
+            <div 
+              key={session.id} 
+              onClick={() => onEditSession?.(session)}
+              style={{ 
+                padding: "14px 16px", borderRadius: 18, border: `1px solid ${accent}20`, background: "rgba(255,255,255,0.03)", 
+                display: "flex", flexDirection: "column", gap: 8, cursor: onEditSession ? "pointer" : "default",
+                transition: "background 0.2s"
+              }}
+              onMouseEnter={(e) => { if(onEditSession) e.currentTarget.style.background = "rgba(255,255,255,0.06)" }}
+              onMouseLeave={(e) => { if(onEditSession) e.currentTarget.style.background = "rgba(255,255,255,0.03)" }}
+            >
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <strong style={{ fontSize: 16, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{formatDurationLabel(session.durationMinutes)}</strong>
+                <strong style={{ fontSize: 16, color: COLORS.dark.text, fontFamily: "'Outfit', sans-serif" }}>{formatDurationLabel(session.durationMinutes || session.duration_minutes)}</strong>
                 <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>
-                  {[formatMonthDayLabel(session.playedAt || session.date), formatTimeLabel(session.playedAt || session.date)].filter(Boolean).join(" · ")}
+                  {[formatMonthDayLabel(session.playedAt || session.played_at || session.date), formatTimeLabel(session.playedAt || session.played_at || session.date)].filter(Boolean).join(" · ")}
                 </span>
               </div>
               {session.note ? <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.text }}>{session.note}</p> : null}
@@ -4647,10 +4683,11 @@ export const GameDetailPage = ({ item, layout, onBack, onEdit, onAddSession }) =
 };
 
 /* ──────────── Page: Culture ──────────── */
-export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, onAddGameSession, layout, title = "문화생활", fixedType = null, initialDetailId = null }) => {
+export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, onAddGameSession, onEditGameSession, layout, title = "문화생활", fixedType = null, initialDetailId = null }) => {
   const [filter, setFilter] = useState(fixedType || "전체");
   const [detailId, setDetailId] = useState(null);
   const [gameLogItem, setGameLogItem] = useState(null);
+  const [gameLogEditId, setGameLogEditId] = useState(null);
   const [gameLogDuration, setGameLogDuration] = useState("");
   const [gameLogDate, setGameLogDate] = useState(getDateKey(new Date()));
   const [gameLogNote, setGameLogNote] = useState("");
@@ -4680,17 +4717,26 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
     if (initialDetailId) setDetailId(initialDetailId);
   }, [initialDetailId]);
 
-  const openGameLogModal = useCallback((item) => {
+  const openGameLogModal = useCallback((item, session = null) => {
     setGameLogItem(item);
-    setGameLogDuration("");
-    setGameLogDate(getDateKey(new Date()));
-    setGameLogNote("");
+    if (session) {
+      setGameLogEditId(session.id);
+      setGameLogDuration(String(session.durationMinutes || session.duration_minutes || ""));
+      setGameLogDate(getDateKey(session.playedAt || session.played_at || session.date || new Date()));
+      setGameLogNote(session.note || "");
+    } else {
+      setGameLogEditId(null);
+      setGameLogDuration("");
+      setGameLogDate(getDateKey(new Date()));
+      setGameLogNote("");
+    }
     setGameLogError("");
   }, []);
 
   const closeGameLogModal = useCallback(() => {
     if (gameLogSaving) return;
     setGameLogItem(null);
+    setGameLogEditId(null);
     setGameLogDuration("");
     setGameLogDate(getDateKey(new Date()));
     setGameLogNote("");
@@ -4702,18 +4748,26 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
     setGameLogSaving(true);
     setGameLogError("");
     try {
-      await onAddGameSession?.(gameLogItem, {
-        durationMinutes: gameLogDuration,
-        playedAt: gameLogDate,
-        note: gameLogNote,
-      });
+      if (gameLogEditId) {
+        await onEditGameSession?.(gameLogItem, gameLogEditId, {
+          durationMinutes: gameLogDuration,
+          playedAt: gameLogDate,
+          note: gameLogNote,
+        });
+      } else {
+        await onAddGameSession?.(gameLogItem, {
+          durationMinutes: gameLogDuration,
+          playedAt: gameLogDate,
+          note: gameLogNote,
+        });
+      }
       closeGameLogModal();
     } catch (error) {
       setGameLogError(error instanceof Error ? error.message : "플레이 기록 저장 실패");
     } finally {
       setGameLogSaving(false);
     }
-  }, [closeGameLogModal, gameLogDate, gameLogDuration, gameLogItem, gameLogNote, onAddGameSession]);
+  }, [closeGameLogModal, gameLogDate, gameLogDuration, gameLogItem, gameLogEditId, gameLogNote, onAddGameSession, onEditGameSession]);
 
   if (detailItem?.type === "시리즈") {
     return <SeriesDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} onUpdateSeriesProgress={onUpdateSeriesProgress} />;
@@ -4722,7 +4776,7 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
   if (detailItem?.type === "게임") {
     return (
       <>
-        <GameDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} onAddSession={openGameLogModal} />
+        <GameDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} onAddSession={openGameLogModal} onEditSession={(session) => openGameLogModal(detailItem, session)} />
         {gameLogItem ? (
           <GamePlayLogModal
             item={gameLogItem}
@@ -5133,7 +5187,7 @@ export const RecordAreaCard = ({ section, onSelect, layout, columns = 2 }) => {
   );
 };
 
-export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddGameSession, onAddReading, onAddReadingNote, onAddStudy, onUpdateStudy, onUpdateStudyActivity, onDeleteStudyActivity, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
+export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEditReading, onEditStudy, onEditCulture, onUpdateSeriesProgress, onAddGameSession, onEditGameSession, onAddReading, onAddReadingNote, onAddStudy, onUpdateStudy, onUpdateStudyActivity, onDeleteStudyActivity, initialSection = null, initialDetailTarget = null, onSectionChange, layout }) => {
   const [selectedSection, setSelectedSection] = useState(initialSection);
   const [mobileColumns, setMobileColumns] = useState(1);
   const [transitionDirection, setTransitionDirection] = useState(initialSection ? "forward" : "back");
@@ -5348,7 +5402,7 @@ export const RecordsPage = ({ readingLogs, studyLogs, cultureLogs, loading, onEd
       case "series":
         return <CulturePage items={seriesLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} onAddGameSession={onAddGameSession} layout={layout} title="시리즈 기록" fixedType="시리즈" initialDetailId={initialDetailId} />;
       case "game":
-        return <CulturePage items={gameLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} onAddGameSession={onAddGameSession} layout={layout} title="게임 기록" fixedType="게임" initialDetailId={initialDetailId} />;
+        return <CulturePage items={gameLogs} loading={loading} onEdit={onEditCulture} onUpdateSeriesProgress={onUpdateSeriesProgress} onAddGameSession={onAddGameSession} onEditGameSession={onEditGameSession} layout={layout} title="게임 기록" fixedType="게임" initialDetailId={initialDetailId} />;
       default:
         return null;
     }

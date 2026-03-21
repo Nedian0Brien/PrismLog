@@ -73,7 +73,13 @@ def update_entity(entity_id: UUID, payload: LogEntityUpdate, db: Session = Depen
 
     updates = payload.model_dump(exclude_unset=True)
     for field, value in updates.items():
-        setattr(entity, field, value)
+        if field == "entity_metadata" and isinstance(value, dict) and entity.entity_metadata:
+            # 기존 메타데이터와 새 메타데이터 병합
+            merged = dict(entity.entity_metadata)
+            merged.update(value)
+            entity.entity_metadata = merged
+        else:
+            setattr(entity, field, value)
 
     db.add(entity)
     db.commit()

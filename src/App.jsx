@@ -457,16 +457,20 @@ export default function PrismLog() {
 
   const saveStudyEdit = useCallback(async (record, patch) => {
     if (!record?.id) throw new Error("study record id is required");
+    
+    // 백엔드에서 병합을 지원하므로, patch에 포함된 데이터만 전송
     const entityPayload = {
-      title: patch.title,
       entity_metadata: patch.payload || {},
     };
+    if (patch.title) entityPayload.title = patch.title;
 
     if (record.entityId) {
       await updateEntity(record.entityId, entityPayload);
     }
 
+    // 로그 업데이트 (역시 차분 데이터만 전송)
     await updateLog(record.id, patch);
+    
     setEditingStudy(null);
     setGlowEffect(COLORS.study.main);
     setTimeout(() => setGlowEffect(null), 1200);
@@ -548,6 +552,73 @@ export default function PrismLog() {
     setTimeout(() => setGlowEffect(null), 1200);
   }, [updateLog]);
 
+  const editGameSession = useCallback(async (game, sessionId, sessionInput) => {
+    const durationMinutes = Math.max(0, Math.round(safeNumber(sessionInput?.durationMinutes)));
+    const playedAtRaw = String(sessionInput?.playedAt || "").trim();
+    const note = String(sessionInput?.note || "").trim();
+    if (durationMinutes <= 0) {
+      throw new Error("플레이 시간은 1분 이상이어야 합니다.");
+    }
+    if (!playedAtRaw) {
+      throw new Error("플레이 날짜를 입력해 주세요.");
+    }
+    const playedAt = playedAtRaw.length <= 10 ? `${playedAtRaw}T12:00:00` : playedAtRaw;
+    const playedTime = new Date(playedAt).getTime();
+    if (!Number.isFinite(playedTime)) {
+      throw new Error("플레이 날짜 형식이 올바르지 않습니다.");
+    }
+
+    const sessions = Array.isArray(game.gameSessions)
+      ? game.gameSessions.map(serializeGameSession)
+      : [];
+    
+    const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+    if (sessionIndex === -1) {
+      throw new Error("플레이 로그를 찾을 수 없습니다.");
+    }
+
+    sessions[sessionIndex] = {
+      ...sessions[sessionIndex],
+      date: playedAt,
+      played_at: playedAt,
+      duration_minutes: durationMinutes,
+      note,
+    };
+
+    const totalMinutes = sessions.reduce((sum, session) => sum + Math.max(0, Math.round(safeNumber(session.duration_minutes))), 0);
+    const playtimeLabel = totalMinutes > 0
+      ? `${Math.floor(totalMinutes / 60)}시간 ${String(totalMinutes % 60).padStart(2, "0")}분`
+      : (game.playtime || "");
+
+    const lastPlayedAt = sessions.length > 0 
+      ? sessions.reduce((latest, s) => {
+          const sTime = new Date(s.played_at || s.date).getTime();
+          const lTime = new Date(latest).getTime();
+          return sTime > lTime ? (s.played_at || s.date) : latest;
+        }, sessions[0].played_at || sessions[0].date)
+      : game.lastPlayedAt;
+
+    await updateLog(game.id, {
+      payload: {
+        type: game.type || "게임",
+        status: game.status || "플레이 중",
+        playtime: playtimeLabel || null,
+        rating: clamp(safeNumber(game.rating), 0, 5),
+        poster: game.poster || null,
+        release_date: game.releaseDate || null,
+        overview: game.overview || game.summary || null,
+        tmdb_id: game.tmdbId || null,
+        igdb_id: game.igdbId || null,
+        source_provider: game.sourceProvider || null,
+        source_id: game.sourceId || null,
+        game_sessions: sessions,
+        last_played_at: lastPlayedAt,
+      },
+    });
+    setGlowEffect(COLORS.game.main);
+    setTimeout(() => setGlowEffect(null), 1200);
+  }, [updateLog]);
+
   const updateSeriesProgress = useCallback(async (logId, payload) => {
     await updateLog(logId, { payload });
     setGlowEffect(COLORS.series.main);
@@ -573,6 +644,7 @@ export default function PrismLog() {
         onEditCulture={openCultureEdit}
         onUpdateSeriesProgress={updateSeriesProgress}
         onAddGameSession={addGameSession}
+        onEditGameSession={editGameSession}
         onAddReading={addReadingProgress}
         onAddReadingNote={addReadingNote}
         onAddStudy={saveLog}
