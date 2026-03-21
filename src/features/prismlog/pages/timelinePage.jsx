@@ -658,7 +658,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           </div>
         </div>
         {item.snippet ? (
-          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, whiteSpace: "pre-wrap" }}>
             {item.snippet}
           </p>
         ) : null}
@@ -860,11 +860,11 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                 <>
                                   {item.gameMinutes > 0 ? renderGamePlaytime(item.gameMinutes, item.accent) : null}
                                   {!isCompact && item.snippet && (
-                                    <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.snippet}</p>
+                                    <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.snippet}</p>
                                   )}
                                 </>
                               ) : (
-                                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.snippet || item.summary || "기록 메모 없음"}</p>
+                                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, whiteSpace: "pre-wrap" }}>{item.snippet || item.summary || "기록 메모 없음"}</p>
                               )}
                             </div>
                           </div>
@@ -877,13 +877,13 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                               <>
                                 {item.gameMinutes > 0 ? renderGamePlaytime(item.gameMinutes, item.accent) : null}
                                 {!isCompact && item.snippet && (
-                                  <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.snippet}</p>
+                                  <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, whiteSpace: "pre-wrap" }}>{item.snippet}</p>
                                 )}
-                              </>
-                            ) : (
-                              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.snippet || item.summary || "기록 메모 없음"}</p>
-                            )}
-                          </>
+                                </>
+                              ) : (
+                                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, whiteSpace: "pre-wrap" }}>{item.snippet || item.summary || "기록 메모 없음"}</p>
+                              )}
+                            </>
                         )}
                       </button>
                     )})}
