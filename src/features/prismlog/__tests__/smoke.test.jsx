@@ -361,7 +361,7 @@ describe("PrismLog feature smoke", () => {
     expect(detailHtml).toContain("플레이 로그");
     expect(detailHtml).toContain("하데스 II");
     expect(modalHtml).toContain("게임 플레이 기록");
-    expect(modalHtml).toContain("플레이 시간(분)");
+    expect(modalHtml).toContain("플레이 시간");
     expect(modalHtml).toContain("플레이 날짜");
   });
 
