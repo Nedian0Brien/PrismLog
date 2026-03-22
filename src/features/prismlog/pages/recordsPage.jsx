@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect, react-refresh/only-export-components */
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
   CATEGORY_KEYS,
@@ -116,8 +117,6 @@ const StudyToCItem = ({ item, depth = 0, onUpdate, onDelete, onAddChild, onDragS
   const handleNoteChange = (e) => {
     onUpdate(item.id, { notes: e.target.value });
   };
-
-  const hasChildren = item.children && item.children.length > 0;
 
   return (
     <div
@@ -715,57 +714,6 @@ const FeatureDetailHeroShell = ({
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
         {children}
-      </div>
-    </div>
-  </GlassCard>
-);
-
-const CompactMediaPosterCard = ({
-  accent,
-  glow,
-  title,
-  poster,
-  posterAlt,
-  fallback,
-  status,
-  metaText,
-  rating,
-  tags,
-  onEdit,
-}) => (
-  <GlassCard glow={glow} style={{ padding: 0, overflow: "hidden" }}>
-    <div style={{
-      height: 188,
-      background: poster ? COLORS.dark.surfaceSolid : `linear-gradient(160deg, ${accent}25, ${COLORS.dark.surfaceSolid})`,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      position: "relative",
-    }}>
-      {poster ? (
-        <img
-          src={poster}
-          alt={posterAlt}
-          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-        />
-      ) : (
-        fallback
-      )}
-      <div style={{ position: "absolute", top: 8, right: 8 }}><StatusBadge status={status} /></div>
-    </div>
-    <div style={{ padding: "14px 14px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-        <h4 style={{ fontSize: 15, fontWeight: 700, color: COLORS.dark.text, margin: 0, fontFamily: "'Pretendard', sans-serif", flex: 1, lineHeight: 1.35 }}>
-          {title}
-        </h4>
-        <IconActionButton onClick={onEdit} />
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 11, color: COLORS.dark.textMuted }}>{metaText}</span>
-        {rating > 0 ? <RatingStars rating={rating} size={12} /> : null}
-      </div>
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-        {tags.map((tag) => <Badge key={`${title}-${tag}`} text={`#${tag}`} color={accent} />)}
       </div>
     </div>
   </GlassCard>
@@ -2453,15 +2401,6 @@ export const groupStudiesByEntity = (studies) => {
     .sort((a, b) => new Date(b.latestActivityAt || 0) - new Date(a.latestActivityAt || 0));
 };
 
-const formatReadingDuration = (minutes) => {
-  const safeMinutes = Math.max(0, safeNumber(minutes, 0));
-  if (safeMinutes <= 0) return "독서 시간 기록 대기";
-  if (safeMinutes < 60) return `${safeMinutes}분 독서`;
-  const hours = Math.floor(safeMinutes / 60);
-  const restMinutes = safeMinutes % 60;
-  return restMinutes > 0 ? `${hours}시간 ${restMinutes}분 독서` : `${hours}시간 독서`;
-};
-
 const toTimeInputValue = (isoLike) => {
   const date = new Date(isoLike);
   if (Number.isNaN(date.getTime())) return "";
@@ -2867,7 +2806,7 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
         {book.review && (
           <GlassCard style={{ padding: "14px 16px" }}>
             <p style={{ margin: 0, fontSize: 12, lineHeight: 1.7, color: COLORS.dark.textMuted, fontStyle: "italic" }}>
-              "{book.review}"
+              &quot;{book.review}&quot;
             </p>
           </GlassCard>
         )}
@@ -2947,18 +2886,6 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 {(timelineGroups || []).map((group, index) => {
                   const timelineVisible = visibleTimelineKeys[group.dateKey] ?? false;
-                  const sessionStartLabel = group.session ? formatTimeLabel(group.session.startedAt) : "";
-                  const sessionEndLabel = group.session ? formatTimeLabel(group.session.endedAt) : "";
-                  const hasSessionTiming = Boolean(
-                    group.session
-                    && group.session.durationMinutes > 0
-                    && sessionStartLabel
-                    && sessionEndLabel
-                    && sessionStartLabel !== sessionEndLabel,
-                  );
-                  const sessionMetaLabel = hasSessionTiming
-                    ? `${sessionStartLabel} - ${sessionEndLabel} · ${formatReadingDuration(group.session.durationMinutes)}`
-                    : "";
                   const trackProgress = group.session ? clamp(safeNumber(group.session.toProgress), 0, 100) : 0;
                   const deltaStart = group.session ? clamp(safeNumber(group.session.fromProgress), 0, 100) : 0;
                   return (
@@ -3001,7 +2928,7 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                           <div style={{ borderRadius: 22, border: `1px solid ${accent}2c`, background: `linear-gradient(180deg, rgba(255,255,255,0.03), ${accent}12)`, padding: layout.isPhone ? "16px" : "18px 20px", boxShadow: "0 18px 34px rgba(0,0,0,0.14)" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, marginBottom: 12 }}>
                               <div style={{ minWidth: 0 }}>
-                                <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 0.5, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Today's Progress</p>
+                                <p style={{ margin: "0 0 4px", fontSize: 11, letterSpacing: 0.5, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Today&apos;s Progress</p>
                                 <h3 style={{ margin: 0, fontSize: 22, lineHeight: 1, fontWeight: 800, fontFamily: "'Pretendard', sans-serif", color: COLORS.dark.text }}>{`+${safeNumber(group.session.pagesRead)}p 읽음`}</h3>
                               </div>
                               <div style={{ textAlign: "right", display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -3174,7 +3101,7 @@ export const ReadingGridCard = ({ book, onEdit, onAdd, onOpen, layout }) => {
         display: "-webkit-box",
         WebkitLineClamp: 2,
         WebkitBoxOrient: "vertical",
-      }}>"{book.review}"</p>
+      }}>&quot;{book.review}&quot;</p>
     )}
 
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, flexWrap: "wrap" }}>
@@ -3508,7 +3435,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
                   <span style={{ fontSize: 12, color: COLORS.dark.textMuted }}>{book.readPages}/{book.pages}p</span>
                 </div>
                 <ProgressBar value={book.progress} color={COLORS.reading.main} height={8} />
-                {book.review ? <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: 0, fontStyle: "italic", lineHeight: 1.5 }}>"{book.review}"</p> : null}
+                {book.review ? <p style={{ fontSize: 12, color: COLORS.dark.textMuted, margin: 0, fontStyle: "italic", lineHeight: 1.5 }}>&quot;{book.review}&quot;</p> : null}
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-end", marginTop: "auto" }}>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
                     {(book?.tags || []).map((tag) => <Badge key={tag} text={`#${tag}`} color={COLORS.reading.main} />)}
@@ -4175,7 +4102,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
               fontFamily: "'Pretendard', sans-serif",
               whiteSpace: "pre-wrap"
             }}>
-              "{item.summary}"
+              &quot;{item.summary}&quot;
             </p>
           </GlassCard>
         </div>
@@ -4282,7 +4209,6 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
   const detail = groupedStudies.find((study) => study.id === detailId || study.entityId === detailId) || null;
   
   // 진행도 업데이트 모달 상태
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalItem, setModalItem] = useState(null);
   const [inputValue, setInputValue] = useState("");
   const [saving, setSaving] = useState(false);
@@ -4297,11 +4223,9 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
       ? (item.pagesRead || 0) 
       : (Array.isArray(item.completed) ? item.completed.filter(Boolean).length : 0);
     setInputValue(String(initialValue));
-    setIsModalOpen(true);
   };
 
   const closeModal = () => {
-    setIsModalOpen(false);
     setModalItem(null);
     setInputValue("");
     setSaving(false);

@@ -18,18 +18,16 @@ const readViewportDebugMetrics = () => {
 };
 
 export default function ViewportDebugOverlay() {
-  const [enabled, setEnabled] = useState(false);
+  const [enabled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("debugViewport") === "1" || window.localStorage.getItem("prismlog-debug-viewport") === "1";
+  });
   const [collapsed, setCollapsed] = useState(false);
   const [metrics, setMetrics] = useState(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-
-    const params = new URLSearchParams(window.location.search);
-    const shouldEnable = params.get("debugViewport") === "1" || window.localStorage.getItem("prismlog-debug-viewport") === "1";
-    if (!shouldEnable) return undefined;
-
-    setEnabled(true);
+    if (typeof window === "undefined" || !enabled) return undefined;
 
     const update = () => {
       setMetrics(readViewportDebugMetrics());
@@ -48,7 +46,7 @@ export default function ViewportDebugOverlay() {
       window.visualViewport?.removeEventListener("resize", update);
       window.visualViewport?.removeEventListener("scroll", update);
     };
-  }, []);
+  }, [enabled]);
 
   const rows = useMemo(() => {
     if (!metrics) return [];

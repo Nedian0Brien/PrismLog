@@ -5,14 +5,8 @@ import {
   CATEGORY_META,
   buildTrendSeries,
   buildHeatmapMatrix,
-  BookIcon,
-  PenIcon,
-  FilmIcon,
-  HomeIcon,
-  BarChartIcon,
 } from "../core";
 import {
-  HalfDonutChart,
   GlassCard,
   SpectrumRing,
   Heatmap,

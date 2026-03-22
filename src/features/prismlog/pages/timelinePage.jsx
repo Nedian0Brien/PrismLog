@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   COLORS,
@@ -6,6 +7,7 @@ import {
   formatTimeLabel,
   getDateKey,
   normalizeEpisodeWatchDates,
+  normalizeSeriesSeasons,
   getSeriesProgressMetrics,
   safeNumber,
   normalizeCultureType,
@@ -24,6 +26,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
     const computeReadingSnapshot = (log) => {
       const payload = log.session_payload || log.payload || {};
       const session = payload.current_session || {};
+      const isSession = Boolean(log.is_session);
       const totalPages = safeNumber(session.total_pages || session.totalPages || payload.pages_total || payload.pages);
       const progressEnd = clamp(
         safeNumber(
@@ -36,14 +39,14 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       const progressStart = clamp(
         safeNumber(
           session.from_progress ?? session.fromProgress,
-          Math.max(0, progressEnd - safeNumber(session.progress_delta ?? session.progressDelta, 0)),
+          isSession ? Math.max(0, progressEnd - safeNumber(session.progress_delta ?? session.progressDelta, 0)) : 0,
         ),
         0,
         100,
       );
       const fromPages = safeNumber(session.from_pages ?? session.fromPages, 0);
       const toPages = safeNumber(session.to_pages ?? session.toPages ?? payload.pages_read, fromPages);
-      const pagesRead = safeNumber(session.pages_read ?? session.read_pages ?? session.pagesRead, Math.max(0, toPages - fromPages));
+      const pagesRead = safeNumber(session.pages_read ?? session.read_pages ?? session.pagesRead, isSession ? Math.max(0, toPages - fromPages) : toPages);
       return {
         progressStart,
         progressEnd,
@@ -78,20 +81,27 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
 
     // 1. 데이터 확장 (Flattening): 세션이 있는 경우 각각을 독립적인 로그 항목으로 분리
     const expandedLogs = [];
+    const seenSessionIds = new Set();
+    
+    // 세션 중복을 피하기 위해 최신 로그(이미 desc 정렬됨)부터 처리하여 각 세션 ID의 최신본만 취함
     logs.forEach((log) => {
       const payload = log.payload || {};
+      let logHasNewSessions = false;
       
-      // 독서 세션이 있는 경우 각 세션을 개별 항목으로 추출
+      // 독서 세션 처리
       if (log.category === "reading" && Array.isArray(payload.reading_sessions) && payload.reading_sessions.length > 0) {
         payload.reading_sessions.forEach((session, idx) => {
-          // 세션 날짜 정보 추출 (우선순위: ended_at > date > occurred_at)
+          const sid = session.id || `${log.id}-s-${idx}`;
+          if (seenSessionIds.has(sid)) return;
+          seenSessionIds.add(sid);
+          logHasNewSessions = true;
+
           const sessionDate = session.ended_at || session.date || log.occurred_at || log.created_at;
           expandedLogs.push({
             ...log,
             id: `${log.id}-session-${idx}`,
             original_id: log.id,
             occurred_at: sessionDate,
-            // 세션 전용 페이로드 구성 (해당 세션의 진행도 반영)
             session_payload: {
               ...payload,
               progress: session.progress ?? payload.progress,
@@ -101,8 +111,16 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
             is_session: true,
           });
         });
-      } else if (log.category === "culture" && (payload.type === "게임" || log.entity?.category === "게임") && Array.isArray(payload.game_sessions) && payload.game_sessions.length > 0) {
+      } 
+      
+      // 게임 세션 처리
+      if (log.category === "culture" && (payload.type === "게임" || log.entity?.category === "게임") && Array.isArray(payload.game_sessions) && payload.game_sessions.length > 0) {
         payload.game_sessions.forEach((session, idx) => {
+          const sid = session.id || `${log.id}-g-${idx}`;
+          if (seenSessionIds.has(sid)) return;
+          seenSessionIds.add(sid);
+          logHasNewSessions = true;
+
           const sessionDate = session.played_at || session.playedAt || session.date || log.occurred_at || log.created_at;
           expandedLogs.push({
             ...log,
@@ -116,8 +134,16 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
             is_session: true,
           });
         });
-      } else {
-        expandedLogs.push({ ...log, original_id: log.id });
+      }
+
+      // 세션으로 분해되지 않았거나, 세션이 없는 초기 로그 등은 단일 항목으로 유지
+      if (!logHasNewSessions) {
+        // 이미 해당 엔티티의 최신 진행 상태를 세션으로 취했다면, 세션이 없는 구형 로그는 중복 데이터일 가능성이 큼
+        // 단, 독서/게임이 아닌 다른 카테고리는 항상 포함
+        const isReadingOrGame = log.category === "reading" || (log.category === "culture" && (payload.type === "게임" || log.entity?.category === "게임"));
+        if (!isReadingOrGame || (isReadingOrGame && (payload.progress > 0 || payload.playtime || payload.pages_read > 0))) {
+           expandedLogs.push({ ...log, original_id: log.id });
+        }
       }
     });
 
@@ -213,6 +239,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         : null;
 
       if (log.category === "culture" && cultureType === "시리즈") {
+        const seriesSeasons = normalizeSeriesSeasons(log.entity?.entity_metadata?.seasons || payload.seasons || []);
         const seriesWatchDates = normalizeEpisodeWatchDates(payload.episode_watch_dates || payload.episodeWatchDates);
         const watchEntries = Object.entries(seriesWatchDates)
           .map(([, watchDate]) => ({
@@ -232,6 +259,9 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           const aggregateKey = `${dateKey}:${entityKey}`;
           const timelineItemId = `${entityKey}-series-${dateKey}`;
           const existing = seriesDailyAggregates.get(aggregateKey);
+          const latestEpisodeOverview = seriesSeasons
+            .flatMap((season) => Array.isArray(season?.episodes) ? season.episodes : [])
+            .find((episode) => seriesWatchDates[`${episode.seasonNumber}-${episode.episodeNumber}`] === watchDate)?.overview || "";
 
           if (!existing) {
             seriesDailyAggregates.set(aggregateKey, {
@@ -239,6 +269,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
               id: timelineItemId,
               original_id: entityKey,
               occurred_at: watchDate,
+              series_latest_episode_overview: latestEpisodeOverview,
             });
             return;
           }
@@ -249,6 +280,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
             seriesDailyAggregates.set(aggregateKey, {
               ...existing,
               occurred_at: watchDate,
+              series_latest_episode_overview: latestEpisodeOverview || existing.series_latest_episode_overview || "",
             });
           }
         });
@@ -357,14 +389,11 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       const studyProgressMode = payload.progressMode || payload.progress_mode || "page";
       const studyPagesTotal = safeNumber(entityMetadata.pages_total || payload.pages_total || payload.pages);
       const studyPagesRead = safeNumber(payload.pages_read || payload.readPages);
-      let studyProgress = 0;
-      if (studyProgressMode === "page" && studyPagesTotal > 0) {
-        studyProgress = Math.round((studyPagesRead / studyPagesTotal) * 100);
-      } else if (studyChapters.length > 0) {
-        studyProgress = Math.round((studyCompleted / studyChapters.length) * 100);
-      } else {
-        studyProgress = clamp(safeNumber(payload.progress), 0, 100);
-      }
+      const studyProgress = studyProgressMode === "page" && studyPagesTotal > 0
+        ? Math.round((studyPagesRead / studyPagesTotal) * 100)
+        : studyChapters.length > 0
+          ? Math.round((studyCompleted / studyChapters.length) * 100)
+          : clamp(safeNumber(payload.progress), 0, 100);
 
       // 5. 시리즈 진행도 및 오늘 본 에피소드 (가로 스크롤용)
       const seriesMetrics = type === "시리즈"
@@ -387,11 +416,18 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                   id: `${log.id}-${season.seasonNumber}-${episode.episodeNumber}`,
                   title: episode.name || `EP ${episode.episodeNumber}`,
                   code: `S${season.seasonNumber} · E${episode.episodeNumber}`,
+                  overview: episode.overview || "",
+                  watchedAt: seriesWatchDates[`${season.seasonNumber}-${episode.episodeNumber}`] || "",
                   stillUrl: episode.stillUrl,
                 }))
             : []
         ))
         : [];
+      const seriesEpisodeOverviewToday = watchedEpisodesToday.length > 0
+        ? [...watchedEpisodesToday]
+            .sort((a, b) => new Date(a.watchedAt || 0) - new Date(b.watchedAt || 0))
+            .at(-1)?.overview || ""
+        : "";
       
       const seriesEpisodeCountToday = watchedEpisodesToday.length;
       const seriesProgressDelta = type === "시리즈" && safeNumber(seriesMetrics?.totalEpisodes, 0) > 0
@@ -491,7 +527,11 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
           : log.category === "study"
             ? (studyProgressMode === "page" && studyPagesTotal > 0 ? `${studyPagesRead} / ${studyPagesTotal}p` : `${studyChapters.length}개 챕터`)
             : payload.playtime || payload.status || "",
-        snippet: (log.is_session && payload.current_session?.note) ? payload.current_session.note : (type === "게임" ? "" : (log.summary || "")),
+        snippet: (log.is_session && payload.current_session?.note)
+          ? payload.current_session.note
+          : (type === "시리즈"
+            ? (seriesEpisodeOverviewToday || log.series_latest_episode_overview || log.summary || "")
+            : (type === "게임" ? "" : (log.summary || ""))),
         progress,
         progressStart,
         progressEnd: progress ?? 0,
@@ -590,14 +630,11 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
       donuts.push(Math.round((remainder / 60) * 100));
     }
     
-    let playtimeLabel = "";
-    if (hours > 0 && remainder > 0) {
-      playtimeLabel = `${hours}시간 ${remainder}분`;
-    } else if (hours > 0) {
-      playtimeLabel = `${hours}시간`;
-    } else {
-      playtimeLabel = `${remainder}분`;
-    }
+    const playtimeLabel = hours > 0 && remainder > 0
+      ? `${hours}시간 ${remainder}분`
+      : hours > 0
+        ? `${hours}시간`
+        : `${remainder}분`;
 
     return (
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>

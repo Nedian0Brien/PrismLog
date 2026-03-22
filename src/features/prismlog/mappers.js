@@ -46,6 +46,12 @@ export const mapLogToUiItem = (log) => {
   const pagesRead = safeNumber(combined.pages_read || combined.readPages);
   const pagesTotal = safeNumber(combined.pages_total || combined.pages);
   
+  // 진행률 계산
+  let progress = safeNumber(combined.progress, 0);
+  if (category === "reading" && pagesTotal > 0) {
+    progress = clamp(Math.round((pagesRead / pagesTotal) * 100), 0, 100);
+  }
+  
   // 세션 데이터 필드명 변환 (snake_case -> camelCase) 및 하위 호환성
   const rawSessions = Array.isArray(combined.reading_sessions) ? combined.reading_sessions : (Array.isArray(combined.readingSessions) ? combined.readingSessions : []);
   const readingSessions = rawSessions.map(s => ({
@@ -59,6 +65,23 @@ export const mapLogToUiItem = (log) => {
     durationMinutes: safeNumber(s.duration_minutes || s.durationMinutes),
     endedAt: s.ended_at || s.endedAt || s.date,
   }));
+
+  // 만약 세션이 하나도 없는데 진행도가 있다면, 최초 생성 시점의 가상 세션 추가 (소급 적용 및 타임라인 노출용)
+  if (readingSessions.length === 0 && (pagesRead > 0 || progress > 0)) {
+    const creationDate = combined.date || combined.occurred_at || combined.created_at;
+    readingSessions.push({
+      id: `virtual-initial-${combined.id}`,
+      pagesRead: pagesRead,
+      fromPages: 0,
+      toPages: pagesRead,
+      fromProgress: 0,
+      toProgress: progress,
+      progressDelta: progress,
+      date: creationDate,
+      endedAt: creationDate,
+      durationMinutes: 0,
+    });
+  }
 
   const rawNotes = Array.isArray(combined.reading_notes) ? combined.reading_notes : (Array.isArray(combined.readingNotes) ? combined.readingNotes : []);
   const readingNotes = rawNotes.map(n => ({
@@ -103,11 +126,7 @@ export const mapLogToUiItem = (log) => {
     }));
   }
 
-  // 진행률 계산
-  let progress = safeNumber(combined.progress, 0);
-  if (category === "reading" && pagesTotal > 0) {
-    progress = clamp(Math.round((pagesRead / pagesTotal) * 100), 0, 100);
-  } else if (category === "study") {
+  if (category === "study") {
     const progressMode = combined.progress_mode || "page";
     if (progressMode === "page" && pagesTotal > 0) {
       progress = clamp(Math.round((pagesRead / pagesTotal) * 100), 0, 100);

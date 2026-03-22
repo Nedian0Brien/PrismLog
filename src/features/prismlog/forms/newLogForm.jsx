@@ -33,7 +33,6 @@ import {
   ClockIcon,
   CheckIcon,
   PlusIcon,
-  ChevronDown,
   DEMO_USER_ID,
 } from "../core";
 import { Badge, ReadingProgressEditor } from "../ui";

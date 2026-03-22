@@ -401,7 +401,7 @@ export default function PrismLog() {
       setGlowEffect(COLORS.reading.main);
       setTimeout(() => setGlowEffect(null), 1200);
     } catch (error) {
-      throw new Error(error instanceof Error ? error.message : "기록 추가 실패");
+      throw new Error(error instanceof Error ? error.message : "기록 추가 실패", { cause: error });
     }
   }, [buildReadingSessionPatch, updateLog]);
 

@@ -216,8 +216,8 @@ describe("PrismLog feature smoke", () => {
               {
                 season_number: 1,
                 episodes: [
-                  { episode_number: 1, name: "좋은 소식입니다" },
-                  { episode_number: 2, name: "반쪽짜리 루틴" },
+                  { episode_number: 1, name: "좋은 소식입니다", overview: "첫 번째 에피소드 줄거리" },
+                  { episode_number: 2, name: "반쪽짜리 루틴", overview: "마지막 에피소드 줄거리" },
                 ],
               },
             ],
@@ -231,8 +231,8 @@ describe("PrismLog feature smoke", () => {
             {
               season_number: 1,
               episodes: [
-                { episode_number: 1, name: "좋은 소식입니다" },
-                { episode_number: 2, name: "반쪽짜리 루틴" },
+                { episode_number: 1, name: "좋은 소식입니다", overview: "첫 번째 에피소드 줄거리" },
+                { episode_number: 2, name: "반쪽짜리 루틴", overview: "마지막 에피소드 줄거리" },
               ],
             },
           ],
@@ -251,6 +251,8 @@ describe("PrismLog feature smoke", () => {
     expect(timelineHtml).toContain("세브란스");
     expect(timelineHtml).toContain("+2화");
     expect(timelineHtml).toContain("S1 · E1");
+    expect(timelineHtml).toContain("마지막 에피소드 줄거리");
+    expect(timelineHtml).not.toContain("첫 번째 에피소드 줄거리");
   });
 
   it("assigns unique timeline item keys for series entries split across watched dates", () => {
