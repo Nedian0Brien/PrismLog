@@ -85,6 +85,7 @@ const serializeGameSession = (session) => ({
   played_at: session?.played_at || session?.playedAt || session?.date || new Date().toISOString(),
   duration_minutes: Math.max(0, Math.round(safeNumber(session?.duration_minutes ?? session?.durationMinutes, 0))),
   note: String(session?.note || "").trim(),
+  photos: Array.isArray(session?.photos) ? session.photos : [],
 });
 
 export default function PrismLog() {
@@ -503,6 +504,7 @@ export default function PrismLog() {
     const durationMinutes = Math.max(0, Math.round(safeNumber(sessionInput?.durationMinutes)));
     const playedAtRaw = String(sessionInput?.playedAt || "").trim();
     const note = String(sessionInput?.note || "").trim();
+    const photos = Array.isArray(sessionInput?.photos) ? sessionInput.photos : [];
     if (durationMinutes <= 0) {
       throw new Error("플레이 시간은 1분 이상이어야 합니다.");
     }
@@ -524,6 +526,7 @@ export default function PrismLog() {
       played_at: playedAt,
       duration_minutes: durationMinutes,
       note,
+      photos,
     });
 
     const totalMinutes = sessions.reduce((sum, session) => sum + Math.max(0, Math.round(safeNumber(session.duration_minutes))), 0);
@@ -556,6 +559,7 @@ export default function PrismLog() {
     const durationMinutes = Math.max(0, Math.round(safeNumber(sessionInput?.durationMinutes)));
     const playedAtRaw = String(sessionInput?.playedAt || "").trim();
     const note = String(sessionInput?.note || "").trim();
+    const photos = Array.isArray(sessionInput?.photos) ? sessionInput.photos : undefined;
     if (durationMinutes <= 0) {
       throw new Error("플레이 시간은 1분 이상이어야 합니다.");
     }
@@ -571,7 +575,7 @@ export default function PrismLog() {
     const sessions = Array.isArray(game.gameSessions)
       ? game.gameSessions.map(serializeGameSession)
       : [];
-    
+
     const sessionIndex = sessions.findIndex(s => s.id === sessionId);
     if (sessionIndex === -1) {
       throw new Error("플레이 로그를 찾을 수 없습니다.");
@@ -583,6 +587,7 @@ export default function PrismLog() {
       played_at: playedAt,
       duration_minutes: durationMinutes,
       note,
+      ...(photos !== undefined ? { photos } : {}),
     };
 
     const totalMinutes = sessions.reduce((sum, session) => sum + Math.max(0, Math.round(safeNumber(session.duration_minutes))), 0);

@@ -1,11 +1,13 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.db import Base, engine
-from app.routers import books, dev, health, logs, media
+from app.routers import books, dev, health, logs, media, uploads
 
 
 settings = get_settings()
@@ -15,6 +17,8 @@ settings = get_settings()
 async def lifespan(_: FastAPI):
     # Bootstraps tables for the first iteration.
     Base.metadata.create_all(bind=engine)
+    # 업로드 디렉토리 초기화
+    Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
     yield
 
 
@@ -28,8 +32,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 업로드 파일 정적 서빙 (/uploads/...)
+Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
+
 app.include_router(health.router)
 app.include_router(logs.router, prefix=settings.api_v1_prefix)
 app.include_router(dev.router, prefix=settings.api_v1_prefix)
 app.include_router(books.router, prefix=settings.api_v1_prefix)
 app.include_router(media.router, prefix=settings.api_v1_prefix)
+app.include_router(uploads.router, prefix=settings.api_v1_prefix)

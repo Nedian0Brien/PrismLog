@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     media_search_cache_ttl_seconds: int = 300
     igdb_client_id: str = ""
     igdb_client_secret: str = ""
+    upload_dir: str = "/home/ubuntu/project/PrismLog/uploads"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

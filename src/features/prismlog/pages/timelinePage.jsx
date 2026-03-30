@@ -542,6 +542,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         watchedEpisodesToday,
         status: payload.status || (type === "게임" ? "플레이 중" : type === "시리즈" || type === "영화" ? "시청 중" : ""),
         poster: entityMetadata.cover || entityMetadata.poster || entityMetadata.image_url || entityMetadata.imageUrl || payload.cover || payload.poster || payload.image_url || payload.imageUrl || null,
+        photos: (log.is_session && Array.isArray(payload.current_session?.photos)) ? payload.current_session.photos : [],
       };
 
       const existing = acc.find((group) => group.key === key);
@@ -885,28 +886,37 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                           <span style={{ fontSize: 12, color: COLORS.dark.textMuted, fontFamily: "'Outfit', sans-serif" }}>{item.time}</span>
                         </div>
                         {item.poster ? (
-                          <div style={{ display: "flex", gap: layout.isPhone ? 12 : 16, alignItems: "flex-start" }}>
-                            <img
-                              src={item.poster}
-                              alt=""
-                              style={{ width: layout.isPhone ? 58 : 72, height: layout.isPhone ? 84 : 104, borderRadius: 10, objectFit: "cover", flexShrink: 0, boxShadow: "0 8px 18px rgba(0,0,0,0.3)" }}
-                            />
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <h3 style={{ margin: "0 0 6px", fontSize: 18, lineHeight: 1.3, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
-                              {item.progress !== null ? (
-                                renderTimelineProgress(item, visible)
-                              ) : isGame ? (
-                                <>
-                                  {item.gameMinutes > 0 ? renderGamePlaytime(item.gameMinutes, item.accent) : null}
-                                  {!isCompact && item.snippet && (
-                                    <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.snippet}</p>
-                                  )}
-                                </>
-                              ) : (
-                                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, whiteSpace: "pre-wrap" }}>{item.snippet || item.summary || "기록 메모 없음"}</p>
-                              )}
+                          <>
+                            <div style={{ display: "flex", gap: layout.isPhone ? 12 : 16, alignItems: "flex-start" }}>
+                              <img
+                                src={item.poster}
+                                alt=""
+                                style={{ width: layout.isPhone ? 58 : 72, height: layout.isPhone ? 84 : 104, borderRadius: 10, objectFit: "cover", flexShrink: 0, boxShadow: "0 8px 18px rgba(0,0,0,0.3)" }}
+                              />
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <h3 style={{ margin: "0 0 6px", fontSize: 18, lineHeight: 1.3, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
+                                {item.progress !== null ? (
+                                  renderTimelineProgress(item, visible)
+                                ) : isGame ? (
+                                  <>
+                                    {item.gameMinutes > 0 ? renderGamePlaytime(item.gameMinutes, item.accent) : null}
+                                    {!isCompact && item.snippet && (
+                                      <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted }}>{item.snippet}</p>
+                                    )}
+                                  </>
+                                ) : (
+                                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, whiteSpace: "pre-wrap" }}>{item.snippet || item.summary || "기록 메모 없음"}</p>
+                                )}
+                              </div>
                             </div>
-                          </div>
+                            {isGame && item.photos?.length > 0 && (
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                                {item.photos.map((url, i) => (
+                                  <img key={i} src={url} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", border: `1px solid ${item.accent}33` }} />
+                                ))}
+                              </div>
+                            )}
+                          </>
                         ) : (
                           <>
                             <h3 style={{ margin: "0 0 8px", fontSize: 19, lineHeight: 1.35, fontWeight: 800, color: COLORS.dark.text, fontFamily: "'Pretendard', sans-serif" }}>{item.title}</h3>
@@ -917,6 +927,13 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                 {item.gameMinutes > 0 ? renderGamePlaytime(item.gameMinutes, item.accent) : null}
                                 {!isCompact && item.snippet && (
                                   <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, whiteSpace: "pre-wrap" }}>{item.snippet}</p>
+                                )}
+                                {item.photos?.length > 0 && (
+                                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                                    {item.photos.map((url, i) => (
+                                      <img key={i} src={url} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", border: `1px solid ${item.accent}33` }} />
+                                    ))}
+                                  </div>
                                 )}
                                 </>
                               ) : (

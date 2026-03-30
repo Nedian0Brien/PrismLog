@@ -849,17 +849,22 @@ export const GamePlayLogModal = ({
   durationMinutes,
   playedDate,
   note,
+  newPhotos,
+  existingPhotos,
   onDurationChange,
   onPlayedDateChange,
   onNoteChange,
+  onNewPhotosChange,
+  onRemoveExistingPhoto,
   onClose,
   onSubmit,
 }) => {
   const accent = COLORS.game.main;
-  
+  const fileInputRef = useRef(null);
+
   const h = Math.floor((Number(durationMinutes) || 0) / 60);
   const m = (Number(durationMinutes) || 0) % 60;
-  
+
   const handleHoursChange = (e) => {
     const val = e.target.value.replace(/\D/g, "");
     const total = (Number(val) * 60) + m;
@@ -871,6 +876,19 @@ export const GamePlayLogModal = ({
     const total = (h * 60) + Number(val);
     onDurationChange?.(total > 0 ? String(total) : "");
   };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    onNewPhotosChange?.([...(newPhotos || []), ...files]);
+    e.target.value = "";
+  };
+
+  const removeNewPhoto = (index) => {
+    onNewPhotosChange?.((newPhotos || []).filter((_, i) => i !== index));
+  };
+
+  const allPhotoCount = (existingPhotos?.length || 0) + (newPhotos?.length || 0);
 
   return (
     <ModalShell glow={COLORS.game.glow} width="min(92vw, 430px)" padding={layout.isPhone ? "22px 18px" : "24px 22px"} onBackdropClick={onClose} onClose={onClose}>
@@ -904,6 +922,57 @@ export const GamePlayLogModal = ({
         <div>
           <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>플레이 메모</label>
           <textarea value={note} onChange={(event) => onNoteChange?.(event.target.value)} style={{ width: "100%", minHeight: 116, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "14px", resize: "vertical", boxSizing: "border-box", outline: "none", fontFamily: "'Pretendard', sans-serif", fontSize: 13, lineHeight: 1.6 }} placeholder="오늘 진행한 콘텐츠, 인상 깊은 장면, 플레이 감상을 남겨 보세요." />
+        </div>
+        {/* 사진 섹션 */}
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>사진 {allPhotoCount > 0 ? `(${allPhotoCount})` : ""}</label>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={saving}
+              style={{ fontSize: 12, fontWeight: 700, color: accent, background: "none", border: "none", cursor: saving ? "default" : "pointer", padding: 0, fontFamily: "'Pretendard', sans-serif" }}
+            >
+              + 사진 추가
+            </button>
+          </div>
+          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileChange} style={{ display: "none" }} />
+          {allPhotoCount > 0 && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {(existingPhotos || []).map((url, i) => (
+                <div key={`existing-${i}`} style={{ position: "relative", width: 72, height: 72 }}>
+                  <img src={url} alt="" style={{ width: 72, height: 72, borderRadius: 12, objectFit: "cover", border: `1px solid ${accent}33` }} />
+                  <button
+                    type="button"
+                    onClick={() => onRemoveExistingPhoto?.(i)}
+                    disabled={saving}
+                    style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", border: "none", background: "#f8b4bb", color: "#141821", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: 0 }}
+                  >×</button>
+                </div>
+              ))}
+              {(newPhotos || []).map((file, i) => (
+                <div key={`new-${i}`} style={{ position: "relative", width: 72, height: 72 }}>
+                  <img src={URL.createObjectURL(file)} alt="" style={{ width: 72, height: 72, borderRadius: 12, objectFit: "cover", border: `1px solid ${accent}55` }} />
+                  <button
+                    type="button"
+                    onClick={() => removeNewPhoto(i)}
+                    disabled={saving}
+                    style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", border: "none", background: "#f8b4bb", color: "#141821", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: 0 }}
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {allPhotoCount === 0 && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={saving}
+              style={{ width: "100%", minHeight: 64, borderRadius: 16, border: `1.5px dashed ${COLORS.dark.border}`, background: "rgba(255,255,255,0.02)", color: COLORS.dark.textMuted, cursor: saving ? "default" : "pointer", fontSize: 13, fontFamily: "'Pretendard', sans-serif" }}
+            >
+              클릭하여 사진 추가
+            </button>
+          )}
         </div>
         {error ? <p style={{ margin: 0, fontSize: 12, color: "#f8b4bb" }}>{error}</p> : null}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -4628,6 +4697,15 @@ export const GameDetailPage = ({ item, layout, onBack, onEdit, onAddSession, onE
                 </span>
               </div>
               {session.note ? <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.text }}>{session.note}</p> : null}
+              {session.photos?.length > 0 && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                  {session.photos.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                      <img src={url} alt="" style={{ width: 80, height: 80, borderRadius: 10, objectFit: "cover", border: `1px solid ${accent}33`, display: "block" }} />
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -4645,6 +4723,8 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
   const [gameLogDuration, setGameLogDuration] = useState("");
   const [gameLogDate, setGameLogDate] = useState(getDateKey(new Date()));
   const [gameLogNote, setGameLogNote] = useState("");
+  const [gameLogNewPhotos, setGameLogNewPhotos] = useState([]);
+  const [gameLogExistingPhotos, setGameLogExistingPhotos] = useState([]);
   const [gameLogSaving, setGameLogSaving] = useState(false);
   const [gameLogError, setGameLogError] = useState("");
   const filters = ["전체", ...CULTURE_TYPES];
@@ -4678,12 +4758,15 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
       setGameLogDuration(String(session.durationMinutes || session.duration_minutes || ""));
       setGameLogDate(getDateKey(session.playedAt || session.played_at || session.date || new Date()));
       setGameLogNote(session.note || "");
+      setGameLogExistingPhotos(Array.isArray(session.photos) ? session.photos : []);
     } else {
       setGameLogEditId(null);
       setGameLogDuration("");
       setGameLogDate(getDateKey(new Date()));
       setGameLogNote("");
+      setGameLogExistingPhotos([]);
     }
+    setGameLogNewPhotos([]);
     setGameLogError("");
   }, []);
 
@@ -4694,6 +4777,8 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
     setGameLogDuration("");
     setGameLogDate(getDateKey(new Date()));
     setGameLogNote("");
+    setGameLogNewPhotos([]);
+    setGameLogExistingPhotos([]);
     setGameLogError("");
   }, [gameLogSaving]);
 
@@ -4702,17 +4787,31 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
     setGameLogSaving(true);
     setGameLogError("");
     try {
+      // 새로 추가된 사진 업로드
+      const uploadedUrls = [];
+      for (const file of (gameLogNewPhotos || [])) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/v1/uploads/game-sessions", { method: "POST", body: formData });
+        if (!res.ok) throw new Error("사진 업로드 실패");
+        const data = await res.json();
+        uploadedUrls.push(data.url);
+      }
+      const photos = [...(gameLogExistingPhotos || []), ...uploadedUrls];
+
       if (gameLogEditId) {
         await onEditGameSession?.(gameLogItem, gameLogEditId, {
           durationMinutes: gameLogDuration,
           playedAt: gameLogDate,
           note: gameLogNote,
+          photos,
         });
       } else {
         await onAddGameSession?.(gameLogItem, {
           durationMinutes: gameLogDuration,
           playedAt: gameLogDate,
           note: gameLogNote,
+          photos,
         });
       }
       closeGameLogModal();
@@ -4721,7 +4820,7 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
     } finally {
       setGameLogSaving(false);
     }
-  }, [closeGameLogModal, gameLogDate, gameLogDuration, gameLogItem, gameLogEditId, gameLogNote, onAddGameSession, onEditGameSession]);
+  }, [closeGameLogModal, gameLogDate, gameLogDuration, gameLogItem, gameLogEditId, gameLogNote, gameLogNewPhotos, gameLogExistingPhotos, onAddGameSession, onEditGameSession]);
 
   if (detailItem?.type === "시리즈") {
     return <SeriesDetailPage item={detailItem} layout={layout} onBack={() => setDetailId(null)} onEdit={onEdit} onUpdateSeriesProgress={onUpdateSeriesProgress} />;
@@ -4740,9 +4839,13 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
             durationMinutes={gameLogDuration}
             playedDate={gameLogDate}
             note={gameLogNote}
+            newPhotos={gameLogNewPhotos}
+            existingPhotos={gameLogExistingPhotos}
             onDurationChange={setGameLogDuration}
             onPlayedDateChange={setGameLogDate}
             onNoteChange={setGameLogNote}
+            onNewPhotosChange={setGameLogNewPhotos}
+            onRemoveExistingPhoto={(i) => setGameLogExistingPhotos((prev) => prev.filter((_, idx) => idx !== i))}
             onClose={closeGameLogModal}
             onSubmit={submitGameLog}
           />
@@ -4915,9 +5018,13 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
           durationMinutes={gameLogDuration}
           playedDate={gameLogDate}
           note={gameLogNote}
+          newPhotos={gameLogNewPhotos}
+          existingPhotos={gameLogExistingPhotos}
           onDurationChange={setGameLogDuration}
           onPlayedDateChange={setGameLogDate}
           onNoteChange={setGameLogNote}
+          onNewPhotosChange={setGameLogNewPhotos}
+          onRemoveExistingPhoto={(i) => setGameLogExistingPhotos((prev) => prev.filter((_, idx) => idx !== i))}
           onClose={closeGameLogModal}
           onSubmit={submitGameLog}
         />

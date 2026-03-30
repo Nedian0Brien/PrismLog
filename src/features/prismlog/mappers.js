@@ -96,6 +96,7 @@ export const mapLogToUiItem = (log) => {
     playedAt: session.played_at || session.playedAt || session.date || null,
     durationMinutes: safeNumber(session.duration_minutes || session.durationMinutes),
     note: String(session.note || "").trim(),
+    photos: Array.isArray(session.photos) ? session.photos : [],
   }));
   const totalGameMinutes = gameSessions.reduce((sum, session) => sum + safeNumber(session.durationMinutes), 0);
   const derivedGamePlaytime = cultureType === "게임" && totalGameMinutes > 0
