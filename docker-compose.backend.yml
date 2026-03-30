@@ -33,11 +33,14 @@ services:
       API_V1_PREFIX: /api/v1
       DATABASE_URL: postgresql+psycopg://prismlog:prismlog_change_me@prismlog-postgres:5432/prismlog
       CORS_ORIGINS: http://localhost:5173
+      UPLOAD_DIR: /app/uploads
     depends_on:
       prismlog-postgres:
         condition: service_healthy
     ports:
       - "8001:8000"
+    volumes:
+      - /home/ubuntu/project/PrismLog/uploads:/app/uploads
     networks:
       - prismlog-net
 
