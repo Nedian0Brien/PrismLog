@@ -696,10 +696,10 @@ const FeatureDetailHeroShell = ({
   children,
 }) => (
   <GlassCard glow={glow} style={{ padding: layout.isPhone ? "18px 16px" : "22px", overflow: "hidden" }}>
-    <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "152px minmax(0, 1fr)", gap: 18, alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: layout.isPhone ? "1fr" : "296px minmax(0, 1fr)", gap: 18, alignItems: "start" }}>
       <div
         style={{
-          width: layout.isPhone ? 116 : 140,
+          width: layout.isPhone ? 232 : 280,
           aspectRatio: "2 / 3",
           borderRadius: 18,
           overflow: "hidden",
