@@ -17,89 +17,26 @@ import {
 } from "../core";
 import { Badge, GlassCard, StatusBadge, TimelineProgressBar } from "../ui";
 
-const PhotoGrid = ({ photos, accent }) => {
+const PhotoStrip = ({ photos, accent }) => {
   const [ratios, setRatios] = useState({});
-  const count = photos?.length || 0;
-  if (count === 0) return null;
+  if (!photos?.length) return null;
 
-  const shown = photos.slice(0, 9);
-  const extra = count - 9;
-
+  const H = 160;
   const onLoad = (url, e) => {
     const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
     if (w && h) setRatios((prev) => ({ ...prev, [url]: w / h }));
   };
 
-  const coverStyle = { width: "100%", height: "100%", objectFit: "cover", display: "block" };
-
-  // 1장: 자연스러운 비율로 전체 너비 표시
-  if (count === 1) {
-    const r = ratios[shown[0]];
-    return (
-      <div style={{ marginTop: 10, borderRadius: 14, overflow: "hidden", border: `1px solid ${accent}28`, background: `${accent}0a` }}>
-        <img
-          src={shown[0]}
-          alt=""
-          onLoad={(e) => onLoad(shown[0], e)}
-          onClick={(e) => e.stopPropagation()}
-          style={{ display: "block", width: "100%", aspectRatio: r ? String(r) : "16/9", objectFit: "cover", maxHeight: 340, cursor: "pointer" }}
-        />
-      </div>
-    );
-  }
-
-  // 2장: 각 이미지의 비율에 따라 flex-grow 배분, 고정 높이
-  if (count === 2) {
-    const H = 160;
-    return (
-      <div style={{ marginTop: 10, display: "flex", gap: 4, height: H }}>
-        {shown.map((url, i) => {
-          const r = ratios[url] || 1;
-          return (
-            <div key={i} style={{ flex: r, minWidth: 0, borderRadius: 10, overflow: "hidden", border: `1px solid ${accent}28` }}>
-              <img src={url} alt="" onLoad={(e) => onLoad(url, e)} onClick={(e) => e.stopPropagation()} style={{ ...coverStyle, height: H, cursor: "pointer" }} />
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  // 3장: 첫 번째 크게(2/3) + 나머지 2개 오른쪽에 세로로(1/3)
-  if (count === 3) {
-    const H = 190;
-    return (
-      <div style={{ marginTop: 10, display: "flex", gap: 4, height: H }}>
-        <div style={{ flex: 2, borderRadius: 10, overflow: "hidden", border: `1px solid ${accent}28` }}>
-          <img src={shown[0]} alt="" onLoad={(e) => onLoad(shown[0], e)} onClick={(e) => e.stopPropagation()} style={{ ...coverStyle, height: H, cursor: "pointer" }} />
-        </div>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
-          {shown.slice(1).map((url, i) => (
-            <div key={i} style={{ flex: 1, borderRadius: 10, overflow: "hidden", border: `1px solid ${accent}28` }}>
-              <img src={url} alt="" onLoad={(e) => onLoad(url, e)} onClick={(e) => e.stopPropagation()} style={{ ...coverStyle, height: (H - 4) / 2, cursor: "pointer" }} />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // 4장+: 2×2 그리드, 초과분은 마지막 셀에 +N 오버레이
-  const grid = shown.slice(0, 4);
-  const overflow = extra + Math.max(0, shown.length - 4);
-  const cellH = 130;
   return (
-    <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
-      {grid.map((url, i) => {
-        const isLast = i === 3;
+    <div
+      style={{ marginTop: 10, display: "flex", gap: 6, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", scrollSnapType: "x proximity", paddingBottom: 2 }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {photos.map((url, i) => {
+        const r = ratios[url] || 4 / 3;
         return (
-          <div key={i} style={{ position: "relative", height: cellH, borderRadius: 10, overflow: "hidden", border: `1px solid ${accent}28` }}>
-            <img src={url} alt="" onLoad={(e) => onLoad(url, e)} onClick={(e) => e.stopPropagation()} style={{ ...coverStyle, height: cellH, cursor: "pointer" }} />
-            {isLast && overflow > 0 && (
-              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.52)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 800, color: "#fff", fontFamily: "'Outfit', sans-serif", pointerEvents: "none" }}>
-                +{overflow}
-              </div>
-            )}
+          <div key={i} style={{ flexShrink: 0, height: H, width: H * r, borderRadius: 12, overflow: "hidden", border: `1px solid ${accent}28`, scrollSnapAlign: "start" }}>
+            <img src={url} alt="" onLoad={(e) => onLoad(url, e)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </div>
         );
       })}
@@ -1000,7 +937,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                               </div>
                             </div>
                             {isGame && item.photos?.length > 0 && (
-                              <PhotoGrid photos={item.photos} accent={item.accent} />
+                              <PhotoStrip photos={item.photos} accent={item.accent} />
                             )}
                           </>
                         ) : (
@@ -1015,7 +952,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                   <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, whiteSpace: "pre-wrap" }}>{item.snippet}</p>
                                 )}
                                 {item.photos?.length > 0 && (
-                                  <PhotoGrid photos={item.photos} accent={item.accent} />
+                                  <PhotoStrip photos={item.photos} accent={item.accent} />
                                 )}
                                 </>
                               ) : (
