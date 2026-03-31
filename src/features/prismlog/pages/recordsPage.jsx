@@ -57,6 +57,7 @@ import {
   Lightbox,
   PhotoStrip,
   PhotoPickerSection,
+  compressImage,
 } from "../ui";
 
 /* ──────────── Interactive Study ToC ──────────── */
@@ -861,6 +862,7 @@ export const GamePlayLogModal = ({
   onNewPhotosChange,
   onExistingPhotosChange,
   onRemoveExistingPhoto,
+  onCancelUpload,
   onClose,
   onSubmit,
 }) => {
@@ -927,6 +929,7 @@ export const GamePlayLogModal = ({
             onExistingPhotosChange?.(newExisting);
             onNewPhotosChange?.(newNew);
           }}
+          onCancelUpload={onCancelUpload}
         />
         {error ? <p style={{ margin: 0, fontSize: 12, color: "#f8b4bb" }}>{error}</p> : null}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -2074,6 +2077,7 @@ export const ReadingProgressModal = ({
   onExistingPhotosChange,
   onRemoveExistingPhoto,
   onNewPhotosChange,
+  onCancelUpload,
   onCurrentPagesChange,
   onTotalPagesChange,
   onStartTimeChange,
@@ -2252,6 +2256,7 @@ export const ReadingProgressModal = ({
               onExistingPhotosChange?.(newExisting);
               onNewPhotosChange?.(newNew);
             }}
+            onCancelUpload={onCancelUpload}
           />
 
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -2587,10 +2592,14 @@ const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onC
   const [existingPhotos, setExistingPhotos] = useState([]);
   const [newPhotos, setNewPhotos] = useState([]);
   const [uploadProgress, setUploadProgress] = useState(null);
+  const [uploadError, setUploadError] = useState("");
+  const abortRef = useRef(null);
   const accent = COLORS.study.main;
 
   useEffect(() => {
     if (!activity) return;
+    abortRef.current?.abort();
+    abortRef.current = null;
     setTitleValue(activity.title || "");
     setSummaryValue(activity.summary || "");
     setDateValue(toDateInputValue(activity.occurredAt));
@@ -2598,6 +2607,7 @@ const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onC
     setExistingPhotos(Array.isArray(activity.photos) ? activity.photos : []);
     setNewPhotos([]);
     setUploadProgress(null);
+    setUploadError("");
   }, [activity]);
 
   if (!activity) return null;
@@ -2684,25 +2694,40 @@ const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onC
             setExistingPhotos(newExisting);
             setNewPhotos(newNew);
           }}
+          onCancelUpload={() => { abortRef.current?.abort(); }}
         />
+        {uploadError ? <p style={{ margin: 0, fontSize: 12, color: "#f8b4bb" }}>{uploadError}</p> : null}
 
         {error ? <p style={{ margin: 0, fontSize: 12, color: "#f8b4bb" }}>{error}</p> : null}
 
         <button
           type="button"
           onClick={async () => {
+            setUploadError("");
+            const controller = new AbortController();
+            abortRef.current = controller;
             const uploadedUrls = [];
+            const failedNames = [];
             if (newPhotos.length > 0) setUploadProgress({ current: 0, total: newPhotos.length });
             for (let i = 0; i < newPhotos.length; i++) {
+              if (controller.signal.aborted) break;
               setUploadProgress({ current: i + 1, total: newPhotos.length });
-              const formData = new FormData();
-              formData.append("file", newPhotos[i]);
               try {
-                const res = await fetch("/api/v1/uploads/study-sessions", { method: "POST", body: formData });
+                const compressed = await compressImage(newPhotos[i]);
+                const formData = new FormData();
+                formData.append("file", compressed);
+                const res = await fetch("/api/v1/uploads/study-sessions", { method: "POST", body: formData, signal: controller.signal });
                 if (res.ok) { const data = await res.json(); uploadedUrls.push(data.url); }
-              } catch (_) {}
+                else { failedNames.push(newPhotos[i].name); }
+              } catch (uploadErr) {
+                if (uploadErr.name === "AbortError") break;
+                failedNames.push(newPhotos[i].name);
+              }
             }
             setUploadProgress(null);
+            abortRef.current = null;
+            if (controller.signal.aborted) { setUploadError("업로드가 취소되었습니다."); return; }
+            if (failedNames.length > 0) setUploadError(`업로드 실패: ${failedNames.join(", ")}`);
             onSubmit?.({
               title: titleValue.trim(),
               summary: summaryValue.trim(),
@@ -3258,6 +3283,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
   const [progressNewPhotos, setProgressNewPhotos] = useState([]);
   const [progressExistingPhotos, setProgressExistingPhotos] = useState([]);
   const [progressUploadProgress, setProgressUploadProgress] = useState(null);
+  const readingAbortRef = useRef(null);
   const [noteModalBook, setNoteModalBook] = useState(null);
   const [notePageInput, setNotePageInput] = useState("0");
   const [progressError, setProgressError] = useState("");
@@ -3305,6 +3331,8 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
 
   const closeProgressModal = useCallback(() => {
     if (savingProgress) return;
+    readingAbortRef.current?.abort();
+    readingAbortRef.current = null;
     setProgressModalBook(null);
     setCurrentPageInput("0");
     setTotalPageInput("0");
@@ -3363,6 +3391,8 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
       setProgressError("독서 종료 시각은 시작 시각보다 빠를 수 없습니다.");
       return;
     }
+    const controller = new AbortController();
+    readingAbortRef.current = controller;
     try {
       setSavingProgress(true);
       setProgressError("");
@@ -3375,20 +3405,31 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
         note: noteInput,
         newPhotos: progressNewPhotos,
         existingPhotos: progressExistingPhotos,
+        signal: controller.signal,
         onUploadProgress: (current, total) => setProgressUploadProgress({ current, total }),
+        onUploadFailures: (names) => { if (names.length > 0) setProgressError(`업로드 실패: ${names.join(", ")}`); },
       });
-      setProgressUploadProgress(null);
-      setProgressModalBook(null);
-      setCurrentPageInput("0");
-      setTotalPageInput("0");
-      setStartTimeInput("");
-      setEndTimeInput("");
-      setNoteInput("");
-      setProgressNewPhotos([]);
-      setProgressExistingPhotos([]);
+      readingAbortRef.current = null;
+      if (!controller.signal.aborted) {
+        setProgressUploadProgress(null);
+        setProgressModalBook(null);
+        setCurrentPageInput("0");
+        setTotalPageInput("0");
+        setStartTimeInput("");
+        setEndTimeInput("");
+        setNoteInput("");
+        setProgressNewPhotos([]);
+        setProgressExistingPhotos([]);
+      } else {
+        setProgressUploadProgress(null);
+        setProgressError("업로드가 취소되었습니다.");
+      }
     } catch (error) {
       setProgressUploadProgress(null);
-      setProgressError(error instanceof Error ? error.message : "페이지 업데이트 중 오류가 발생했습니다.");
+      readingAbortRef.current = null;
+      if (error.name !== "AbortError") {
+        setProgressError(error instanceof Error ? error.message : "페이지 업데이트 중 오류가 발생했습니다.");
+      }
     } finally {
       setSavingProgress(false);
     }
@@ -3441,6 +3482,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
           onExistingPhotosChange={setProgressExistingPhotos}
           onRemoveExistingPhoto={handleRemoveExistingReadingPhoto}
           onNewPhotosChange={setProgressNewPhotos}
+          onCancelUpload={() => { readingAbortRef.current?.abort(); }}
           onCurrentPagesChange={(value) => {
             setCurrentPageInput(value);
             setProgressError("");
@@ -3633,6 +3675,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
       onExistingPhotosChange={setProgressExistingPhotos}
       onRemoveExistingPhoto={handleRemoveExistingReadingPhoto}
       onNewPhotosChange={setProgressNewPhotos}
+      onCancelUpload={() => { readingAbortRef.current?.abort(); }}
       onCurrentPagesChange={(value) => {
         setCurrentPageInput(value);
         setProgressError("");
@@ -3682,8 +3725,10 @@ const StudyProgressModal = ({
   currentValue,
   newPhotos,
   uploadProgress,
+  error,
   onValueChange,
   onNewPhotosChange,
+  onCancelUpload,
   onClose,
   onSubmit,
 }) => {
@@ -3745,7 +3790,9 @@ const StudyProgressModal = ({
           onRemoveNew={(i) => onNewPhotosChange?.((newPhotos || []).filter((_, idx) => idx !== i))}
           onAddNew={(files) => onNewPhotosChange?.([...(newPhotos || []), ...files])}
           onReorder={(_newExisting, newNew) => onNewPhotosChange?.(newNew)}
+          onCancelUpload={onCancelUpload}
         />
+        {error ? <p style={{ margin: 0, fontSize: 12, color: "#f8b4bb" }}>{error}</p> : null}
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
           <button type="button" onClick={onClose} disabled={saving} style={{ minHeight: 44, padding: "0 16px", borderRadius: 14, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.textMuted, cursor: saving ? "wait" : "pointer", fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}>취소</button>
@@ -4372,7 +4419,9 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
   const [inputValue, setInputValue] = useState("");
   const [studyNewPhotos, setStudyNewPhotos] = useState([]);
   const [studyUploadProgress, setStudyUploadProgress] = useState(null);
+  const [studyError, setStudyError] = useState("");
   const [saving, setSaving] = useState(false);
+  const studyAbortRef = useRef(null);
 
   useEffect(() => {
     if (initialDetailId) setDetailId(initialDetailId);
@@ -4387,34 +4436,53 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
   };
 
   const closeModal = () => {
+    studyAbortRef.current?.abort();
+    studyAbortRef.current = null;
     setModalItem(null);
     setInputValue("");
     setStudyNewPhotos([]);
     setStudyUploadProgress(null);
+    setStudyError("");
     setSaving(false);
   };
 
   const handleSubmit = async () => {
     if (!modalItem) return;
     setSaving(true);
+    setStudyError("");
+    const controller = new AbortController();
+    studyAbortRef.current = controller;
     try {
       const isPageMode = modalItem.progressMode === "page";
       const val = safeNumber(inputValue);
 
-      // 사진 업로드
+      // 사진 압축 후 업로드
       const uploadedPhotoUrls = [];
+      const failedNames = [];
       if (studyNewPhotos.length > 0) setStudyUploadProgress({ current: 0, total: studyNewPhotos.length });
       for (let i = 0; i < studyNewPhotos.length; i++) {
+        if (controller.signal.aborted) break;
         setStudyUploadProgress({ current: i + 1, total: studyNewPhotos.length });
-        const formData = new FormData();
-        formData.append("file", studyNewPhotos[i]);
-        const res = await fetch("/api/v1/uploads/study-sessions", { method: "POST", body: formData });
-        if (res.ok) {
-          const data = await res.json();
-          uploadedPhotoUrls.push(data.url);
+        try {
+          const compressed = await compressImage(studyNewPhotos[i]);
+          const formData = new FormData();
+          formData.append("file", compressed);
+          const res = await fetch("/api/v1/uploads/study-sessions", { method: "POST", body: formData, signal: controller.signal });
+          if (res.ok) {
+            const data = await res.json();
+            uploadedPhotoUrls.push(data.url);
+          } else {
+            failedNames.push(studyNewPhotos[i].name);
+          }
+        } catch (uploadErr) {
+          if (uploadErr.name === "AbortError") break;
+          failedNames.push(studyNewPhotos[i].name);
         }
       }
       setStudyUploadProgress(null);
+      studyAbortRef.current = null;
+      if (controller.signal.aborted) { setStudyError("업로드가 취소되었습니다."); return; }
+      if (failedNames.length > 0) setStudyError(`업로드 실패: ${failedNames.join(", ")}`);
 
       const payload = {
         category: "study",
@@ -4423,13 +4491,12 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
         summary: "",
         tags: modalItem.tags || [],
         payload: {
-          ...modalItem, // 기존 메타데이터 유지
+          ...modalItem,
           progress_mode: modalItem.progressMode,
           pages_read: isPageMode ? val : (modalItem.pagesRead || 0),
           pages_total: modalItem.pagesTotal,
-          // 챕터 모드인 경우 completed 배열 업데이트 로직 필요 (여기선 단순 개수로 처리하거나 기존 배열 활용)
           completed: !isPageMode
-            ? Array.from({ length: modalItem.chapters?.length || 0 }, (_, i) => i < val)
+            ? Array.from({ length: modalItem.chapters?.length || 0 }, (_, idx) => idx < val)
             : (modalItem.completed || []),
           photos: uploadedPhotoUrls,
         }
@@ -4438,8 +4505,10 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
       await onSave(payload);
       closeModal();
     } catch (err) {
-      console.error("Failed to save study progress", err);
+      if (err.name !== "AbortError") setStudyError("공부 기록 저장 중 오류가 발생했습니다.");
     } finally {
+      setStudyUploadProgress(null);
+      studyAbortRef.current = null;
       setSaving(false);
     }
   };
@@ -4464,8 +4533,10 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
           currentValue={inputValue}
           newPhotos={studyNewPhotos}
           uploadProgress={studyUploadProgress}
+          error={studyError}
           onValueChange={setInputValue}
           onNewPhotosChange={setStudyNewPhotos}
+          onCancelUpload={() => { studyAbortRef.current?.abort(); }}
           onClose={closeModal}
           onSubmit={handleSubmit}
         />
@@ -4558,8 +4629,10 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
         currentValue={inputValue}
         newPhotos={studyNewPhotos}
         uploadProgress={studyUploadProgress}
+        error={studyError}
         onValueChange={setInputValue}
         onNewPhotosChange={setStudyNewPhotos}
+        onCancelUpload={() => { studyAbortRef.current?.abort(); }}
         onClose={closeModal}
         onSubmit={handleSubmit}
       />
@@ -4840,6 +4913,7 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
   const [gameLogUploadProgress, setGameLogUploadProgress] = useState(null);
   const [gameLogSaving, setGameLogSaving] = useState(false);
   const [gameLogError, setGameLogError] = useState("");
+  const gameLogAbortRef = useRef(null);
   const filters = ["전체", ...CULTURE_TYPES];
 
   useEffect(() => {
@@ -4885,6 +4959,8 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
 
   const closeGameLogModal = useCallback(() => {
     if (gameLogSaving) return;
+    gameLogAbortRef.current?.abort();
+    gameLogAbortRef.current = null;
     setGameLogItem(null);
     setGameLogEditId(null);
     setGameLogDuration("");
@@ -4912,21 +4988,35 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
     if (!gameLogItem) return;
     setGameLogSaving(true);
     setGameLogError("");
+    const controller = new AbortController();
+    gameLogAbortRef.current = controller;
     try {
-      // 새로 추가된 사진 업로드
+      // 새로 추가된 사진 압축 후 업로드
       const filesToUpload = gameLogNewPhotos || [];
       const uploadedUrls = [];
+      const failedNames = [];
       if (filesToUpload.length > 0) setGameLogUploadProgress({ current: 0, total: filesToUpload.length });
       for (let i = 0; i < filesToUpload.length; i++) {
+        if (controller.signal.aborted) break;
         setGameLogUploadProgress({ current: i + 1, total: filesToUpload.length });
-        const formData = new FormData();
-        formData.append("file", filesToUpload[i]);
-        const res = await fetch("/api/v1/uploads/game-sessions", { method: "POST", body: formData });
-        if (!res.ok) throw new Error("사진 업로드 실패");
-        const data = await res.json();
-        uploadedUrls.push(data.url);
+        try {
+          const compressed = await compressImage(filesToUpload[i]);
+          const formData = new FormData();
+          formData.append("file", compressed);
+          const res = await fetch("/api/v1/uploads/game-sessions", { method: "POST", body: formData, signal: controller.signal });
+          if (!res.ok) { failedNames.push(filesToUpload[i].name); continue; }
+          const data = await res.json();
+          uploadedUrls.push(data.url);
+        } catch (uploadErr) {
+          if (uploadErr.name === "AbortError") break;
+          failedNames.push(filesToUpload[i].name);
+        }
       }
       setGameLogUploadProgress(null);
+      gameLogAbortRef.current = null;
+      if (controller.signal.aborted) { setGameLogError("업로드가 취소되었습니다."); return; }
+      if (failedNames.length > 0) setGameLogError(`업로드 실패: ${failedNames.join(", ")}`);
+
       const photos = [...(gameLogExistingPhotos || []), ...uploadedUrls];
 
       if (gameLogEditId) {
@@ -4946,8 +5036,12 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
       }
       closeGameLogModal();
     } catch (error) {
-      setGameLogError(error instanceof Error ? error.message : "플레이 기록 저장 실패");
+      if (error.name !== "AbortError") {
+        setGameLogError(error instanceof Error ? error.message : "플레이 기록 저장 실패");
+      }
     } finally {
+      setGameLogUploadProgress(null);
+      gameLogAbortRef.current = null;
       setGameLogSaving(false);
     }
   }, [closeGameLogModal, gameLogDate, gameLogDuration, gameLogItem, gameLogEditId, gameLogNote, gameLogNewPhotos, gameLogExistingPhotos, onAddGameSession, onEditGameSession]);
@@ -4978,6 +5072,7 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
             onNewPhotosChange={setGameLogNewPhotos}
             onExistingPhotosChange={setGameLogExistingPhotos}
             onRemoveExistingPhoto={handleRemoveExistingGamePhoto}
+            onCancelUpload={() => { gameLogAbortRef.current?.abort(); }}
             onClose={closeGameLogModal}
             onSubmit={submitGameLog}
           />

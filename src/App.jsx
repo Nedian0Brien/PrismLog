@@ -23,7 +23,7 @@ import {
   SettingsIcon,
 } from "./features/prismlog/core";
 import { mapReadingLog, mapStudyLog, mapCultureLog } from "./features/prismlog/mappers";
-import { GlassCard, BottomSheet, CategorySelector } from "./features/prismlog/ui";
+import { GlassCard, BottomSheet, CategorySelector, compressImage } from "./features/prismlog/ui";
 import { NewLogForm, ReadingEditSheet, StudyEditSheet, CultureEditSheet } from "./features/prismlog/forms";
 import { DashboardPage, RecordsPage, TimelinePage, SettingsPage } from "./features/prismlog/pages";
 
@@ -357,20 +357,33 @@ export default function PrismLog() {
     const boundedRead = clamp(nextRead, 0, Math.max(nextTotal, 1));
     const nextProgress = nextTotal > 0 ? clamp(Math.round((boundedRead / nextTotal) * 100), 0, 100) : 0;
 
-    // 사진 업로드
+    // 사진 업로드 (압축 → AbortController)
     const newPhotoFiles = isStructuredInput && Array.isArray(progressInput.newPhotos) ? progressInput.newPhotos : [];
     const onUploadProgress = isStructuredInput && typeof progressInput.onUploadProgress === "function" ? progressInput.onUploadProgress : null;
+    const onUploadFailures = isStructuredInput && typeof progressInput.onUploadFailures === "function" ? progressInput.onUploadFailures : null;
+    const signal = isStructuredInput && progressInput.signal instanceof AbortSignal ? progressInput.signal : null;
     const uploadedPhotoUrls = [];
+    const failedNames = [];
     for (let i = 0; i < newPhotoFiles.length; i++) {
+      if (signal?.aborted) break;
       onUploadProgress?.(i + 1, newPhotoFiles.length);
-      const formData = new FormData();
-      formData.append("file", newPhotoFiles[i]);
-      const res = await fetch("/api/v1/uploads/reading-sessions", { method: "POST", body: formData });
-      if (res.ok) {
-        const data = await res.json();
-        uploadedPhotoUrls.push(data.url);
+      try {
+        const compressed = await compressImage(newPhotoFiles[i]);
+        const formData = new FormData();
+        formData.append("file", compressed);
+        const res = await fetch("/api/v1/uploads/reading-sessions", { method: "POST", body: formData, ...(signal ? { signal } : {}) });
+        if (res.ok) {
+          const data = await res.json();
+          uploadedPhotoUrls.push(data.url);
+        } else {
+          failedNames.push(newPhotoFiles[i].name);
+        }
+      } catch (uploadErr) {
+        if (uploadErr.name === "AbortError") break;
+        failedNames.push(newPhotoFiles[i].name);
       }
     }
+    onUploadFailures?.(failedNames);
     const sessionPhotos = [...(isStructuredInput && Array.isArray(progressInput.existingPhotos) ? progressInput.existingPhotos : []), ...uploadedPhotoUrls];
 
     const nextSessions = buildReadingSessionPatch(

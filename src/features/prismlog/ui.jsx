@@ -862,6 +862,34 @@ export const Lightbox = ({ photos, initialIndex = 0, onClose }) => {
   );
 };
 
+/* ──────────── compressImage ──────────── */
+// Canvas 기반 이미지 압축. 500KB 미만이면 원본 반환.
+export const compressImage = (file, { maxDim = 1920, quality = 0.85 } = {}) =>
+  new Promise((resolve) => {
+    if (file.size < 500 * 1024) { resolve(file); return; }
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let { width, height } = img;
+      if (width <= maxDim && height <= maxDim) { resolve(file); return; }
+      const ratio = Math.min(maxDim / width, maxDim / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => resolve(blob ? new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }) : file),
+        "image/jpeg",
+        quality,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(file); };
+    img.src = objectUrl;
+  });
+
 /* ──────────── PhotoPickerSection ──────────── */
 // existingPhotos: string[]  (already-uploaded URLs)
 // newPhotos: File[]         (pending upload)
@@ -870,6 +898,7 @@ export const Lightbox = ({ photos, initialIndex = 0, onClose }) => {
 // onRemoveNew(index): remove file from newPhotos
 // onAddNew(files): append files to newPhotos
 // onReorder(newExistingUrls, newNewFiles): called after drag-drop
+// onCancelUpload(): abort ongoing upload
 export const PhotoPickerSection = ({
   existingPhotos = [],
   newPhotos = [],
@@ -880,6 +909,7 @@ export const PhotoPickerSection = ({
   onRemoveNew,
   onAddNew,
   onReorder,
+  onCancelUpload,
 }) => {
   const inputRef = useRef(null);
   const dragIndexRef = useRef(null);
@@ -928,9 +958,20 @@ export const PhotoPickerSection = ({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>사진 첨부</label>
         {uploadProgress && (
-          <span style={{ fontSize: 11, color: accent, fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>
-            업로드 중 {uploadProgress.current}/{uploadProgress.total}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 11, color: accent, fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>
+              업로드 중 {uploadProgress.current}/{uploadProgress.total}
+            </span>
+            {onCancelUpload && (
+              <button
+                type="button"
+                onClick={onCancelUpload}
+                style={{ fontSize: 10, padding: "2px 7px", borderRadius: 6, border: `1px solid rgba(230,57,70,0.4)`, background: "rgba(230,57,70,0.1)", color: "#f3b7bd", cursor: "pointer", fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}
+              >
+                취소
+              </button>
+            )}
+          </div>
         )}
       </div>
       <input
