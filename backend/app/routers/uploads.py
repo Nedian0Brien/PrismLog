@@ -7,18 +7,28 @@ from app.config import get_settings
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
-ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+# content_type이 None이거나 application/octet-stream인 경우 파일 확장자로 판단
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".heif"}
+
+
+def _is_allowed_image(file: UploadFile) -> bool:
+    ct = (file.content_type or "").lower()
+    if ct.startswith("image/"):
+        return True
+    ext = Path(file.filename or "").suffix.lower()
+    return ext in ALLOWED_EXTENSIONS
 
 
 @router.post("/game-sessions", status_code=201)
 async def upload_game_session_photo(file: UploadFile = File(...)) -> dict:
     settings = get_settings()
 
-    if file.content_type not in ALLOWED_CONTENT_TYPES:
+    if not _is_allowed_image(file):
         raise HTTPException(
             status_code=400,
-            detail="허용되지 않는 파일 형식입니다. JPEG, PNG, WebP, GIF만 허용됩니다.",
+            detail="허용되지 않는 파일 형식입니다. 이미지 파일만 업로드할 수 있습니다.",
         )
 
     contents = await file.read()
