@@ -56,6 +56,7 @@ import {
   RatingStars,
   Lightbox,
   PhotoStrip,
+  PhotoPickerSection,
 } from "../ui";
 
 /* ──────────── Interactive Study ToC ──────────── */
@@ -853,16 +854,17 @@ export const GamePlayLogModal = ({
   note,
   newPhotos,
   existingPhotos,
+  uploadProgress,
   onDurationChange,
   onPlayedDateChange,
   onNoteChange,
   onNewPhotosChange,
+  onExistingPhotosChange,
   onRemoveExistingPhoto,
   onClose,
   onSubmit,
 }) => {
   const accent = COLORS.game.main;
-  const fileInputRef = useRef(null);
 
   const h = Math.floor((Number(durationMinutes) || 0) / 60);
   const m = (Number(durationMinutes) || 0) % 60;
@@ -878,19 +880,6 @@ export const GamePlayLogModal = ({
     const total = (h * 60) + Number(val);
     onDurationChange?.(total > 0 ? String(total) : "");
   };
-
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    onNewPhotosChange?.([...(newPhotos || []), ...files]);
-    e.target.value = "";
-  };
-
-  const removeNewPhoto = (index) => {
-    onNewPhotosChange?.((newPhotos || []).filter((_, i) => i !== index));
-  };
-
-  const allPhotoCount = (existingPhotos?.length || 0) + (newPhotos?.length || 0);
 
   return (
     <ModalShell glow={COLORS.game.glow} width="min(92vw, 430px)" padding={layout.isPhone ? "22px 18px" : "24px 22px"} onBackdropClick={onClose} onClose={onClose}>
@@ -925,57 +914,20 @@ export const GamePlayLogModal = ({
           <label style={{ display: "block", marginBottom: 8, fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>플레이 메모</label>
           <textarea value={note} onChange={(event) => onNoteChange?.(event.target.value)} style={{ width: "100%", minHeight: 116, borderRadius: 16, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.text, padding: "14px", resize: "vertical", boxSizing: "border-box", outline: "none", fontFamily: "'Pretendard', sans-serif", fontSize: 13, lineHeight: 1.6 }} placeholder="오늘 진행한 콘텐츠, 인상 깊은 장면, 플레이 감상을 남겨 보세요." />
         </div>
-        {/* 사진 섹션 */}
-        <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: COLORS.dark.textMuted }}>사진 {allPhotoCount > 0 ? `(${allPhotoCount})` : ""}</label>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={saving}
-              style={{ fontSize: 12, fontWeight: 700, color: accent, background: "none", border: "none", cursor: saving ? "default" : "pointer", padding: 0, fontFamily: "'Pretendard', sans-serif" }}
-            >
-              + 사진 추가
-            </button>
-          </div>
-          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileChange} style={{ display: "none" }} />
-          {allPhotoCount > 0 && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {(existingPhotos || []).map((url, i) => (
-                <div key={`existing-${i}`} style={{ position: "relative", width: 72, height: 72 }}>
-                  <img src={url} alt="" style={{ width: 72, height: 72, borderRadius: 12, objectFit: "cover", border: `1px solid ${accent}33` }} />
-                  <button
-                    type="button"
-                    onClick={() => onRemoveExistingPhoto?.(i)}
-                    disabled={saving}
-                    style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", border: "none", background: "#f8b4bb", color: "#141821", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: 0 }}
-                  >×</button>
-                </div>
-              ))}
-              {(newPhotos || []).map((file, i) => (
-                <div key={`new-${i}`} style={{ position: "relative", width: 72, height: 72 }}>
-                  <img src={URL.createObjectURL(file)} alt="" style={{ width: 72, height: 72, borderRadius: 12, objectFit: "cover", border: `1px solid ${accent}55` }} />
-                  <button
-                    type="button"
-                    onClick={() => removeNewPhoto(i)}
-                    disabled={saving}
-                    style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", border: "none", background: "#f8b4bb", color: "#141821", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: 0 }}
-                  >×</button>
-                </div>
-              ))}
-            </div>
-          )}
-          {allPhotoCount === 0 && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={saving}
-              style={{ width: "100%", minHeight: 64, borderRadius: 16, border: `1.5px dashed ${COLORS.dark.border}`, background: "rgba(255,255,255,0.02)", color: COLORS.dark.textMuted, cursor: saving ? "default" : "pointer", fontSize: 13, fontFamily: "'Pretendard', sans-serif" }}
-            >
-              클릭하여 사진 추가
-            </button>
-          )}
-        </div>
+        <PhotoPickerSection
+          existingPhotos={existingPhotos || []}
+          newPhotos={newPhotos || []}
+          uploadProgress={uploadProgress}
+          disabled={saving}
+          accent={accent}
+          onRemoveExisting={(url) => onRemoveExistingPhoto?.(url)}
+          onRemoveNew={(i) => onNewPhotosChange?.((newPhotos || []).filter((_, idx) => idx !== i))}
+          onAddNew={(files) => onNewPhotosChange?.([...(newPhotos || []), ...files])}
+          onReorder={(newExisting, newNew) => {
+            onExistingPhotosChange?.(newExisting);
+            onNewPhotosChange?.(newNew);
+          }}
+        />
         {error ? <p style={{ margin: 0, fontSize: 12, color: "#f8b4bb" }}>{error}</p> : null}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button type="button" onClick={onClose} disabled={saving} style={{ minHeight: 44, padding: "0 16px", borderRadius: 14, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.textMuted, cursor: saving ? "wait" : "pointer", fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}>취소</button>
@@ -2116,7 +2068,11 @@ export const ReadingProgressModal = ({
   startTime,
   endTime,
   note,
+  existingPhotos,
   newPhotos,
+  uploadProgress,
+  onExistingPhotosChange,
+  onRemoveExistingPhoto,
   onNewPhotosChange,
   onCurrentPagesChange,
   onTotalPagesChange,
@@ -2126,7 +2082,6 @@ export const ReadingProgressModal = ({
   onClose,
   onSubmit,
 }) => {
-  const photoInputRef = useRef(null);
   if (!book) return null;
   const accent = COLORS.reading.progress;
   const parsedTotalPages = Math.max(0, safeNumber(totalPages));
@@ -2284,31 +2239,20 @@ export const ReadingProgressModal = ({
             />
           </div>
 
-          {/* 사진 첨부 */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>사진 첨부</label>
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              style={{ display: "none" }}
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                if (files.length) onNewPhotosChange?.([...(newPhotos || []), ...files]);
-                e.target.value = "";
-              }}
-            />
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              {(newPhotos || []).map((file, i) => (
-                <div key={i} style={{ position: "relative" }}>
-                  <img src={URL.createObjectURL(file)} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", border: `1px solid ${accent}33`, display: "block" }} />
-                  <button type="button" onClick={() => onNewPhotosChange?.((newPhotos || []).filter((_, idx) => idx !== i))} disabled={saving} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#f8b4bb", color: "#141821", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: 0 }}>×</button>
-                </div>
-              ))}
-              <button type="button" onClick={() => photoInputRef.current?.click()} disabled={saving} style={{ width: 64, height: 64, borderRadius: 10, border: `1.5px dashed ${accent}44`, background: "rgba(255,255,255,0.03)", color: COLORS.dark.textMuted, fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-            </div>
-          </div>
+          <PhotoPickerSection
+            existingPhotos={existingPhotos || []}
+            newPhotos={newPhotos || []}
+            uploadProgress={uploadProgress}
+            disabled={saving}
+            accent={accent}
+            onRemoveExisting={(url) => onRemoveExistingPhoto?.(url)}
+            onRemoveNew={(i) => onNewPhotosChange?.((newPhotos || []).filter((_, idx) => idx !== i))}
+            onAddNew={(files) => onNewPhotosChange?.([...(newPhotos || []), ...files])}
+            onReorder={(newExisting, newNew) => {
+              onExistingPhotosChange?.(newExisting);
+              onNewPhotosChange?.(newNew);
+            }}
+          />
 
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button
@@ -2640,6 +2584,9 @@ const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onC
   const [summaryValue, setSummaryValue] = useState("");
   const [dateValue, setDateValue] = useState("");
   const [timeValue, setTimeValue] = useState("");
+  const [existingPhotos, setExistingPhotos] = useState([]);
+  const [newPhotos, setNewPhotos] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const accent = COLORS.study.main;
 
   useEffect(() => {
@@ -2648,6 +2595,9 @@ const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onC
     setSummaryValue(activity.summary || "");
     setDateValue(toDateInputValue(activity.occurredAt));
     setTimeValue(toTimeInputValue(activity.occurredAt));
+    setExistingPhotos(Array.isArray(activity.photos) ? activity.photos : []);
+    setNewPhotos([]);
+    setUploadProgress(null);
   }, [activity]);
 
   if (!activity) return null;
@@ -2715,15 +2665,58 @@ const StudyTimelineEditModal = ({ activity, layout, saving, deleting, error, onC
           <strong style={{ fontSize: 24, color: accent, fontFamily: "'Outfit', sans-serif" }}>{activity.progress}%</strong>
         </div>
 
+        <PhotoPickerSection
+          existingPhotos={existingPhotos}
+          newPhotos={newPhotos}
+          uploadProgress={uploadProgress}
+          disabled={saving || deleting}
+          accent={accent}
+          onRemoveExisting={async (url) => {
+            if (url) {
+              const filename = url.split("/").pop();
+              try { await fetch(`/api/v1/uploads/study-sessions/${filename}`, { method: "DELETE" }); } catch (_) {}
+            }
+            setExistingPhotos((prev) => prev.filter((u) => u !== url));
+          }}
+          onRemoveNew={(i) => setNewPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+          onAddNew={(files) => setNewPhotos((prev) => [...prev, ...files])}
+          onReorder={(newExisting, newNew) => {
+            setExistingPhotos(newExisting);
+            setNewPhotos(newNew);
+          }}
+        />
+
         {error ? <p style={{ margin: 0, fontSize: 12, color: "#f8b4bb" }}>{error}</p> : null}
 
         <button
           type="button"
-          onClick={() => onSubmit?.({
-            title: titleValue.trim(),
-            summary: summaryValue.trim(),
-            occurred_at: combineDateAndTimeInputs(dateValue, timeValue, activity.occurredAt),
-          })}
+          onClick={async () => {
+            const uploadedUrls = [];
+            if (newPhotos.length > 0) setUploadProgress({ current: 0, total: newPhotos.length });
+            for (let i = 0; i < newPhotos.length; i++) {
+              setUploadProgress({ current: i + 1, total: newPhotos.length });
+              const formData = new FormData();
+              formData.append("file", newPhotos[i]);
+              try {
+                const res = await fetch("/api/v1/uploads/study-sessions", { method: "POST", body: formData });
+                if (res.ok) { const data = await res.json(); uploadedUrls.push(data.url); }
+              } catch (_) {}
+            }
+            setUploadProgress(null);
+            onSubmit?.({
+              title: titleValue.trim(),
+              summary: summaryValue.trim(),
+              occurred_at: combineDateAndTimeInputs(dateValue, timeValue, activity.occurredAt),
+              payload: {
+                progress_mode: activity.progressMode,
+                pages_read: activity.pagesRead,
+                pages_total: activity.pagesTotal,
+                completed: activity.completed,
+                toc: activity.toc,
+                photos: [...existingPhotos, ...uploadedUrls],
+              },
+            });
+          }}
           disabled={saving || deleting || !dateValue || !titleValue.trim()}
           style={{
             minHeight: 48,
@@ -3263,6 +3256,8 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
   const [endTimeInput, setEndTimeInput] = useState("");
   const [noteInput, setNoteInput] = useState("");
   const [progressNewPhotos, setProgressNewPhotos] = useState([]);
+  const [progressExistingPhotos, setProgressExistingPhotos] = useState([]);
+  const [progressUploadProgress, setProgressUploadProgress] = useState(null);
   const [noteModalBook, setNoteModalBook] = useState(null);
   const [notePageInput, setNotePageInput] = useState("0");
   const [progressError, setProgressError] = useState("");
@@ -3282,6 +3277,10 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
   }, [initialDetailId]);
 
   const openProgressModal = useCallback((book) => {
+    const todayKey = getDateKey(new Date());
+    const todaySession = Array.isArray(book.readingSessions)
+      ? book.readingSessions.find((s) => (s.endedAt || s.date || "").slice(0, 10) === todayKey)
+      : null;
     const latestSession = Array.isArray(book.readingSessions) && book.readingSessions.length > 0
       ? [...book.readingSessions].sort((a, b) => new Date(b.endedAt || b.date) - new Date(a.endedAt || a.date))[0]
       : null;
@@ -3292,6 +3291,8 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
     setStartTimeInput(toTimeInputValue(latestSession?.startedAt || nowIso));
     setEndTimeInput(toTimeInputValue(latestSession?.endedAt || nowIso));
     setNoteInput(book.review || "");
+    setProgressExistingPhotos(Array.isArray(todaySession?.photos) ? todaySession.photos : []);
+    setProgressNewPhotos([]);
     setProgressError("");
   }, []);
 
@@ -3311,8 +3312,18 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
     setEndTimeInput("");
     setNoteInput("");
     setProgressNewPhotos([]);
+    setProgressExistingPhotos([]);
+    setProgressUploadProgress(null);
     setProgressError("");
   }, [savingProgress]);
+
+  const handleRemoveExistingReadingPhoto = useCallback(async (url) => {
+    if (url) {
+      const filename = url.split("/").pop();
+      try { await fetch(`/api/v1/uploads/reading-sessions/${filename}`, { method: "DELETE" }); } catch (_) {}
+    }
+    setProgressExistingPhotos((prev) => prev.filter((u) => u !== url));
+  }, []);
 
   const closeNoteModal = useCallback(() => {
     if (savingNote) return;
@@ -3355,6 +3366,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
     try {
       setSavingProgress(true);
       setProgressError("");
+      if (progressNewPhotos.length > 0) setProgressUploadProgress({ current: 0, total: progressNewPhotos.length });
       await onAdd(progressModalBook, {
         currentPages,
         totalPages,
@@ -3362,7 +3374,10 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
         endedAt,
         note: noteInput,
         newPhotos: progressNewPhotos,
+        existingPhotos: progressExistingPhotos,
+        onUploadProgress: (current, total) => setProgressUploadProgress({ current, total }),
       });
+      setProgressUploadProgress(null);
       setProgressModalBook(null);
       setCurrentPageInput("0");
       setTotalPageInput("0");
@@ -3370,12 +3385,14 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
       setEndTimeInput("");
       setNoteInput("");
       setProgressNewPhotos([]);
+      setProgressExistingPhotos([]);
     } catch (error) {
+      setProgressUploadProgress(null);
       setProgressError(error instanceof Error ? error.message : "페이지 업데이트 중 오류가 발생했습니다.");
     } finally {
       setSavingProgress(false);
     }
-  }, [currentPageInput, endTimeInput, noteInput, onAdd, progressModalBook, progressNewPhotos, startTimeInput, totalPageInput]);
+  }, [currentPageInput, endTimeInput, noteInput, onAdd, progressExistingPhotos, progressModalBook, progressNewPhotos, startTimeInput, totalPageInput]);
 
   const submitNoteModal = useCallback(async () => {
     if (!noteModalBook) return;
@@ -3418,7 +3435,11 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
           startTime={startTimeInput}
           endTime={endTimeInput}
           note={noteInput}
+          existingPhotos={progressExistingPhotos}
           newPhotos={progressNewPhotos}
+          uploadProgress={progressUploadProgress}
+          onExistingPhotosChange={setProgressExistingPhotos}
+          onRemoveExistingPhoto={handleRemoveExistingReadingPhoto}
           onNewPhotosChange={setProgressNewPhotos}
           onCurrentPagesChange={(value) => {
             setCurrentPageInput(value);
@@ -3606,6 +3627,12 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
       startTime={startTimeInput}
       endTime={endTimeInput}
       note={noteInput}
+      existingPhotos={progressExistingPhotos}
+      newPhotos={progressNewPhotos}
+      uploadProgress={progressUploadProgress}
+      onExistingPhotosChange={setProgressExistingPhotos}
+      onRemoveExistingPhoto={handleRemoveExistingReadingPhoto}
+      onNewPhotosChange={setProgressNewPhotos}
       onCurrentPagesChange={(value) => {
         setCurrentPageInput(value);
         setProgressError("");
@@ -3654,12 +3681,12 @@ const StudyProgressModal = ({
   saving,
   currentValue,
   newPhotos,
+  uploadProgress,
   onValueChange,
   onNewPhotosChange,
   onClose,
   onSubmit,
 }) => {
-  const studyPhotoInputRef = useRef(null);
   if (!item) return null;
   const accent = COLORS.study.main;
   const isPageMode = item.progressMode === "page";
@@ -3708,31 +3735,17 @@ const StudyProgressModal = ({
           )}
         </div>
 
-        {/* 사진 첨부 */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>사진 첨부</label>
-          <input
-            ref={studyPhotoInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const files = Array.from(e.target.files || []);
-              if (files.length) onNewPhotosChange?.([...(newPhotos || []), ...files]);
-              e.target.value = "";
-            }}
-          />
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            {(newPhotos || []).map((file, i) => (
-              <div key={i} style={{ position: "relative" }}>
-                <img src={URL.createObjectURL(file)} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", border: `1px solid ${accent}33`, display: "block" }} />
-                <button type="button" onClick={() => onNewPhotosChange?.((newPhotos || []).filter((_, idx) => idx !== i))} disabled={saving} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#f8b4bb", color: "#141821", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: 0 }}>×</button>
-              </div>
-            ))}
-            <button type="button" onClick={() => studyPhotoInputRef.current?.click()} disabled={saving} style={{ width: 64, height: 64, borderRadius: 10, border: `1.5px dashed ${accent}44`, background: "rgba(255,255,255,0.03)", color: COLORS.dark.textMuted, fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-          </div>
-        </div>
+        <PhotoPickerSection
+          existingPhotos={[]}
+          newPhotos={newPhotos || []}
+          uploadProgress={uploadProgress}
+          disabled={saving}
+          accent={accent}
+          onRemoveExisting={() => {}}
+          onRemoveNew={(i) => onNewPhotosChange?.((newPhotos || []).filter((_, idx) => idx !== i))}
+          onAddNew={(files) => onNewPhotosChange?.([...(newPhotos || []), ...files])}
+          onReorder={(_newExisting, newNew) => onNewPhotosChange?.(newNew)}
+        />
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
           <button type="button" onClick={onClose} disabled={saving} style={{ minHeight: 44, padding: "0 16px", borderRadius: 14, border: `1px solid ${COLORS.dark.border}`, background: "rgba(255,255,255,0.04)", color: COLORS.dark.textMuted, cursor: saving ? "wait" : "pointer", fontWeight: 700, fontFamily: "'Pretendard', sans-serif" }}>취소</button>
@@ -4358,6 +4371,7 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
   const [modalItem, setModalItem] = useState(null);
   const [inputValue, setInputValue] = useState("");
   const [studyNewPhotos, setStudyNewPhotos] = useState([]);
+  const [studyUploadProgress, setStudyUploadProgress] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -4376,6 +4390,7 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
     setModalItem(null);
     setInputValue("");
     setStudyNewPhotos([]);
+    setStudyUploadProgress(null);
     setSaving(false);
   };
 
@@ -4388,15 +4403,18 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
 
       // 사진 업로드
       const uploadedPhotoUrls = [];
-      for (const file of studyNewPhotos) {
+      if (studyNewPhotos.length > 0) setStudyUploadProgress({ current: 0, total: studyNewPhotos.length });
+      for (let i = 0; i < studyNewPhotos.length; i++) {
+        setStudyUploadProgress({ current: i + 1, total: studyNewPhotos.length });
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", studyNewPhotos[i]);
         const res = await fetch("/api/v1/uploads/study-sessions", { method: "POST", body: formData });
         if (res.ok) {
           const data = await res.json();
           uploadedPhotoUrls.push(data.url);
         }
       }
+      setStudyUploadProgress(null);
 
       const payload = {
         category: "study",
@@ -4445,6 +4463,7 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
           saving={saving}
           currentValue={inputValue}
           newPhotos={studyNewPhotos}
+          uploadProgress={studyUploadProgress}
           onValueChange={setInputValue}
           onNewPhotosChange={setStudyNewPhotos}
           onClose={closeModal}
@@ -4537,7 +4556,10 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
         layout={layout}
         saving={saving}
         currentValue={inputValue}
+        newPhotos={studyNewPhotos}
+        uploadProgress={studyUploadProgress}
         onValueChange={setInputValue}
+        onNewPhotosChange={setStudyNewPhotos}
         onClose={closeModal}
         onSubmit={handleSubmit}
       />
@@ -4815,6 +4837,7 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
   const [gameLogNote, setGameLogNote] = useState("");
   const [gameLogNewPhotos, setGameLogNewPhotos] = useState([]);
   const [gameLogExistingPhotos, setGameLogExistingPhotos] = useState([]);
+  const [gameLogUploadProgress, setGameLogUploadProgress] = useState(null);
   const [gameLogSaving, setGameLogSaving] = useState(false);
   const [gameLogError, setGameLogError] = useState("");
   const filters = ["전체", ...CULTURE_TYPES];
@@ -4869,11 +4892,11 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
     setGameLogNote("");
     setGameLogNewPhotos([]);
     setGameLogExistingPhotos([]);
+    setGameLogUploadProgress(null);
     setGameLogError("");
   }, [gameLogSaving]);
 
-  const handleRemoveExistingPhoto = useCallback(async (i) => {
-    const url = gameLogExistingPhotos[i];
+  const handleRemoveExistingGamePhoto = useCallback(async (url) => {
     if (url) {
       const filename = url.split("/").pop();
       try {
@@ -4882,8 +4905,8 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
         // 삭제 실패해도 UI에서는 제거
       }
     }
-    setGameLogExistingPhotos((prev) => prev.filter((_, idx) => idx !== i));
-  }, [gameLogExistingPhotos]);
+    setGameLogExistingPhotos((prev) => prev.filter((u) => u !== url));
+  }, []);
 
   const submitGameLog = useCallback(async () => {
     if (!gameLogItem) return;
@@ -4891,15 +4914,19 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
     setGameLogError("");
     try {
       // 새로 추가된 사진 업로드
+      const filesToUpload = gameLogNewPhotos || [];
       const uploadedUrls = [];
-      for (const file of (gameLogNewPhotos || [])) {
+      if (filesToUpload.length > 0) setGameLogUploadProgress({ current: 0, total: filesToUpload.length });
+      for (let i = 0; i < filesToUpload.length; i++) {
+        setGameLogUploadProgress({ current: i + 1, total: filesToUpload.length });
         const formData = new FormData();
-        formData.append("file", file);
+        formData.append("file", filesToUpload[i]);
         const res = await fetch("/api/v1/uploads/game-sessions", { method: "POST", body: formData });
         if (!res.ok) throw new Error("사진 업로드 실패");
         const data = await res.json();
         uploadedUrls.push(data.url);
       }
+      setGameLogUploadProgress(null);
       const photos = [...(gameLogExistingPhotos || []), ...uploadedUrls];
 
       if (gameLogEditId) {
@@ -4944,11 +4971,13 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
             note={gameLogNote}
             newPhotos={gameLogNewPhotos}
             existingPhotos={gameLogExistingPhotos}
+            uploadProgress={gameLogUploadProgress}
             onDurationChange={setGameLogDuration}
             onPlayedDateChange={setGameLogDate}
             onNoteChange={setGameLogNote}
             onNewPhotosChange={setGameLogNewPhotos}
-            onRemoveExistingPhoto={handleRemoveExistingPhoto}
+            onExistingPhotosChange={setGameLogExistingPhotos}
+            onRemoveExistingPhoto={handleRemoveExistingGamePhoto}
             onClose={closeGameLogModal}
             onSubmit={submitGameLog}
           />

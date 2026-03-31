@@ -359,10 +359,12 @@ export default function PrismLog() {
 
     // 사진 업로드
     const newPhotoFiles = isStructuredInput && Array.isArray(progressInput.newPhotos) ? progressInput.newPhotos : [];
+    const onUploadProgress = isStructuredInput && typeof progressInput.onUploadProgress === "function" ? progressInput.onUploadProgress : null;
     const uploadedPhotoUrls = [];
-    for (const file of newPhotoFiles) {
+    for (let i = 0; i < newPhotoFiles.length; i++) {
+      onUploadProgress?.(i + 1, newPhotoFiles.length);
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", newPhotoFiles[i]);
       const res = await fetch("/api/v1/uploads/reading-sessions", { method: "POST", body: formData });
       if (res.ok) {
         const data = await res.json();

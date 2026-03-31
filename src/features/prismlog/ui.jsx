@@ -862,6 +862,134 @@ export const Lightbox = ({ photos, initialIndex = 0, onClose }) => {
   );
 };
 
+/* ──────────── PhotoPickerSection ──────────── */
+// existingPhotos: string[]  (already-uploaded URLs)
+// newPhotos: File[]         (pending upload)
+// uploadProgress: { current, total } | null
+// onRemoveExisting(url): caller should DELETE from server then remove from state
+// onRemoveNew(index): remove file from newPhotos
+// onAddNew(files): append files to newPhotos
+// onReorder(newExistingUrls, newNewFiles): called after drag-drop
+export const PhotoPickerSection = ({
+  existingPhotos = [],
+  newPhotos = [],
+  uploadProgress = null,
+  disabled = false,
+  accent,
+  onRemoveExisting,
+  onRemoveNew,
+  onAddNew,
+  onReorder,
+}) => {
+  const inputRef = useRef(null);
+  const dragIndexRef = useRef(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+
+  const combined = [
+    ...existingPhotos.map((url, i) => ({ type: "existing", data: url, key: `e-${i}-${url}` })),
+    ...newPhotos.map((file, i) => ({ type: "new", data: file, key: `n-${i}-${file.name}` })),
+  ];
+
+  const getSrc = (item) =>
+    item.type === "existing" ? item.data : URL.createObjectURL(item.data);
+
+  const handleDragStart = (e, index) => {
+    dragIndexRef.current = index;
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    const from = dragIndexRef.current;
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
+    if (from === null || from === dropIndex) return;
+    const next = [...combined];
+    const [moved] = next.splice(from, 1);
+    next.splice(dropIndex, 0, moved);
+    const newExisting = next.filter((p) => p.type === "existing").map((p) => p.data);
+    const newNew = next.filter((p) => p.type === "new").map((p) => p.data);
+    onReorder?.(newExisting, newNew);
+  };
+
+  const handleDragEnd = () => {
+    dragIndexRef.current = null;
+    setDragOverIndex(null);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>사진 첨부</label>
+        {uploadProgress && (
+          <span style={{ fontSize: 11, color: accent, fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>
+            업로드 중 {uploadProgress.current}/{uploadProgress.total}
+          </span>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length) onAddNew?.(files);
+          e.target.value = "";
+        }}
+      />
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        {combined.map((item, i) => {
+          const src = getSrc(item);
+          const isDragOver = dragOverIndex === i;
+          return (
+            <div
+              key={item.key}
+              draggable={!disabled}
+              onDragStart={(e) => handleDragStart(e, i)}
+              onDragOver={(e) => handleDragOver(e, i)}
+              onDrop={(e) => handleDrop(e, i)}
+              onDragEnd={handleDragEnd}
+              style={{
+                position: "relative",
+                cursor: disabled ? "default" : "grab",
+                outline: isDragOver ? `2px solid ${accent}` : "none",
+                borderRadius: 10,
+                transition: "outline 0.1s",
+              }}
+            >
+              <img
+                src={src}
+                alt=""
+                style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", border: `1px solid ${accent}33`, display: "block", pointerEvents: "none" }}
+              />
+              <button
+                type="button"
+                onClick={() => item.type === "existing" ? onRemoveExisting?.(item.data) : onRemoveNew?.(i - existingPhotos.length)}
+                disabled={disabled}
+                style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#f8b4bb", color: "#141821", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: 0 }}
+              >×</button>
+            </div>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={disabled}
+          style={{ width: 64, height: 64, borderRadius: 10, border: `1.5px dashed ${accent}44`, background: "rgba(255,255,255,0.03)", color: COLORS.dark.textMuted, fontSize: 22, cursor: disabled ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+        >+</button>
+      </div>
+    </div>
+  );
+};
+
 /* ──────────── PhotoStrip ──────────── */
 export const PhotoStrip = ({ photos, accent, onPhotoClick }) => {
   const [ratios, setRatios] = useState({});
