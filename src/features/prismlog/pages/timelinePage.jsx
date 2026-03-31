@@ -15,38 +15,12 @@ import {
   ClockIcon,
   CalendarIcon,
 } from "../core";
-import { Badge, GlassCard, StatusBadge, TimelineProgressBar } from "../ui";
-
-const PhotoStrip = ({ photos, accent }) => {
-  const [ratios, setRatios] = useState({});
-  if (!photos?.length) return null;
-
-  const H = 160;
-  const onLoad = (url, e) => {
-    const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
-    if (w && h) setRatios((prev) => ({ ...prev, [url]: w / h }));
-  };
-
-  return (
-    <div
-      style={{ marginTop: 10, display: "flex", gap: 6, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", scrollSnapType: "x proximity", paddingBottom: 2 }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {photos.map((url, i) => {
-        const r = ratios[url] || 4 / 3;
-        return (
-          <div key={i} style={{ flexShrink: 0, height: H, width: H * r, borderRadius: 12, overflow: "hidden", border: `1px solid ${accent}28`, scrollSnapAlign: "start" }}>
-            <img src={url} alt="" onLoad={(e) => onLoad(url, e)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          </div>
-        );
-      })}
-    </div>
-  );
-};
+import { Badge, GlassCard, StatusBadge, TimelineProgressBar, Lightbox, PhotoStrip } from "../ui";
 
 export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
   const [view, setView] = useState("feed");
   const [visibleKeys, setVisibleKeys] = useState({});
+  const [lightbox, setLightbox] = useState(null); // { photos, index }
   const itemRefs = useRef({});
 
   const groups = useMemo(() => {
@@ -569,7 +543,11 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
         watchedEpisodesToday,
         status: payload.status || (type === "게임" ? "플레이 중" : type === "시리즈" || type === "영화" ? "시청 중" : ""),
         poster: entityMetadata.cover || entityMetadata.poster || entityMetadata.image_url || entityMetadata.imageUrl || payload.cover || payload.poster || payload.image_url || payload.imageUrl || null,
-        photos: (log.is_session && Array.isArray(payload.current_session?.photos)) ? payload.current_session.photos : [],
+        photos: log.category === "study"
+          ? (Array.isArray(payload.photos) ? payload.photos : [])
+          : (log.is_session && Array.isArray(payload.current_session?.photos))
+            ? payload.current_session.photos
+            : [],
       };
 
       const existing = acc.find((group) => group.key === key);
@@ -789,6 +767,13 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {lightbox && (
+        <Lightbox
+          photos={lightbox.photos}
+          initialIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
+      )}
       <div style={{ display: "flex", flexDirection: layout.isPhone ? "column" : "row", justifyContent: "space-between", alignItems: layout.isPhone ? "flex-start" : "flex-end", gap: 10 }}>
         <div>
           <p style={{ margin: "0 0 6px", fontSize: 12, letterSpacing: 1.2, color: COLORS.dark.textMuted, textTransform: "uppercase", fontFamily: "'Outfit', sans-serif" }}>Timeline</p>
@@ -936,8 +921,8 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                 )}
                               </div>
                             </div>
-                            {isGame && item.photos?.length > 0 && (
-                              <PhotoStrip photos={item.photos} accent={item.accent} />
+                            {item.photos?.length > 0 && (
+                              <PhotoStrip photos={item.photos} accent={item.accent} onPhotoClick={(i) => setLightbox({ photos: item.photos, index: i })} />
                             )}
                           </>
                         ) : (
@@ -952,7 +937,7 @@ export const TimelinePage = ({ logs, loading, layout, onOpenDetail }) => {
                                   <p style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.7, color: COLORS.dark.textMuted, whiteSpace: "pre-wrap" }}>{item.snippet}</p>
                                 )}
                                 {item.photos?.length > 0 && (
-                                  <PhotoStrip photos={item.photos} accent={item.accent} />
+                                  <PhotoStrip photos={item.photos} accent={item.accent} onPhotoClick={(i) => setLightbox({ photos: item.photos, index: i })} />
                                 )}
                                 </>
                               ) : (

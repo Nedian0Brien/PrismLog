@@ -54,6 +54,8 @@ import {
   Badge,
   StatusBadge,
   RatingStars,
+  Lightbox,
+  PhotoStrip,
 } from "../ui";
 
 /* ──────────── Interactive Study ToC ──────────── */
@@ -2114,6 +2116,8 @@ export const ReadingProgressModal = ({
   startTime,
   endTime,
   note,
+  newPhotos,
+  onNewPhotosChange,
   onCurrentPagesChange,
   onTotalPagesChange,
   onStartTimeChange,
@@ -2122,6 +2126,7 @@ export const ReadingProgressModal = ({
   onClose,
   onSubmit,
 }) => {
+  const photoInputRef = useRef(null);
   if (!book) return null;
   const accent = COLORS.reading.progress;
   const parsedTotalPages = Math.max(0, safeNumber(totalPages));
@@ -2277,6 +2282,32 @@ export const ReadingProgressModal = ({
                 fontFamily: "'Pretendard', sans-serif",
               }}
             />
+          </div>
+
+          {/* 사진 첨부 */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>사진 첨부</label>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length) onNewPhotosChange?.([...(newPhotos || []), ...files]);
+                e.target.value = "";
+              }}
+            />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {(newPhotos || []).map((file, i) => (
+                <div key={i} style={{ position: "relative" }}>
+                  <img src={URL.createObjectURL(file)} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", border: `1px solid ${accent}33`, display: "block" }} />
+                  <button type="button" onClick={() => onNewPhotosChange?.((newPhotos || []).filter((_, idx) => idx !== i))} disabled={saving} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#f8b4bb", color: "#141821", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: 0 }}>×</button>
+                </div>
+              ))}
+              <button type="button" onClick={() => photoInputRef.current?.click()} disabled={saving} style={{ width: 64, height: 64, borderRadius: 10, border: `1.5px dashed ${accent}44`, background: "rgba(255,255,255,0.03)", color: COLORS.dark.textMuted, fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+            </div>
           </div>
 
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -2438,6 +2469,7 @@ export const groupStudiesByEntity = (studies) => {
       completedCount: countStudyCompletedItems(study),
       totalCount: countStudyTotalItems(study),
       occurredAt: activityAt,
+      photos: Array.isArray(study.photos) ? study.photos : [],
     });
 
     if (new Date(activityAt).getTime() < new Date(current.startedAt).getTime()) {
@@ -2734,6 +2766,7 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
   const tags = Array.isArray(book.tags) ? book.tags : [];
   const publishedLabel = book.publishedDate ? formatMonthDayLabel(book.publishedDate) : "";
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [lightbox, setLightbox] = useState(null);
   const [visibleTimelineKeys, setVisibleTimelineKeys] = useState({});
   const timelineEntryRefs = useRef({});
   const trendPoints = useMemo(() => buildReadingTrendPoints(book), [book]);
@@ -2773,6 +2806,7 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, animation: "fadeIn 0.32s ease-out" }}>
+      {lightbox && <Lightbox photos={lightbox.photos} initialIndex={lightbox.index} onClose={() => setLightbox(null)} />}
       <DetailTopBar
         accent={accent}
         backLabel="독서 목록"
@@ -3025,6 +3059,9 @@ export const ReadingDetailPage = ({ book, layout, onBack, onEdit, onAdd, onAddNo
                                 </p>
                               </div>
                             </div>
+                            {group.session.photos?.length > 0 && (
+                              <PhotoStrip photos={group.session.photos} accent={accent} onPhotoClick={(i) => setLightbox({ photos: group.session.photos, index: i })} />
+                            )}
                           </div>
                         )}
                         {group.notes.length > 0 && (
@@ -3225,6 +3262,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
   const [startTimeInput, setStartTimeInput] = useState("");
   const [endTimeInput, setEndTimeInput] = useState("");
   const [noteInput, setNoteInput] = useState("");
+  const [progressNewPhotos, setProgressNewPhotos] = useState([]);
   const [noteModalBook, setNoteModalBook] = useState(null);
   const [notePageInput, setNotePageInput] = useState("0");
   const [progressError, setProgressError] = useState("");
@@ -3272,6 +3310,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
     setStartTimeInput("");
     setEndTimeInput("");
     setNoteInput("");
+    setProgressNewPhotos([]);
     setProgressError("");
   }, [savingProgress]);
 
@@ -3322,6 +3361,7 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
         startedAt,
         endedAt,
         note: noteInput,
+        newPhotos: progressNewPhotos,
       });
       setProgressModalBook(null);
       setCurrentPageInput("0");
@@ -3329,12 +3369,13 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
       setStartTimeInput("");
       setEndTimeInput("");
       setNoteInput("");
+      setProgressNewPhotos([]);
     } catch (error) {
       setProgressError(error instanceof Error ? error.message : "페이지 업데이트 중 오류가 발생했습니다.");
     } finally {
       setSavingProgress(false);
     }
-  }, [currentPageInput, endTimeInput, noteInput, onAdd, progressModalBook, startTimeInput, totalPageInput]);
+  }, [currentPageInput, endTimeInput, noteInput, onAdd, progressModalBook, progressNewPhotos, startTimeInput, totalPageInput]);
 
   const submitNoteModal = useCallback(async () => {
     if (!noteModalBook) return;
@@ -3377,6 +3418,8 @@ export const ReadingPage = ({ books, loading, onEdit, onAdd, onAddNote, layout, 
           startTime={startTimeInput}
           endTime={endTimeInput}
           note={noteInput}
+          newPhotos={progressNewPhotos}
+          onNewPhotosChange={setProgressNewPhotos}
           onCurrentPagesChange={(value) => {
             setCurrentPageInput(value);
             setProgressError("");
@@ -3610,10 +3653,13 @@ const StudyProgressModal = ({
   layout,
   saving,
   currentValue,
+  newPhotos,
   onValueChange,
+  onNewPhotosChange,
   onClose,
   onSubmit,
 }) => {
+  const studyPhotoInputRef = useRef(null);
   if (!item) return null;
   const accent = COLORS.study.main;
   const isPageMode = item.progressMode === "page";
@@ -3660,6 +3706,32 @@ const StudyProgressModal = ({
               전체 {total}{isPageMode ? "p" : "개"} 중 현재 {currentValue}{isPageMode ? "p" : "개"}
             </p>
           )}
+        </div>
+
+        {/* 사진 첨부 */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <label style={{ fontSize: 12, color: COLORS.dark.textMuted, fontWeight: 700 }}>사진 첨부</label>
+          <input
+            ref={studyPhotoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              if (files.length) onNewPhotosChange?.([...(newPhotos || []), ...files]);
+              e.target.value = "";
+            }}
+          />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            {(newPhotos || []).map((file, i) => (
+              <div key={i} style={{ position: "relative" }}>
+                <img src={URL.createObjectURL(file)} alt="" style={{ width: 64, height: 64, borderRadius: 10, objectFit: "cover", border: `1px solid ${accent}33`, display: "block" }} />
+                <button type="button" onClick={() => onNewPhotosChange?.((newPhotos || []).filter((_, idx) => idx !== i))} disabled={saving} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", border: "none", background: "#f8b4bb", color: "#141821", fontSize: 11, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: 0 }}>×</button>
+              </div>
+            ))}
+            <button type="button" onClick={() => studyPhotoInputRef.current?.click()} disabled={saving} style={{ width: 64, height: 64, borderRadius: 10, border: `1.5px dashed ${accent}44`, background: "rgba(255,255,255,0.03)", color: COLORS.dark.textMuted, fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
@@ -3799,6 +3871,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
   const trendPoints = useMemo(() => buildStudyTrendPoints(item), [item]);
   const [visibleTimelineKeys, setVisibleTimelineKeys] = useState({});
   const [editingActivity, setEditingActivity] = useState(null);
+  const [lightbox, setLightbox] = useState(null);
   const [isTocEditorOpen, setIsTocEditorOpen] = useState(false);
   const [activitySaving, setActivitySaving] = useState(false);
   const [activityDeleting, setActivityDeleting] = useState(false);
@@ -3846,6 +3919,7 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: 40 }}>
+      {lightbox && <Lightbox photos={lightbox.photos} initialIndex={lightbox.index} onClose={() => setLightbox(null)} />}
       <DetailTopBar
         accent={accent}
         backLabel="공부 목록"
@@ -4140,6 +4214,9 @@ const StudyDetailPage = ({ item, layout, onBack, onEdit, onAdd, onUpdateActivity
                                     </p>
                                   </div>
                                 ) : null}
+                                {activity.photos?.length > 0 && (
+                                  <PhotoStrip photos={activity.photos} accent={accent} onPhotoClick={(i) => setLightbox({ photos: activity.photos, index: i })} />
+                                )}
                               </div>
                             </button>
                           );
@@ -4280,6 +4357,7 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
   // 진행도 업데이트 모달 상태
   const [modalItem, setModalItem] = useState(null);
   const [inputValue, setInputValue] = useState("");
+  const [studyNewPhotos, setStudyNewPhotos] = useState([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -4297,6 +4375,7 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
   const closeModal = () => {
     setModalItem(null);
     setInputValue("");
+    setStudyNewPhotos([]);
     setSaving(false);
   };
 
@@ -4306,7 +4385,19 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
     try {
       const isPageMode = modalItem.progressMode === "page";
       const val = safeNumber(inputValue);
-      
+
+      // 사진 업로드
+      const uploadedPhotoUrls = [];
+      for (const file of studyNewPhotos) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/v1/uploads/study-sessions", { method: "POST", body: formData });
+        if (res.ok) {
+          const data = await res.json();
+          uploadedPhotoUrls.push(data.url);
+        }
+      }
+
       const payload = {
         category: "study",
         entity_id: modalItem.entityId,
@@ -4319,9 +4410,10 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
           pages_read: isPageMode ? val : (modalItem.pagesRead || 0),
           pages_total: modalItem.pagesTotal,
           // 챕터 모드인 경우 completed 배열 업데이트 로직 필요 (여기선 단순 개수로 처리하거나 기존 배열 활용)
-          completed: !isPageMode 
+          completed: !isPageMode
             ? Array.from({ length: modalItem.chapters?.length || 0 }, (_, i) => i < val)
             : (modalItem.completed || []),
+          photos: uploadedPhotoUrls,
         }
       };
 
@@ -4352,7 +4444,9 @@ export const StudyPage = ({ studies, loading, onEdit, onSave, onUpdate, onUpdate
           layout={layout}
           saving={saving}
           currentValue={inputValue}
+          newPhotos={studyNewPhotos}
           onValueChange={setInputValue}
+          onNewPhotosChange={setStudyNewPhotos}
           onClose={closeModal}
           onSubmit={handleSubmit}
         />
@@ -4533,6 +4627,7 @@ const MediaDetailPage = ({ item, layout, onBack, onEdit }) => {
 
 export const GameDetailPage = ({ item, layout, onBack, onEdit, onAddSession, onEditSession }) => {
   const accent = COLORS.game.main;
+  const [lightbox, setLightbox] = useState(null);
   const sessions = useMemo(
     () => (Array.isArray(item.gameSessions) ? [...item.gameSessions].sort((a, b) => new Date(b.playedAt || b.played_at || b.date) - new Date(a.playedAt || a.played_at || a.date)) : []),
     [item.gameSessions]
@@ -4563,6 +4658,7 @@ export const GameDetailPage = ({ item, layout, onBack, onEdit, onAddSession, onE
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18, paddingBottom: 40 }}>
+      {lightbox && <Lightbox photos={lightbox.photos} initialIndex={lightbox.index} onClose={() => setLightbox(null)} />}
       <DetailTopBar accent={accent} backLabel="게임 목록" onBack={onBack} onEdit={() => onEdit(item)} primaryAction={actionButton} />
 
       <FeatureDetailHeroShell
@@ -4698,13 +4794,7 @@ export const GameDetailPage = ({ item, layout, onBack, onEdit, onAddSession, onE
               </div>
               {session.note ? <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: COLORS.dark.text }}>{session.note}</p> : null}
               {session.photos?.length > 0 && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-                  {session.photos.map((url, i) => (
-                    <a key={i} href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                      <img src={url} alt="" style={{ width: 80, height: 80, borderRadius: 10, objectFit: "cover", border: `1px solid ${accent}33`, display: "block" }} />
-                    </a>
-                  ))}
-                </div>
+                <PhotoStrip photos={session.photos} accent={accent} onPhotoClick={(i) => setLightbox({ photos: session.photos, index: i })} />
               )}
             </div>
           ))}
@@ -4782,6 +4872,19 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
     setGameLogError("");
   }, [gameLogSaving]);
 
+  const handleRemoveExistingPhoto = useCallback(async (i) => {
+    const url = gameLogExistingPhotos[i];
+    if (url) {
+      const filename = url.split("/").pop();
+      try {
+        await fetch(`/api/v1/uploads/game-sessions/${filename}`, { method: "DELETE" });
+      } catch (_) {
+        // 삭제 실패해도 UI에서는 제거
+      }
+    }
+    setGameLogExistingPhotos((prev) => prev.filter((_, idx) => idx !== i));
+  }, [gameLogExistingPhotos]);
+
   const submitGameLog = useCallback(async () => {
     if (!gameLogItem) return;
     setGameLogSaving(true);
@@ -4845,7 +4948,7 @@ export const CulturePage = ({ items, loading, onEdit, onUpdateSeriesProgress, on
             onPlayedDateChange={setGameLogDate}
             onNoteChange={setGameLogNote}
             onNewPhotosChange={setGameLogNewPhotos}
-            onRemoveExistingPhoto={(i) => setGameLogExistingPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+            onRemoveExistingPhoto={handleRemoveExistingPhoto}
             onClose={closeGameLogModal}
             onSubmit={submitGameLog}
           />

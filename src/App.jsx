@@ -70,6 +70,7 @@ const serializeReadingSession = (session) => ({
   started_at: session?.started_at || session?.startedAt || session?.date || null,
   ended_at: session?.ended_at || session?.endedAt || session?.date || null,
   duration_minutes: safeNumber(session?.duration_minutes ?? session?.durationMinutes, 0),
+  photos: Array.isArray(session?.photos) ? session.photos : [],
 });
 
 const serializeReadingNote = (note) => ({
@@ -307,6 +308,7 @@ export default function PrismLog() {
     const durationMinutes = startedTime > 0 && endedTime >= startedTime
       ? Math.max(0, Math.round((endedTime - startedTime) / 60000))
       : 0;
+    const nextPhotos = Array.isArray(book._nextReadingSessionPhotos) ? book._nextReadingSessionPhotos : (Array.isArray(existing?.photos) ? existing.photos : []);
     const nextSession = {
       id: existing?.id || `reading-session-${todayKey}`,
       date: endedAt,
@@ -320,6 +322,7 @@ export default function PrismLog() {
       started_at: startedAt,
       ended_at: endedAt,
       duration_minutes: durationMinutes,
+      photos: nextPhotos,
     };
     if (existingIndex >= 0) sessions.splice(existingIndex, 1, nextSession);
     else sessions.unshift(nextSession);
@@ -353,12 +356,28 @@ export default function PrismLog() {
 
     const boundedRead = clamp(nextRead, 0, Math.max(nextTotal, 1));
     const nextProgress = nextTotal > 0 ? clamp(Math.round((boundedRead / nextTotal) * 100), 0, 100) : 0;
+
+    // 사진 업로드
+    const newPhotoFiles = isStructuredInput && Array.isArray(progressInput.newPhotos) ? progressInput.newPhotos : [];
+    const uploadedPhotoUrls = [];
+    for (const file of newPhotoFiles) {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/v1/uploads/reading-sessions", { method: "POST", body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        uploadedPhotoUrls.push(data.url);
+      }
+    }
+    const sessionPhotos = [...(isStructuredInput && Array.isArray(progressInput.existingPhotos) ? progressInput.existingPhotos : []), ...uploadedPhotoUrls];
+
     const nextSessions = buildReadingSessionPatch(
       {
         ...book,
         _nextReadingSessionTiming: isStructuredInput
           ? { startedAt: progressInput.startedAt, endedAt: progressInput.endedAt }
           : null,
+        _nextReadingSessionPhotos: sessionPhotos,
       },
       boundedRead,
       nextTotal,

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -795,6 +795,101 @@ export const CategorySelector = ({ selected, onSelect, layout }) => {
           <span style={{ fontSize: 12, fontWeight: 600, color: selected === c.key ? c.color : COLORS.dark.textMuted }}>{c.label}</span>
         </button>
       ))}
+    </div>
+  );
+};
+
+/* ──────────── Lightbox ──────────── */
+export const Lightbox = ({ photos, initialIndex = 0, onClose }) => {
+  const [idx, setIdx] = useState(initialIndex);
+
+  const prev = useCallback(() => setIdx((i) => (i - 1 + photos.length) % photos.length), [photos.length]);
+  const next = useCallback(() => setIdx((i) => (i + 1) % photos.length), [photos.length]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose, prev, next]);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.92)", display: "flex", alignItems: "center", justifyContent: "center" }}
+    >
+      <img
+        src={photos[idx]}
+        alt=""
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: 12, userSelect: "none", display: "block" }}
+      />
+      <button
+        onClick={onClose}
+        style={{ position: "fixed", top: 16, right: 16, background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", fontSize: 22, width: 40, height: 40, borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1 }}
+      >×</button>
+      {photos.length > 1 && (
+        <>
+          <button
+            onClick={(e) => { e.stopPropagation(); prev(); }}
+            style={{ position: "fixed", left: 16, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", fontSize: 22, width: 44, height: 44, borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >‹</button>
+          <button
+            onClick={(e) => { e.stopPropagation(); next(); }}
+            style={{ position: "fixed", right: 16, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", fontSize: 22, width: 44, height: 44, borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >›</button>
+        </>
+      )}
+      {photos.length > 1 && (
+        <div style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 6 }}>
+          {photos.map((_, i) => (
+            <div
+              key={i}
+              style={{ width: i === idx ? 16 : 6, height: 6, borderRadius: 3, background: i === idx ? "#fff" : "rgba(255,255,255,0.4)", transition: "all 0.2s" }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ──────────── PhotoStrip ──────────── */
+export const PhotoStrip = ({ photos, accent, onPhotoClick }) => {
+  const [ratios, setRatios] = useState({});
+  if (!photos?.length) return null;
+
+  const H = 160;
+  const onLoad = (url, e) => {
+    const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+    if (w && h) setRatios((prev) => ({ ...prev, [url]: w / h }));
+  };
+
+  return (
+    <div
+      style={{ marginTop: 10, display: "flex", gap: 6, overflowX: "auto", overflowY: "hidden", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", scrollSnapType: "x proximity", paddingBottom: 2 }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {photos.map((url, i) => {
+        const r = ratios[url] || 4 / 3;
+        return (
+          <div
+            key={i}
+            onClick={() => onPhotoClick?.(i)}
+            style={{ flexShrink: 0, height: H, width: H * r, borderRadius: 12, overflow: "hidden", border: `1px solid ${accent}28`, scrollSnapAlign: "start", cursor: onPhotoClick ? "zoom-in" : "default" }}
+          >
+            <img src={url} alt="" onLoad={(e) => onLoad(url, e)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          </div>
+        );
+      })}
     </div>
   );
 };

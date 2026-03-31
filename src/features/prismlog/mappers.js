@@ -64,6 +64,7 @@ export const mapLogToUiItem = (log) => {
     progressDelta: safeNumber(s.progress_delta || s.progressDelta),
     durationMinutes: safeNumber(s.duration_minutes || s.durationMinutes),
     endedAt: s.ended_at || s.endedAt || s.date,
+    photos: Array.isArray(s.photos) ? s.photos : [],
   }));
 
   // 만약 세션이 하나도 없는데 진행도가 있다면, 최초 생성 시점의 가상 세션 추가 (소급 적용 및 타임라인 노출용)
