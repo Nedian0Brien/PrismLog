@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     igdb_client_id: str = ""
     igdb_client_secret: str = ""
     upload_dir: str = "/home/ubuntu/project/PrismLog/uploads"
+    google_drive_service_account_file: str = ""
+    google_drive_backup_folder_id: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

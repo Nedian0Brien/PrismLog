@@ -106,6 +106,7 @@ export default function PrismLog() {
   const [editingStudy, setEditingStudy] = useState(null);
   const [editingCulture, setEditingCulture] = useState(null);
   const [recordsDetailTarget, setRecordsDetailTarget] = useState(null);
+  const [backupState, setBackupState] = useState({ saving: false, error: "", result: null });
   const layout = useResponsiveLayout();
   const mainScrollRef = useRef(null);
   const isAnySheetOpen = sheetOpen || Boolean(editingReading) || Boolean(editingStudy) || Boolean(editingCulture);
@@ -283,6 +284,36 @@ export default function PrismLog() {
     setGlowEffect(COLORS.culture.main);
     setTimeout(() => setGlowEffect(null), 1200);
   }, [deleteLog]);
+
+  const createGoogleDriveBackup = useCallback(async () => {
+    setBackupState((current) => ({ ...current, saving: true, error: "" }));
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/backups/google-drive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: DEMO_USER_ID }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.detail || `HTTP ${response.status}`);
+      setBackupState({
+        saving: false,
+        error: "",
+        result: {
+          fileId: data.file_id,
+          fileName: data.file_name,
+          webViewLink: data.web_view_link,
+          counts: data.counts || {},
+          createdAt: data.created_at,
+        },
+      });
+    } catch (error) {
+      setBackupState((current) => ({
+        ...current,
+        saving: false,
+        error: error instanceof Error ? error.message : "백업에 실패했습니다",
+      }));
+    }
+  }, []);
 
   const openReadingEdit = useCallback((book) => {
     setEditingReading(book);
@@ -699,7 +730,14 @@ export default function PrismLog() {
         layout={layout}
       />;
       case "timeline": return <TimelinePage logs={logs} loading={loading} layout={layout} onOpenDetail={openTimelineRecordDetail} />;
-      case "settings": return <SettingsPage readingLogs={readingLogs} studyLogs={studyLogs} cultureLogs={cultureLogs} layout={layout} />;
+      case "settings": return <SettingsPage
+        readingLogs={readingLogs}
+        studyLogs={studyLogs}
+        cultureLogs={cultureLogs}
+        layout={layout}
+        backupState={backupState}
+        onCreateBackup={createGoogleDriveBackup}
+      />;
       default: return <DashboardPage
         logs={logs}
         stats={stats}

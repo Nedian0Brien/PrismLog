@@ -2,12 +2,15 @@ import { useMemo } from "react";
 import { COLORS } from "../core";
 import { GlassCard } from "../ui";
 
-export const SettingsPage = ({ readingLogs, studyLogs, cultureLogs, layout }) => {
+export const SettingsPage = ({ readingLogs, studyLogs, cultureLogs, layout, backupState, onCreateBackup }) => {
   const cultureBreakdown = useMemo(() => ({
     movie: cultureLogs.filter((item) => item.type === "영화").length,
     series: cultureLogs.filter((item) => item.type === "시리즈").length,
     game: cultureLogs.filter((item) => item.type === "게임").length,
   }), [cultureLogs]);
+  const backupResult = backupState?.result || null;
+  const backupFileName = backupResult?.fileName || backupResult?.file_name || "";
+  const backupCounts = backupResult?.counts || {};
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -17,6 +20,42 @@ export const SettingsPage = ({ readingLogs, studyLogs, cultureLogs, layout }) =>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: layout.isDesktop ? "repeat(2, minmax(0, 1fr))" : "1fr", gap: 14 }}>
+        <GlassCard>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Google Drive 백업</h3>
+              <p style={{ margin: 0, color: COLORS.dark.textMuted, fontSize: 13, lineHeight: 1.5 }}>현재 기록 데이터를 Drive JSON 백업으로 저장합니다.</p>
+            </div>
+            <button
+              type="button"
+              onClick={onCreateBackup}
+              disabled={!onCreateBackup || backupState?.saving}
+              style={{
+                minHeight: 40,
+                padding: "0 14px",
+                borderRadius: 12,
+                border: `1px solid ${COLORS.reading.main}66`,
+                background: backupState?.saving ? "rgba(255,255,255,0.06)" : COLORS.reading.main,
+                color: backupState?.saving ? COLORS.dark.textMuted : "#10201d",
+                fontWeight: 800,
+                cursor: backupState?.saving || !onCreateBackup ? "not-allowed" : "pointer",
+              }}
+            >
+              {backupState?.saving ? "저장 중" : "Drive에 저장"}
+            </button>
+          </div>
+          {backupState?.error ? (
+            <p style={{ margin: "14px 0 0", color: COLORS.culture.light, fontSize: 13 }}>{backupState.error}</p>
+          ) : null}
+          {backupFileName ? (
+            <div style={{ marginTop: 14, padding: "12px 14px", borderRadius: 14, background: "rgba(255,255,255,0.03)", border: `1px solid ${COLORS.dark.border}` }}>
+              <p style={{ margin: "0 0 5px", fontSize: 12, color: COLORS.dark.textMuted }}>최근 백업</p>
+              <p style={{ margin: "0 0 6px", color: COLORS.dark.text, fontSize: 13, wordBreak: "break-all" }}>{backupFileName}</p>
+              <p style={{ margin: 0, color: COLORS.dark.textMuted, fontSize: 12 }}>엔티티 {backupCounts.entities ?? 0}개 · 로그 {backupCounts.logs ?? 0}개</p>
+            </div>
+          ) : null}
+        </GlassCard>
+
         <GlassCard>
           <h3 style={{ margin: "0 0 12px", fontSize: 17, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>기록 구성</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

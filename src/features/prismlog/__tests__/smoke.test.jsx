@@ -192,11 +192,29 @@ describe("PrismLog feature smoke", () => {
       <TimelinePage logs={timelineLogs} loading={false} layout={phoneLayout} />
     );
     const settingsHtml = renderToStaticMarkup(
-      <SettingsPage readingLogs={[]} studyLogs={[]} cultureLogs={[]} layout={phoneLayout} />
+      <SettingsPage
+        readingLogs={[]}
+        studyLogs={[]}
+        cultureLogs={[]}
+        layout={phoneLayout}
+        backupState={{
+          saving: false,
+          error: "",
+          result: {
+            fileName: "prismlog-backup-demo-user-20260614T123000Z.json",
+            counts: { entities: 1, logs: 3 },
+          },
+        }}
+        onCreateBackup={() => {}}
+      />
     );
 
     expect(timelineHtml).toContain("테스트 독서 로그");
     expect(settingsHtml).toContain("설정");
+    expect(settingsHtml).toContain("Google Drive 백업");
+    expect(settingsHtml).toContain("Drive에 저장");
+    expect(settingsHtml).toContain("prismlog-backup-demo-user-20260614T123000Z.json");
+    expect(settingsHtml).toContain("로그 3개");
   });
 
   it("renders series episodes on the watched date in timeline", () => {
