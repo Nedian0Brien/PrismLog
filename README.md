@@ -3,7 +3,7 @@
 **PrismLog**는 독서·공부·문화생활 기록을 한 곳에서 관리하는 올인원 기록 플랫폼입니다.
 흩어져 있는 개인의 성장을 시각화하고, 취향의 역사를 기록합니다.
 
-[![Deploy Status](https://img.shields.io/badge/Status-Live-brightgreen)](https://prism.lawdigest.cloud)
+[![Deploy Status](https://img.shields.io/badge/Status-Live-brightgreen)](https://prism.lawdigest.kr)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 [![React](https://img.shields.io/badge/React-18-61dafb?logo=react)](https://react.dev)
 
@@ -64,7 +64,8 @@ npm run dev
 **수동 배포**:
 ```bash
 npm run build
-sudo cp -r dist/* /var/www/prism.lawdigest.cloud/
+sudo mkdir -p /var/www/prism.lawdigest.kr
+sudo cp -r dist/* /var/www/prism.lawdigest.kr/
 ```
 
 자세한 배포 가이드는 [DEPLOY.md](./DEPLOY.md)를 참고하세요.
@@ -200,7 +201,7 @@ const COLORS = {
 
 ## 🌐 라이브 서버
 
-**https://prism.lawdigest.cloud**
+**https://prism.lawdigest.kr**
 
 ---
 

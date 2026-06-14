@@ -4,7 +4,7 @@
 
 PrismLog는 독서·공부·문화생활 기록을 위한 React 웹 애플리케이션입니다.
 
-- **도메인**: https://prism.lawdigest.cloud
+- **도메인**: https://prism.lawdigest.kr
 - **서버**: Ubuntu 22.04 + Nginx 1.18.0
 - **빌드**: Vite + React 19
 - **SSL**: Let's Encrypt (자동 갱신)
@@ -21,7 +21,7 @@ PrismLog는 독서·공부·문화생활 기록을 위한 React 웹 애플리케
 
 1. **의존성 확인**: npm 패키지 설치 (필요시)
 2. **빌드**: Vite로 프로덕션 빌드
-3. **배포**: 빌드 파일을 `/var/www/prism.lawdigest.cloud/` 복사
+3. **배포**: 빌드 파일을 `/var/www/prism.lawdigest.kr/` 복사
 4. **검증**: 라이브 서버의 해시값 확인
 
 ## 🔧 수동 배포 (단계별)
@@ -40,14 +40,15 @@ npm run build
 
 ### 3. 배포
 ```bash
-sudo rm -rf /var/www/prism.lawdigest.cloud/*
-sudo cp -r dist/* /var/www/prism.lawdigest.cloud/
-sudo chown -R www-data:www-data /var/www/prism.lawdigest.cloud
+sudo mkdir -p /var/www/prism.lawdigest.kr
+sudo rm -rf /var/www/prism.lawdigest.kr/*
+sudo cp -r dist/* /var/www/prism.lawdigest.kr/
+sudo chown -R www-data:www-data /var/www/prism.lawdigest.kr
 ```
 
 ### 4. 검증
 ```bash
-curl https://prism.lawdigest.cloud/
+curl https://prism.lawdigest.kr/
 ```
 
 ## 🐛 일반적인 문제
@@ -91,8 +92,8 @@ npm run build
 
 ```nginx
 server {
-    server_name prism.lawdigest.cloud;
-    root /var/www/prism.lawdigest.cloud;
+    server_name prism.lawdigest.kr;
+    root /var/www/prism.lawdigest.kr;
     index index.html;
 
     location / {
@@ -107,8 +108,8 @@ server {
 
     # SSL (Certbot 자동 관리)
     listen 443 ssl;
-    ssl_certificate /etc/letsencrypt/live/prism.lawdigest.cloud/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/prism.lawdigest.cloud/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/prism.lawdigest.kr/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/prism.lawdigest.kr/privkey.pem;
 }
 ```
 
@@ -146,4 +147,4 @@ jobs:
 
 1. 배포 스크립트 출력 확인
 2. 브라우저 캐시 비우기
-3. Nginx 로그 확인: `/var/log/nginx/prism.lawdigest.cloud.error.log`
+3. Nginx 로그 확인: `/var/log/nginx/prism.lawdigest.kr.error.log`

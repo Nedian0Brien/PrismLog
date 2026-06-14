@@ -14,7 +14,7 @@ export NVM_DIR="$HOME/.nvm"
 
 # 프로젝트 디렉토리
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEPLOY_DIR="/var/www/prism.lawdigest.cloud"
+DEPLOY_DIR="/var/www/prism.lawdigest.kr"
 TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 
 cd "$PROJECT_DIR"
@@ -37,6 +37,7 @@ echo "   ✓ 빌드 완료 (크기: $BUILD_SIZE)"
 
 # 3. 배포
 echo "📤 3/4 배포 중..."
+sudo mkdir -p "$DEPLOY_DIR"
 sudo rm -rf "$DEPLOY_DIR"/*
 sudo cp -r dist/* "$DEPLOY_DIR/"
 sudo chown -R www-data:www-data "$DEPLOY_DIR"
@@ -44,19 +45,20 @@ echo "   ✓ 배포 완료 ($DEPLOY_DIR)"
 
 # 4. 검증
 echo "✅ 4/4 검증 중..."
-HASH=$(grep -oP "(?<=src=\"/assets/)index-[a-z0-9]+\.js" "$DEPLOY_DIR/index.html" | cut -d'-' -f2 | cut -d'.' -f1)
-LIVE_HASH=$(curl -s https://prism.lawdigest.cloud/ | grep -oP "(?<=src=\"/assets/)index-[a-z0-9]+\.js" | cut -d'-' -f2 | cut -d'.' -f1)
+HASH=$(sudo grep -oP "(?<=src=\"/assets/)index-[a-z0-9]+\.js" "$DEPLOY_DIR/index.html" | cut -d'-' -f2 | cut -d'.' -f1)
+LIVE_HASH=$(curl -fsSL https://prism.lawdigest.kr/ | grep -oP "(?<=src=\"/assets/)index-[a-z0-9]+\.js" | cut -d'-' -f2 | cut -d'.' -f1)
 
-if [ "$HASH" = "$LIVE_HASH" ]; then
+if [ -n "$HASH" ] && [ "$HASH" = "$LIVE_HASH" ]; then
   echo "   ✓ 라이브 서버 검증 완료"
 else
-  echo "   ⚠ 라이브 서버 캐시 비우기 필요 (Ctrl+Shift+Delete)"
+  echo "   ✗ 라이브 서버 검증 실패 (local=$HASH live=$LIVE_HASH)"
+  exit 1
 fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✨ 배포 완료! [$TIMESTAMP]"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🌐 https://prism.lawdigest.cloud"
+echo "🌐 https://prism.lawdigest.kr"
 echo "📄 빌드 파일: dist/ → $DEPLOY_DIR"
 echo ""
