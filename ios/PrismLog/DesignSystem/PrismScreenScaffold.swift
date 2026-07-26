@@ -35,8 +35,11 @@ struct PrismScreenScaffold<Content: View>: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    PrismWordmark(size: 17)
+                    PrismWordmark(size: 18)
                 }
+                // The wordmark is a label, not a control — without this iOS 26
+                // wraps it in the toolbar's glass capsule.
+                .sharedBackgroundVisibility(.hidden)
             }
             .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
         }
