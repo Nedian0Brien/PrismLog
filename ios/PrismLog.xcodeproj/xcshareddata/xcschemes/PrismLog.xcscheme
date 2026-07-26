@@ -29,6 +29,20 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "26DEEF84F46F6BCA11B3D918"
+               BuildableName = "PrismLogTests.xctest"
+               BlueprintName = "PrismLogTests"
+               ReferencedContainer = "container:PrismLog.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "1FDD417487CB8701D6E3FAD2"
                BuildableName = "PrismLogUITests.xctest"
                BlueprintName = "PrismLogUITests"
@@ -53,6 +67,17 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "26DEEF84F46F6BCA11B3D918"
+               BuildableName = "PrismLogTests.xctest"
+               BlueprintName = "PrismLogTests"
+               ReferencedContainer = "container:PrismLog.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
          <TestableReference
             skipped = "NO"
             parallelizable = "NO">

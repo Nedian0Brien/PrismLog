@@ -8,30 +8,46 @@
 
 /* Begin PBXBuildFile section */
 		0440BFB68B70E44A9E5CB85F /* Pretendard-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 0FD35B2E1FF3616E2CDB7F82 /* Pretendard-SemiBold.otf */; };
+		17080C15E36F49841017106F /* PayloadFidelityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AB021C882F3CDDA78A73B73 /* PayloadFidelityTests.swift */; };
 		17A18ECF1B9F253A86E681A0 /* PrismScreenScaffold.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65312B8D910FA56C9028570 /* PrismScreenScaffold.swift */; };
+		1BC7D4E4C818F087F81A84DF /* RecordItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48858DFD2076D9D7F28BF07B /* RecordItem.swift */; };
 		2AF191BC35C576103399C430 /* AppShellUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EDE5A3C88606ADBB49FCF54 /* AppShellUITests.swift */; };
 		2B810C17BCCB20ECC4A15732 /* PrismPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199DAE65F4402327298098BE /* PrismPalette.swift */; };
 		2D2005F549C58AE4CC9260C1 /* PrismLogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B060E806D1AFE72F23C886FA /* PrismLogApp.swift */; };
 		323CDB6A35DF39B263E1992A /* Pretendard-ExtraBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 861BF59E04029419662418D3 /* Pretendard-ExtraBold.otf */; };
 		34E06AB12A80C6C7C21BAEAA /* TimelineScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0105A1081D2D974C5EC3FE3F /* TimelineScreen.swift */; };
 		3B8195855789119E131511B3 /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E0405899FB9BEF8DFF9FE7 /* HomeScreen.swift */; };
+		556459F24BECAA9C4601E699 /* OfflineBehaviourTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51208707E83C2E6E04149802 /* OfflineBehaviourTests.swift */; };
 		55EBE291F0BEE1DC907B0FBC /* PrismTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93995DC3AD70921841B9EC6C /* PrismTab.swift */; };
 		5A8C667743B39EFC3816080B /* PrismWordmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B4BE3B421AC0CD21F26ADC /* PrismWordmark.swift */; };
 		5EF7EEEE647B226E97161C68 /* PrismComposerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA739992409587393A5BE18E /* PrismComposerButton.swift */; };
 		7C983A1B09F9A40C9B965FAA /* PrismTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 191A0B160303D5288BFABE39 /* PrismTypography.swift */; };
+		7E8F3A3054D3DD7F20B26C1B /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12CD85814256B83644C027F8 /* JSONValue.swift */; };
+		8A04A495F1442B561C831AA9 /* LiveAPIRoundTripTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 836B2A42E6075D004B01D889 /* LiveAPIRoundTripTests.swift */; };
 		980EF80FF8F99D7A705FAC96 /* Pretendard-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 8BE1369EB6A1099600A179E8 /* Pretendard-Bold.otf */; };
+		A8DA3FFCA899D62628362E96 /* PrismDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8855042B1B0510A9C18E19CA /* PrismDTO.swift */; };
 		AB63C63D193BDED745FF6A99 /* PrismGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA7DB1275DA302B04D3004F /* PrismGlass.swift */; };
 		AD101E090723CF59D41E5D69 /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = D79AC3C7AC77AC06362729C7 /* Pretendard-Regular.otf */; };
 		AEE4F403267812B7838C93A8 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D57E7AB4730940A425513B /* SettingsScreen.swift */; };
 		B48C172F506FEEF6E6B63815 /* Pretendard-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = FEB52242E7D96DDB7134B701 /* Pretendard-Medium.otf */; };
+		BBA1BBFD5153695D04F0AF67 /* PrismAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4420F18602ED6C61D97E01C5 /* PrismAPIClient.swift */; };
 		BD02F5B4AB3718855E79E2D5 /* PrismMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2B6BAD42684EA51FB69629B /* PrismMotion.swift */; };
 		CD660C5494C947E483CB942C /* RecordsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966B0305E656C4DC5A601E6 /* RecordsScreen.swift */; };
 		D40796FFA68099E52E621304 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 04E77C280803F8389FEB130C /* Assets.xcassets */; };
 		D73C77F8378D5EDE1DF4EE1E /* SpectrumBloomBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF21208D705EA68456505445 /* SpectrumBloomBackground.swift */; };
+		E3D198F1EBA9FEEC590623B5 /* StoredLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC900A430933AEF58CA2AEE6 /* StoredLog.swift */; };
+		F1FF07742A6D1EB1FB2C117F /* PrismStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 152E240D32692C198201E992 /* PrismStore.swift */; };
 		FEF80F50F937945C0C3E1163 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4F2C28074DF4C64D0D21DD8 /* RootView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		07784BF6E485B4DC7970FCDB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F6C641AF3DB9094D6A269B9D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8C5791588B7F7F9AEF9A1001;
+			remoteInfo = PrismLog;
+		};
 		C1049249FC98A7D45AF17A9E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F6C641AF3DB9094D6A269B9D /* Project object */;
@@ -45,14 +61,22 @@
 		0105A1081D2D974C5EC3FE3F /* TimelineScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineScreen.swift; sourceTree = "<group>"; };
 		04E77C280803F8389FEB130C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0FD35B2E1FF3616E2CDB7F82 /* Pretendard-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-SemiBold.otf"; sourceTree = "<group>"; };
+		12CD85814256B83644C027F8 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
+		152E240D32692C198201E992 /* PrismStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismStore.swift; sourceTree = "<group>"; };
 		191A0B160303D5288BFABE39 /* PrismTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismTypography.swift; sourceTree = "<group>"; };
 		199DAE65F4402327298098BE /* PrismPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismPalette.swift; sourceTree = "<group>"; };
 		42B4BE3B421AC0CD21F26ADC /* PrismWordmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismWordmark.swift; sourceTree = "<group>"; };
+		4420F18602ED6C61D97E01C5 /* PrismAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismAPIClient.swift; sourceTree = "<group>"; };
+		48858DFD2076D9D7F28BF07B /* RecordItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordItem.swift; sourceTree = "<group>"; };
 		4E61BA97ED7A0BBAA0482735 /* PrismLogUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PrismLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		51208707E83C2E6E04149802 /* OfflineBehaviourTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineBehaviourTests.swift; sourceTree = "<group>"; };
 		5EDE5A3C88606ADBB49FCF54 /* AppShellUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellUITests.swift; sourceTree = "<group>"; };
+		6AB021C882F3CDDA78A73B73 /* PayloadFidelityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayloadFidelityTests.swift; sourceTree = "<group>"; };
 		7966B0305E656C4DC5A601E6 /* RecordsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordsScreen.swift; sourceTree = "<group>"; };
+		836B2A42E6075D004B01D889 /* LiveAPIRoundTripTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveAPIRoundTripTests.swift; sourceTree = "<group>"; };
 		85FD7405886CB90BC3E30B82 /* PrismLog.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PrismLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		861BF59E04029419662418D3 /* Pretendard-ExtraBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-ExtraBold.otf"; sourceTree = "<group>"; };
+		8855042B1B0510A9C18E19CA /* PrismDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismDTO.swift; sourceTree = "<group>"; };
 		8BE1369EB6A1099600A179E8 /* Pretendard-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-Bold.otf"; sourceTree = "<group>"; };
 		93995DC3AD70921841B9EC6C /* PrismTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismTab.swift; sourceTree = "<group>"; };
 		A1E0405899FB9BEF8DFF9FE7 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
@@ -61,6 +85,8 @@
 		C2B6BAD42684EA51FB69629B /* PrismMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismMotion.swift; sourceTree = "<group>"; };
 		CF21208D705EA68456505445 /* SpectrumBloomBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumBloomBackground.swift; sourceTree = "<group>"; };
 		D79AC3C7AC77AC06362729C7 /* Pretendard-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-Regular.otf"; sourceTree = "<group>"; };
+		DA543F3E3D27A816240EC860 /* PrismLogTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PrismLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DC900A430933AEF58CA2AEE6 /* StoredLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoredLog.swift; sourceTree = "<group>"; };
 		DDA7DB1275DA302B04D3004F /* PrismGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismGlass.swift; sourceTree = "<group>"; };
 		E4D57E7AB4730940A425513B /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
 		F65312B8D910FA56C9028570 /* PrismScreenScaffold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismScreenScaffold.swift; sourceTree = "<group>"; };
@@ -73,6 +99,7 @@
 			isa = PBXGroup;
 			children = (
 				64B95137F7134C8007356A13 /* PrismLog */,
+				8681188533A0D2A718F95B07 /* PrismLogTests */,
 				EB84F17844B492BCEA16D239 /* PrismLogUITests */,
 				B2B897BD63D0189082D2586D /* Products */,
 			);
@@ -133,6 +160,7 @@
 			isa = PBXGroup;
 			children = (
 				D676EA661ED5E96F8561A4AA /* App */,
+				E71940A54979BC18B7BCA402 /* Data */,
 				27E6E8A873F29343084E03C0 /* DesignSystem */,
 				66B5DDCFA8533F89A5A8EADE /* Features */,
 				27F4E5A7385AB24113478348 /* Resources */,
@@ -152,6 +180,16 @@
 			path = Features;
 			sourceTree = "<group>";
 		};
+		8681188533A0D2A718F95B07 /* PrismLogTests */ = {
+			isa = PBXGroup;
+			children = (
+				836B2A42E6075D004B01D889 /* LiveAPIRoundTripTests.swift */,
+				51208707E83C2E6E04149802 /* OfflineBehaviourTests.swift */,
+				6AB021C882F3CDDA78A73B73 /* PayloadFidelityTests.swift */,
+			);
+			path = PrismLogTests;
+			sourceTree = "<group>";
+		};
 		8E7AFDFFB6B9E24715026675 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
@@ -168,10 +206,21 @@
 			path = Records;
 			sourceTree = "<group>";
 		};
+		9866FC5074439603B5B2349C /* Network */ = {
+			isa = PBXGroup;
+			children = (
+				12CD85814256B83644C027F8 /* JSONValue.swift */,
+				4420F18602ED6C61D97E01C5 /* PrismAPIClient.swift */,
+				8855042B1B0510A9C18E19CA /* PrismDTO.swift */,
+			);
+			path = Network;
+			sourceTree = "<group>";
+		};
 		B2B897BD63D0189082D2586D /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				85FD7405886CB90BC3E30B82 /* PrismLog.app */,
+				DA543F3E3D27A816240EC860 /* PrismLogTests.xctest */,
 				4E61BA97ED7A0BBAA0482735 /* PrismLogUITests.xctest */,
 			);
 			name = Products;
@@ -195,12 +244,31 @@
 			path = Dashboard;
 			sourceTree = "<group>";
 		};
+		E71940A54979BC18B7BCA402 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				FCBDF85709C3DF40705755E3 /* Models */,
+				9866FC5074439603B5B2349C /* Network */,
+				152E240D32692C198201E992 /* PrismStore.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
 		EB84F17844B492BCEA16D239 /* PrismLogUITests */ = {
 			isa = PBXGroup;
 			children = (
 				5EDE5A3C88606ADBB49FCF54 /* AppShellUITests.swift */,
 			);
 			path = PrismLogUITests;
+			sourceTree = "<group>";
+		};
+		FCBDF85709C3DF40705755E3 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				48858DFD2076D9D7F28BF07B /* RecordItem.swift */,
+				DC900A430933AEF58CA2AEE6 /* StoredLog.swift */,
+			);
+			path = Models;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -223,6 +291,24 @@
 			productName = PrismLogUITests;
 			productReference = 4E61BA97ED7A0BBAA0482735 /* PrismLogUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		26DEEF84F46F6BCA11B3D918 /* PrismLogTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9B3D7D1B4CD053C577DF7A01 /* Build configuration list for PBXNativeTarget "PrismLogTests" */;
+			buildPhases = (
+				57A9E9E769E85515ECCA4F76 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				46FD2FBB872F1353E9EAC4C1 /* PBXTargetDependency */,
+			);
+			name = PrismLogTests;
+			packageProductDependencies = (
+			);
+			productName = PrismLogTests;
+			productReference = DA543F3E3D27A816240EC860 /* PrismLogTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		8C5791588B7F7F9AEF9A1001 /* PrismLog */ = {
 			isa = PBXNativeTarget;
@@ -255,6 +341,9 @@
 						ProvisioningStyle = Automatic;
 						TestTargetID = 8C5791588B7F7F9AEF9A1001;
 					};
+					26DEEF84F46F6BCA11B3D918 = {
+						ProvisioningStyle = Automatic;
+					};
 					8C5791588B7F7F9AEF9A1001 = {
 						ProvisioningStyle = Automatic;
 					};
@@ -275,6 +364,7 @@
 			projectRoot = "";
 			targets = (
 				8C5791588B7F7F9AEF9A1001 /* PrismLog */,
+				26DEEF84F46F6BCA11B3D918 /* PrismLogTests */,
 				1FDD417487CB8701D6E3FAD2 /* PrismLogUITests */,
 			);
 		};
@@ -305,24 +395,40 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		57A9E9E769E85515ECCA4F76 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8A04A495F1442B561C831AA9 /* LiveAPIRoundTripTests.swift in Sources */,
+				556459F24BECAA9C4601E699 /* OfflineBehaviourTests.swift in Sources */,
+				17080C15E36F49841017106F /* PayloadFidelityTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AE12DA5B2E679934C331001A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				3B8195855789119E131511B3 /* HomeScreen.swift in Sources */,
+				7E8F3A3054D3DD7F20B26C1B /* JSONValue.swift in Sources */,
+				BBA1BBFD5153695D04F0AF67 /* PrismAPIClient.swift in Sources */,
 				5EF7EEEE647B226E97161C68 /* PrismComposerButton.swift in Sources */,
+				A8DA3FFCA899D62628362E96 /* PrismDTO.swift in Sources */,
 				AB63C63D193BDED745FF6A99 /* PrismGlass.swift in Sources */,
 				2D2005F549C58AE4CC9260C1 /* PrismLogApp.swift in Sources */,
 				BD02F5B4AB3718855E79E2D5 /* PrismMotion.swift in Sources */,
 				2B810C17BCCB20ECC4A15732 /* PrismPalette.swift in Sources */,
 				17A18ECF1B9F253A86E681A0 /* PrismScreenScaffold.swift in Sources */,
+				F1FF07742A6D1EB1FB2C117F /* PrismStore.swift in Sources */,
 				55EBE291F0BEE1DC907B0FBC /* PrismTab.swift in Sources */,
 				7C983A1B09F9A40C9B965FAA /* PrismTypography.swift in Sources */,
 				5A8C667743B39EFC3816080B /* PrismWordmark.swift in Sources */,
+				1BC7D4E4C818F087F81A84DF /* RecordItem.swift in Sources */,
 				CD660C5494C947E483CB942C /* RecordsScreen.swift in Sources */,
 				FEF80F50F937945C0C3E1163 /* RootView.swift in Sources */,
 				AEE4F403267812B7838C93A8 /* SettingsScreen.swift in Sources */,
 				D73C77F8378D5EDE1DF4EE1E /* SpectrumBloomBackground.swift in Sources */,
+				E3D198F1EBA9FEEC590623B5 /* StoredLog.swift in Sources */,
 				34E06AB12A80C6C7C21BAEAA /* TimelineScreen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -330,6 +436,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		46FD2FBB872F1353E9EAC4C1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8C5791588B7F7F9AEF9A1001 /* PrismLog */;
+			targetProxy = 07784BF6E485B4DC7970FCDB /* PBXContainerItemProxy */;
+		};
 		B00046914E3665257046DA29 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 8C5791588B7F7F9AEF9A1001 /* PrismLog */;
@@ -377,6 +488,23 @@
 				TEST_TARGET_NAME = PrismLog;
 			};
 			name = Release;
+		};
+		3CBCC2B1D67E10DF959CE7E9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = kr.lawdigest.prismlog.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PrismLog.app/PrismLog";
+			};
+			name = Debug;
 		};
 		65653070ADDC2CD8ACB47402 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -545,6 +673,23 @@
 			};
 			name = Release;
 		};
+		E6A9D31A98A80AC5995287AE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = kr.lawdigest.prismlog.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PrismLog.app/PrismLog";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -571,6 +716,15 @@
 			buildConfigurations = (
 				1DA619353D22B5960CAFCC05 /* Debug */,
 				C517B360CBB7C47313D2D0AF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9B3D7D1B4CD053C577DF7A01 /* Build configuration list for PBXNativeTarget "PrismLogTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3CBCC2B1D67E10DF959CE7E9 /* Debug */,
+				E6A9D31A98A80AC5995287AE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

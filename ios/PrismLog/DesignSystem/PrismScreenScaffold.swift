@@ -10,6 +10,7 @@ struct PrismScreenScaffold<Content: View>: View {
     let eyebrow: String
     let title: String
     var focus: PrismAccent?
+    var onRefresh: (@Sendable () async -> Void)?
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -28,6 +29,9 @@ struct PrismScreenScaffold<Content: View>: View {
                     .padding(.bottom, 130)
                 }
                 .scrollIndicators(.hidden)
+                .refreshable {
+                    await onRefresh?()
+                }
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

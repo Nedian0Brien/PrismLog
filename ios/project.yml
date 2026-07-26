@@ -37,6 +37,18 @@ targets:
         SUPPORTS_MACCATALYST: NO
         SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
 
+  PrismLogTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: PrismLogTests
+    dependencies:
+      - target: PrismLog
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: kr.lawdigest.prismlog.tests
+        GENERATE_INFOPLIST_FILE: YES
+
   PrismLogUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -55,12 +67,14 @@ schemes:
     build:
       targets:
         PrismLog: all
+        PrismLogTests: [test]
         PrismLogUITests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
+        - PrismLogTests
         - PrismLogUITests
     archive:
       config: Release

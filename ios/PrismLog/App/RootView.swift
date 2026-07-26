@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct RootView: View {
+    @Environment(PrismStore.self) private var store
+    @Environment(\.scenePhase) private var scenePhase
     @State private var tab: PrismTab = .home
     @State private var composerExpanded = false
     @State private var pendingComposer: PrismAccent?
@@ -55,6 +57,11 @@ struct RootView: View {
             }
         }
         .animation(PrismMotion.screen, value: tab)
+        .task { await store.sync() }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await store.sync() }
+        }
         .onChange(of: tab) { _, _ in
             guard composerExpanded else { return }
             withAnimation(PrismMotion.morph) { composerExpanded = false }
@@ -64,4 +71,5 @@ struct RootView: View {
 
 #Preview {
     RootView()
+        .environment(PrismStore.preview())
 }
