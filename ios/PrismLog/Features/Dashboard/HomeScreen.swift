@@ -3,9 +3,14 @@ import SwiftUI
 struct HomeScreen: View {
     @Environment(PrismStore.self) private var store
 
+    @State private var trendCumulative = true
+    @State private var trendRange: TrendRange = .year
+    @State private var trendEnabled: Set<PrismAccent> = [.reading, .study, .movie]
+    @State private var heatmapAccent: PrismAccent?
+
     var body: some View {
         PrismScreenScaffold(
-            eyebrow: "Dashboard",
+            eyebrow: todayLabel,
             title: "기록 대시보드",
             focus: .reading,
             onRefresh: { await store.sync() }
@@ -13,24 +18,175 @@ struct HomeScreen: View {
             PrismGlassSection {
                 VStack(spacing: 14) {
                     statusBanner
-
-                    countsCard
-
-                    if !store.records.isEmpty {
-                        recentSection
-                    } else if store.hasLoadedOnce {
-                        PrismPlaceholderCard(
-                            accent: .reading,
-                            title: "아직 기록이 없습니다",
-                            detail: "오른쪽 아래 + 버튼으로 첫 기록을 남겨 보세요."
-                        )
-                    }
+                    spectrumCard
+                    trendCard
+                    heatmapCard
+                    recentSection
                 }
             }
         }
     }
 
-    // MARK: - Pieces
+    // MARK: - Spectrum
+
+    private var spectrumCard: some View {
+        HStack(spacing: 16) {
+            SpectrumRing(slices: slices, diameter: 150, lineWidth: 13)
+
+            VStack(spacing: 0) {
+                ForEach(Array(slices.enumerated()), id: \.element.id) { index, slice in
+                    HStack(spacing: 10) {
+                        Image(systemName: slice.accent.symbol)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(slice.accent.color)
+                            .frame(width: 20)
+
+                        Text(slice.accent.label)
+                            .font(.prismCallout)
+                            .foregroundStyle(PrismColor.text)
+
+                        Spacer(minLength: 0)
+
+                        Text(summaryValue(for: slice))
+                            .font(PrismFont.numeral(17, weight: .bold))
+                            .monospacedDigit()
+                            .foregroundStyle(slice.accent.color)
+                    }
+                    .padding(.vertical, 9)
+
+                    if index < slices.count - 1 {
+                        Divider().overlay(PrismColor.hairline)
+                    }
+                }
+            }
+        }
+        .prismGlassCard(padding: 18)
+    }
+
+    // MARK: - Trend
+
+    private var trendCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("추세선")
+                    .font(.prismTitle)
+                    .foregroundStyle(PrismColor.text)
+
+                Spacer(minLength: 0)
+
+                Picker("표시 방식", selection: $trendCumulative) {
+                    Text("누적").tag(true)
+                    Text("일간").tag(false)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 116)
+            }
+
+            Picker("기간", selection: $trendRange) {
+                ForEach(TrendRange.allCases) { range in
+                    Text(range.label).tag(range)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            CategoryToggleChips(enabled: $trendEnabled)
+
+            if trendEnabled.isEmpty {
+                emptyNote("표시할 카테고리를 선택해 주세요.")
+                    .frame(height: 160)
+            } else {
+                TrendChart(
+                    points: DashboardMetrics.trend(
+                        from: store.records,
+                        days: trendRange.rawValue,
+                        cumulative: trendCumulative
+                    ),
+                    enabled: trendEnabled,
+                    range: trendRange
+                )
+            }
+        }
+        .prismGlassCard()
+    }
+
+    // MARK: - Heatmap
+
+    private var heatmapCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("기록 히트맵")
+                    .font(.prismTitle)
+                    .foregroundStyle(PrismColor.text)
+
+                Spacer(minLength: 0)
+
+                Text("최근 5주")
+                    .font(.prismMicro)
+                    .prismMuted()
+            }
+
+            HStack(spacing: 8) {
+                heatmapChip(nil, label: "전체")
+                heatmapChip(.reading, label: PrismAccent.reading.label)
+                heatmapChip(.study, label: PrismAccent.study.label)
+                heatmapChip(.movie, label: PrismAccent.movie.label)
+                Spacer(minLength: 0)
+            }
+
+            ActivityHeatmap(
+                weeks: DashboardMetrics.heatmap(from: store.records, accent: heatmapAccent),
+                accent: heatmapAccent
+            )
+        }
+        .prismGlassCard()
+    }
+
+    private func heatmapChip(_ accent: PrismAccent?, label: String) -> some View {
+        let isOn = heatmapAccent == accent
+        let color = accent?.color ?? PrismColor.text
+
+        return Button {
+            withAnimation(PrismMotion.snappy) { heatmapAccent = accent }
+        } label: {
+            Text(label)
+                .font(.prismCaption)
+                .foregroundStyle(isOn ? color : PrismColor.textMuted)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background { Capsule().fill(color.opacity(isOn ? 0.16 : 0.04)) }
+                .overlay {
+                    Capsule().stroke(isOn ? color.opacity(0.55) : PrismColor.hairline, lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Recent
+
+    @ViewBuilder
+    private var recentSection: some View {
+        if !store.records.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("최근 기록")
+                    .font(.prismTitle)
+                    .foregroundStyle(PrismColor.text)
+                    .padding(.horizontal, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                ForEach(store.records.prefix(5)) { record in
+                    RecordSummaryRow(record: record)
+                }
+            }
+        } else if store.hasLoadedOnce {
+            PrismPlaceholderCard(
+                accent: .reading,
+                title: "아직 기록이 없습니다",
+                detail: "오른쪽 아래 + 버튼으로 첫 기록을 남겨 보세요."
+            )
+        }
+    }
+
+    // MARK: - Status
 
     @ViewBuilder
     private var statusBanner: some View {
@@ -68,60 +224,37 @@ struct HomeScreen: View {
         .prismGlassCard(tint: tint.color)
     }
 
-    private var countsCard: some View {
-        VStack(spacing: 0) {
-            ForEach(summaryRows, id: \.accent) { row in
-                HStack(spacing: 12) {
-                    Image(systemName: row.accent.symbol)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(row.accent.color)
-                        .frame(width: 24)
-
-                    Text(row.accent.label)
-                        .font(.prismHeadline)
-                        .foregroundStyle(PrismColor.text)
-
-                    Spacer(minLength: 0)
-
-                    Text(row.value)
-                        .font(PrismFont.numeral(19, weight: .bold))
-                        .monospacedDigit()
-                        .foregroundStyle(row.accent.color)
-                }
-                .padding(.vertical, 11)
-
-                if row.accent != summaryRows.last?.accent {
-                    Divider().overlay(PrismColor.hairline)
-                }
-            }
-        }
-        .prismGlassCard()
+    private func emptyNote(_ text: String) -> some View {
+        Text(text)
+            .font(.prismCallout)
+            .prismMuted()
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var recentSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("최근 기록")
-                .font(.prismTitle)
-                .foregroundStyle(PrismColor.text)
-                .padding(.horizontal, 4)
+    // MARK: - Data
 
-            ForEach(store.records.prefix(5)) { record in
-                RecordSummaryRow(record: record)
-            }
-        }
-    }
-
-    private var summaryRows: [(accent: PrismAccent, value: String)] {
-        let reading = store.records(in: .reading)
-        let study = store.records(in: .study)
-        let culture = store.records(in: .culture)
-        let studyHours = study.reduce(0) { $0 + $1.hours }
-
-        return [
-            (.reading, "\(reading.count)권"),
-            (.study, studyHours > 0 ? "\(Int(studyHours))h" : "\(study.count)건"),
-            (.movie, "\(culture.count)편"),
+    private var slices: [SpectrumRing.Slice] {
+        [
+            .init(accent: .reading, count: store.records(in: .reading).count),
+            .init(accent: .study, count: store.records(in: .study).count),
+            .init(accent: .movie, count: store.records(in: .culture).count),
         ]
+    }
+
+    private func summaryValue(for slice: SpectrumRing.Slice) -> String {
+        switch slice.accent {
+        case .reading: "\(slice.count)권"
+        case .study:
+            {
+                let hours = store.records(in: .study).reduce(0) { $0 + $1.hours }
+                return hours > 0 ? "\(Int(hours))h" : "\(slice.count)건"
+            }()
+        default: "\(slice.count)편"
+        }
+    }
+
+    private var todayLabel: String {
+        Date.now.formatted(.dateTime.year().month(.wide).day().weekday(.wide))
     }
 }
 

@@ -63,6 +63,49 @@ final class AppShellUITests: XCTestCase {
         )
     }
 
+    /// The shelf is the app's densest screen; a book must open from it.
+    func testReadingShelfOpensADetailScreen() {
+        app.tabBars.firstMatch.buttons["기록"].tap()
+        XCTAssertTrue(app.staticTexts["기록"].waitForExistence(timeout: 5))
+
+        // 독서 is the default section.
+        XCTAssertTrue(
+            app.buttons["records.section.reading"].waitForExistence(timeout: 5),
+            "카테고리 선택 칩이 없음"
+        )
+
+        let firstBook = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "퍼센트 읽음")
+        ).firstMatch
+
+        guard firstBook.waitForExistence(timeout: 8) else {
+            // No reading records synced (offline, or an empty account) — the
+            // empty state is the correct screen, not a failure.
+            XCTAssertTrue(app.staticTexts["독서 기록이 없습니다"].exists, "책도 없고 빈 상태도 없음")
+            return
+        }
+
+        firstBook.tap()
+
+        XCTAssertTrue(
+            app.buttons["기록"].waitForExistence(timeout: 5),
+            "상세 화면에서 뒤로 가기 버튼이 없음 — 내비게이션이 푸시되지 않음"
+        )
+        XCTAssertTrue(app.staticTexts["정보"].waitForExistence(timeout: 5), "상세 화면 본문이 없음")
+    }
+
+    func testSwitchingRecordSectionsKeepsTheScreenAlive() {
+        app.tabBars.firstMatch.buttons["기록"].tap()
+
+        for section in ["study", "movie", "series", "game", "reading"] {
+            let chip = app.buttons["records.section.\(section)"]
+            XCTAssertTrue(chip.waitForExistence(timeout: 5), "\(section) 칩이 없음")
+            chip.tap()
+        }
+
+        XCTAssertTrue(app.staticTexts["기록"].exists)
+    }
+
     /// Settings is the one tab that hides the composer.
     func testComposerIsHiddenOnSettings() {
         app.tabBars.firstMatch.buttons["설정"].tap()
