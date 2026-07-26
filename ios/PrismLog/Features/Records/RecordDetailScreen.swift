@@ -7,6 +7,7 @@ struct RecordDetailScreen: View {
     let recordID: UUID
 
     @Environment(PrismStore.self) private var store
+    @State private var loggingProgress = false
 
     private var record: RecordItem? { store.record(id: recordID) }
 
@@ -47,6 +48,21 @@ struct RecordDetailScreen: View {
                 .scrollIndicators(.hidden)
                 .navigationTitle(record.title)
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    if record.category == .reading {
+                        ToolbarItem(placement: .primaryAction) {
+                            Button {
+                                loggingProgress = true
+                            } label: {
+                                Label("진도 기록", systemImage: "plus")
+                            }
+                            .accessibilityIdentifier("detail.addProgress")
+                        }
+                    }
+                }
+                .sheet(isPresented: $loggingProgress) {
+                    ReadingProgressSheet(record: record)
+                }
             } else {
                 PrismColor.background.ignoresSafeArea()
                 ContentUnavailableView("기록을 찾을 수 없습니다", systemImage: "questionmark.folder")

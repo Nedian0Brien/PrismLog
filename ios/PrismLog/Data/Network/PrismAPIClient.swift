@@ -86,7 +86,23 @@ actor PrismAPIClient {
         try await send(request("/api/v1/logs/entities/\(id.uuidString)", method: "PATCH", body: patch))
     }
 
+    // MARK: - Backups
+
+    func createBackup(userID: String) async throws -> BackupResult {
+        try await send(request(
+            "/api/v1/backups/google-drive",
+            method: "POST",
+            body: ["user_id": userID]
+        ))
+    }
+
     // MARK: - Plumbing
+
+    func get<Response: Decodable>(_ path: String, query: [URLQueryItem]) async throws -> Response {
+        var components = URLComponents(url: url(path), resolvingAgainstBaseURL: false)!
+        components.queryItems = query
+        return try await send(URLRequest(url: components.url!))
+    }
 
     private func url(_ path: String) -> URL {
         baseURL.appending(path: path)
@@ -108,7 +124,7 @@ actor PrismAPIClient {
         return request
     }
 
-    private func send<Response: Decodable>(_ request: URLRequest) async throws -> Response {
+    fileprivate func send<Response: Decodable>(_ request: URLRequest) async throws -> Response {
         let data = try await sendRaw(request)
         return try decoder.decode(Response.self, from: data)
     }
@@ -133,6 +149,21 @@ actor PrismAPIClient {
         }
 
         return data
+    }
+}
+
+/// Response from `POST /api/v1/backups/google-drive`.
+struct BackupResult: Codable, Sendable {
+    let fileId: String?
+    let fileName: String?
+    let webViewLink: String?
+    let counts: [String: JSONValue]?
+
+    enum CodingKeys: String, CodingKey {
+        case fileId = "file_id"
+        case fileName = "file_name"
+        case webViewLink = "web_view_link"
+        case counts
     }
 }
 

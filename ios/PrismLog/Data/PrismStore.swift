@@ -22,6 +22,10 @@ final class PrismStore {
     private(set) var lastSyncedAt: Date?
     private(set) var hasLoadedOnce = false
 
+    /// Set briefly after a successful write so the UI can flash refracted light
+    /// in that category's color. Cleared on its own.
+    private(set) var lastSavedAccent: PrismAccent?
+
     var userID: String {
         didSet {
             UserDefaults.standard.set(userID, forKey: Self.userIDKey)
@@ -67,6 +71,45 @@ final class PrismStore {
 
         let stored = (try? context.fetch(descriptor)) ?? []
         records = stored.map(RecordItem.init(stored:))
+        publishSnapshot()
+    }
+
+    /// Keeps the home screen widget in step with what the app is showing.
+    private func publishSnapshot() {
+        let snapshot = SpectrumSnapshot(
+            reading: records(in: .reading).count,
+            study: records(in: .study).count,
+            culture: records(in: .culture).count,
+            streakDays: currentStreak,
+            latestTitle: records.first?.title,
+            updatedAt: .now
+        )
+
+        SpectrumSnapshotStore.write(snapshot)
+        WidgetRefresher.reload()
+    }
+
+    /// Consecutive days ending today (or yesterday, so a streak doesn't look
+    /// broken before you've recorded anything today).
+    private var currentStreak: Int {
+        let calendar = Calendar.current
+        let days = Set(records.map { calendar.startOfDay(for: $0.occurredAt) })
+        guard !days.isEmpty else { return 0 }
+
+        var cursor = calendar.startOfDay(for: .now)
+        if !days.contains(cursor) {
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: cursor),
+                  days.contains(yesterday) else { return 0 }
+            cursor = yesterday
+        }
+
+        var streak = 0
+        while days.contains(cursor) {
+            streak += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = previous
+        }
+        return streak
     }
 
     func records(in category: LogCategory) -> [RecordItem] {
@@ -193,8 +236,20 @@ final class PrismStore {
 
         try? context.save()
         reload()
+        flashSaved(record(id: id)?.accent)
 
         await sync()
+    }
+
+    private func flashSaved(_ accent: PrismAccent?) {
+        guard let accent else { return }
+        lastSavedAccent = accent
+
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(1100))
+            guard let self, self.lastSavedAccent == accent else { return }
+            self.lastSavedAccent = nil
+        }
     }
 
     func deleteRecord(id: UUID) async {
@@ -210,6 +265,152 @@ final class PrismStore {
         reload()
 
         await sync()
+    }
+
+    // MARK: - Reading writes
+    //
+    // Payload keys mirror what the web writes (`src/App.jsx` addReadingProgress /
+    // addReadingNote). Anything not named here is carried over untouched.
+
+    /// Creates a book record from a search result, optionally enriched with a
+    /// page count.
+    func createReadingRecord(
+        from book: BookSearchItem,
+        enrichment: BookEnrichment?,
+        pagesTotal: Int,
+        pagesRead: Int
+    ) async {
+        let total = max(pagesTotal, 0)
+        let read = min(max(pagesRead, 0), total > 0 ? total : pagesRead)
+        let progress = total > 0 ? Int((Double(read) / Double(total) * 100).rounded()) : 0
+
+        var payload: [String: JSONValue] = [
+            "author": .string(book.authorLine),
+            "pages_read": .int(read),
+            "pages_total": .int(total),
+            "progress": .int(progress),
+            "rating": .int(0),
+            "review": .string(""),
+            "reading_sessions": .array([]),
+            "reading_notes": .array([]),
+            "source_provider": .string(book.sourceProvider),
+            "source_id": .string(book.sourceId),
+        ]
+
+        if let publisher = book.publisher { payload["publisher"] = .string(publisher) }
+        if let isbn = book.isbn { payload["isbn"] = .string(isbn) }
+        if let isbn13 = book.isbn13 { payload["isbn13"] = .string(isbn13) }
+        if let date = book.publishedDate { payload["published_date"] = .string(date) }
+        if let description = book.description { payload["description"] = .string(description) }
+        if let cover = book.coverUrl { payload["cover"] = .string(cover) }
+        if let enrichment {
+            payload["enrichment_provider"] = .string(enrichment.sourceProvider)
+            if !enrichment.sourceMetadata.isEmpty {
+                payload["source_metadata"] = .object(enrichment.sourceMetadata)
+            }
+        }
+
+        let log = StoredLog(
+            id: UUID(),
+            userID: userID,
+            category: LogCategory.reading.rawValue,
+            title: book.title,
+            payloadData: StoredLog.encodeObject(payload),
+            syncState: .createdLocally
+        )
+
+        context.insert(log)
+        try? context.save()
+        reload()
+        flashSaved(.reading)
+
+        await sync()
+    }
+
+    /// Records progress and appends a reading session, the way the web does —
+    /// one session per day, extended rather than duplicated.
+    func addReadingProgress(
+        to id: UUID,
+        currentPage: Int,
+        totalPages: Int,
+        note: String,
+        at date: Date = .now
+    ) async {
+        guard let existing = record(id: id) else { return }
+
+        let total = max(totalPages, 1)
+        let read = min(max(currentPage, 0), total)
+        let progress = Int((Double(read) / Double(total) * 100).rounded())
+        let fromPages = existing.pagesRead
+        let fromProgress = existing.progress
+
+        await updateRecord(id: id) { payload in
+            payload["pages_read"] = .int(read)
+            payload["pages_total"] = .int(total)
+            payload["progress"] = .int(progress)
+
+            let dayKey = ISO8601DateFormatter().string(from: date).prefix(10)
+            var sessions = payload["reading_sessions"]?.arrayValue ?? []
+
+            let session: JSONValue = .object([
+                "id": .string("reading-session-\(dayKey)"),
+                "date": .string(Self.iso(date)),
+                "started_at": .string(Self.iso(date)),
+                "ended_at": .string(Self.iso(date)),
+                "from_pages": .int(fromPages),
+                "to_pages": .int(read),
+                "total_pages": .int(total),
+                "pages_read": .int(max(0, read - fromPages)),
+                "from_progress": .int(fromProgress),
+                "to_progress": .int(progress),
+                "progress_delta": .int(max(0, progress - fromProgress)),
+                "duration_minutes": .int(0),
+                "photos": .array([]),
+            ])
+
+            // Same-day sessions merge, matching `buildReadingSessionPatch`.
+            if let index = sessions.firstIndex(where: {
+                $0["id"]?.stringValue == "reading-session-\(dayKey)"
+            }) {
+                sessions[index] = session
+            } else {
+                sessions.insert(session, at: 0)
+            }
+            payload["reading_sessions"] = .array(sessions)
+
+            let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                var notes = payload["reading_notes"]?.arrayValue ?? []
+                notes.insert(Self.note(text: trimmed, page: read, date: date), at: 0)
+                payload["reading_notes"] = .array(notes)
+            }
+        }
+    }
+
+    func addReadingNote(to id: UUID, page: Int, text: String, at date: Date = .now) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        await updateRecord(id: id) { payload in
+            var notes = payload["reading_notes"]?.arrayValue ?? []
+            notes.insert(Self.note(text: trimmed, page: page, date: date), at: 0)
+            payload["reading_notes"] = .array(notes)
+        }
+    }
+
+    private static func note(text: String, page: Int, date: Date) -> JSONValue {
+        .object([
+            "id": .string("reading-note-\(Int(date.timeIntervalSince1970 * 1000))"),
+            "date": .string(iso(date)),
+            "page": .int(page),
+            "text": .string(text),
+        ])
+    }
+
+    private static func iso(_ date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
     }
 
     private func storedLog(id: UUID) -> StoredLog? {

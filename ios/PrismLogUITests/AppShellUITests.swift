@@ -106,6 +106,40 @@ final class AppShellUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["기록"].exists)
     }
 
+    /// End-to-end through the live backend: the 네이버/카카오 keys live server
+    /// side, so this is the only way to know search actually works.
+    func testComposerOpensBookSearchAndReturnsResults() {
+        app.buttons["composer.toggle"].tap()
+
+        let readingChip = app.buttons["composer.chip.reading"]
+        XCTAssertTrue(readingChip.waitForExistence(timeout: 5))
+        readingChip.tap()
+
+        let searchField = app.searchFields.firstMatch
+        XCTAssertTrue(searchField.waitForExistence(timeout: 5), "책 검색 시트가 열리지 않음")
+
+        searchField.tap()
+        searchField.typeText("한강")
+
+        let firstResult = app.buttons["booksearch.result"].firstMatch
+        guard firstResult.waitForExistence(timeout: 15) else {
+            // Offline or the provider is down — the sheet must still say so
+            // rather than spin forever.
+            XCTAssertTrue(
+                app.staticTexts["결과가 없습니다"].exists || app.staticTexts["검색에 실패했습니다"].exists,
+                "결과도 없고 실패 안내도 없음"
+            )
+            return
+        }
+
+        firstResult.tap()
+        XCTAssertTrue(
+            app.buttons["다른 책 고르기"].waitForExistence(timeout: 5),
+            "책을 골라도 입력 폼으로 넘어가지 않음"
+        )
+        XCTAssertTrue(app.buttons["booksearch.save"].exists, "기록 시작 버튼이 없음")
+    }
+
     /// Settings is the one tab that hides the composer.
     func testComposerIsHiddenOnSettings() {
         app.tabBars.firstMatch.buttons["설정"].tap()
