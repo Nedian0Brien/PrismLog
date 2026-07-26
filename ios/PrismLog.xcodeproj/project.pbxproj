@@ -1,0 +1,581 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0440BFB68B70E44A9E5CB85F /* Pretendard-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 0FD35B2E1FF3616E2CDB7F82 /* Pretendard-SemiBold.otf */; };
+		17A18ECF1B9F253A86E681A0 /* PrismScreenScaffold.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65312B8D910FA56C9028570 /* PrismScreenScaffold.swift */; };
+		2AF191BC35C576103399C430 /* AppShellUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EDE5A3C88606ADBB49FCF54 /* AppShellUITests.swift */; };
+		2B810C17BCCB20ECC4A15732 /* PrismPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199DAE65F4402327298098BE /* PrismPalette.swift */; };
+		2D2005F549C58AE4CC9260C1 /* PrismLogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B060E806D1AFE72F23C886FA /* PrismLogApp.swift */; };
+		323CDB6A35DF39B263E1992A /* Pretendard-ExtraBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 861BF59E04029419662418D3 /* Pretendard-ExtraBold.otf */; };
+		34E06AB12A80C6C7C21BAEAA /* TimelineScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0105A1081D2D974C5EC3FE3F /* TimelineScreen.swift */; };
+		3B8195855789119E131511B3 /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E0405899FB9BEF8DFF9FE7 /* HomeScreen.swift */; };
+		55EBE291F0BEE1DC907B0FBC /* PrismTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93995DC3AD70921841B9EC6C /* PrismTab.swift */; };
+		5A8C667743B39EFC3816080B /* PrismWordmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B4BE3B421AC0CD21F26ADC /* PrismWordmark.swift */; };
+		5EF7EEEE647B226E97161C68 /* PrismComposerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA739992409587393A5BE18E /* PrismComposerButton.swift */; };
+		7C983A1B09F9A40C9B965FAA /* PrismTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 191A0B160303D5288BFABE39 /* PrismTypography.swift */; };
+		980EF80FF8F99D7A705FAC96 /* Pretendard-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 8BE1369EB6A1099600A179E8 /* Pretendard-Bold.otf */; };
+		AB63C63D193BDED745FF6A99 /* PrismGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA7DB1275DA302B04D3004F /* PrismGlass.swift */; };
+		AD101E090723CF59D41E5D69 /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = D79AC3C7AC77AC06362729C7 /* Pretendard-Regular.otf */; };
+		AEE4F403267812B7838C93A8 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D57E7AB4730940A425513B /* SettingsScreen.swift */; };
+		B48C172F506FEEF6E6B63815 /* Pretendard-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = FEB52242E7D96DDB7134B701 /* Pretendard-Medium.otf */; };
+		BD02F5B4AB3718855E79E2D5 /* PrismMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2B6BAD42684EA51FB69629B /* PrismMotion.swift */; };
+		CD660C5494C947E483CB942C /* RecordsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7966B0305E656C4DC5A601E6 /* RecordsScreen.swift */; };
+		D40796FFA68099E52E621304 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 04E77C280803F8389FEB130C /* Assets.xcassets */; };
+		D73C77F8378D5EDE1DF4EE1E /* SpectrumBloomBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF21208D705EA68456505445 /* SpectrumBloomBackground.swift */; };
+		FEF80F50F937945C0C3E1163 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4F2C28074DF4C64D0D21DD8 /* RootView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C1049249FC98A7D45AF17A9E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F6C641AF3DB9094D6A269B9D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8C5791588B7F7F9AEF9A1001;
+			remoteInfo = PrismLog;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0105A1081D2D974C5EC3FE3F /* TimelineScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineScreen.swift; sourceTree = "<group>"; };
+		04E77C280803F8389FEB130C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		0FD35B2E1FF3616E2CDB7F82 /* Pretendard-SemiBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-SemiBold.otf"; sourceTree = "<group>"; };
+		191A0B160303D5288BFABE39 /* PrismTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismTypography.swift; sourceTree = "<group>"; };
+		199DAE65F4402327298098BE /* PrismPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismPalette.swift; sourceTree = "<group>"; };
+		42B4BE3B421AC0CD21F26ADC /* PrismWordmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismWordmark.swift; sourceTree = "<group>"; };
+		4E61BA97ED7A0BBAA0482735 /* PrismLogUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PrismLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5EDE5A3C88606ADBB49FCF54 /* AppShellUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellUITests.swift; sourceTree = "<group>"; };
+		7966B0305E656C4DC5A601E6 /* RecordsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordsScreen.swift; sourceTree = "<group>"; };
+		85FD7405886CB90BC3E30B82 /* PrismLog.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PrismLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		861BF59E04029419662418D3 /* Pretendard-ExtraBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-ExtraBold.otf"; sourceTree = "<group>"; };
+		8BE1369EB6A1099600A179E8 /* Pretendard-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-Bold.otf"; sourceTree = "<group>"; };
+		93995DC3AD70921841B9EC6C /* PrismTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismTab.swift; sourceTree = "<group>"; };
+		A1E0405899FB9BEF8DFF9FE7 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
+		A4F2C28074DF4C64D0D21DD8 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		B060E806D1AFE72F23C886FA /* PrismLogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismLogApp.swift; sourceTree = "<group>"; };
+		C2B6BAD42684EA51FB69629B /* PrismMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismMotion.swift; sourceTree = "<group>"; };
+		CF21208D705EA68456505445 /* SpectrumBloomBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumBloomBackground.swift; sourceTree = "<group>"; };
+		D79AC3C7AC77AC06362729C7 /* Pretendard-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-Regular.otf"; sourceTree = "<group>"; };
+		DDA7DB1275DA302B04D3004F /* PrismGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismGlass.swift; sourceTree = "<group>"; };
+		E4D57E7AB4730940A425513B /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
+		F65312B8D910FA56C9028570 /* PrismScreenScaffold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismScreenScaffold.swift; sourceTree = "<group>"; };
+		FA739992409587393A5BE18E /* PrismComposerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismComposerButton.swift; sourceTree = "<group>"; };
+		FEB52242E7D96DDB7134B701 /* Pretendard-Medium.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-Medium.otf"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		100713299F9ACEB09C6D2401 = {
+			isa = PBXGroup;
+			children = (
+				64B95137F7134C8007356A13 /* PrismLog */,
+				EB84F17844B492BCEA16D239 /* PrismLogUITests */,
+				B2B897BD63D0189082D2586D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		262591B77BCD4AED1190E1CD /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				8BE1369EB6A1099600A179E8 /* Pretendard-Bold.otf */,
+				861BF59E04029419662418D3 /* Pretendard-ExtraBold.otf */,
+				FEB52242E7D96DDB7134B701 /* Pretendard-Medium.otf */,
+				D79AC3C7AC77AC06362729C7 /* Pretendard-Regular.otf */,
+				0FD35B2E1FF3616E2CDB7F82 /* Pretendard-SemiBold.otf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		27E6E8A873F29343084E03C0 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				DDA7DB1275DA302B04D3004F /* PrismGlass.swift */,
+				C2B6BAD42684EA51FB69629B /* PrismMotion.swift */,
+				199DAE65F4402327298098BE /* PrismPalette.swift */,
+				F65312B8D910FA56C9028570 /* PrismScreenScaffold.swift */,
+				191A0B160303D5288BFABE39 /* PrismTypography.swift */,
+				42B4BE3B421AC0CD21F26ADC /* PrismWordmark.swift */,
+				CF21208D705EA68456505445 /* SpectrumBloomBackground.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		27F4E5A7385AB24113478348 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				262591B77BCD4AED1190E1CD /* Fonts */,
+				04E77C280803F8389FEB130C /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		503336121F6B2DD6FE458DB8 /* NewLog */ = {
+			isa = PBXGroup;
+			children = (
+				FA739992409587393A5BE18E /* PrismComposerButton.swift */,
+			);
+			path = NewLog;
+			sourceTree = "<group>";
+		};
+		62C0D70DB8DB1D1DF1C0C497 /* Timeline */ = {
+			isa = PBXGroup;
+			children = (
+				0105A1081D2D974C5EC3FE3F /* TimelineScreen.swift */,
+			);
+			path = Timeline;
+			sourceTree = "<group>";
+		};
+		64B95137F7134C8007356A13 /* PrismLog */ = {
+			isa = PBXGroup;
+			children = (
+				D676EA661ED5E96F8561A4AA /* App */,
+				27E6E8A873F29343084E03C0 /* DesignSystem */,
+				66B5DDCFA8533F89A5A8EADE /* Features */,
+				27F4E5A7385AB24113478348 /* Resources */,
+			);
+			path = PrismLog;
+			sourceTree = "<group>";
+		};
+		66B5DDCFA8533F89A5A8EADE /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				E3FC43C449C227FAAF7F6977 /* Dashboard */,
+				503336121F6B2DD6FE458DB8 /* NewLog */,
+				958B3441D8913BE78B50CE4D /* Records */,
+				8E7AFDFFB6B9E24715026675 /* Settings */,
+				62C0D70DB8DB1D1DF1C0C497 /* Timeline */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		8E7AFDFFB6B9E24715026675 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				E4D57E7AB4730940A425513B /* SettingsScreen.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		958B3441D8913BE78B50CE4D /* Records */ = {
+			isa = PBXGroup;
+			children = (
+				7966B0305E656C4DC5A601E6 /* RecordsScreen.swift */,
+			);
+			path = Records;
+			sourceTree = "<group>";
+		};
+		B2B897BD63D0189082D2586D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				85FD7405886CB90BC3E30B82 /* PrismLog.app */,
+				4E61BA97ED7A0BBAA0482735 /* PrismLogUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D676EA661ED5E96F8561A4AA /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B060E806D1AFE72F23C886FA /* PrismLogApp.swift */,
+				93995DC3AD70921841B9EC6C /* PrismTab.swift */,
+				A4F2C28074DF4C64D0D21DD8 /* RootView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		E3FC43C449C227FAAF7F6977 /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				A1E0405899FB9BEF8DFF9FE7 /* HomeScreen.swift */,
+			);
+			path = Dashboard;
+			sourceTree = "<group>";
+		};
+		EB84F17844B492BCEA16D239 /* PrismLogUITests */ = {
+			isa = PBXGroup;
+			children = (
+				5EDE5A3C88606ADBB49FCF54 /* AppShellUITests.swift */,
+			);
+			path = PrismLogUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1FDD417487CB8701D6E3FAD2 /* PrismLogUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2BC59347B431CDE38BB1AAE4 /* Build configuration list for PBXNativeTarget "PrismLogUITests" */;
+			buildPhases = (
+				555BD4879654B93BE15818C2 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B00046914E3665257046DA29 /* PBXTargetDependency */,
+			);
+			name = PrismLogUITests;
+			packageProductDependencies = (
+			);
+			productName = PrismLogUITests;
+			productReference = 4E61BA97ED7A0BBAA0482735 /* PrismLogUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		8C5791588B7F7F9AEF9A1001 /* PrismLog */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9036D477D16072BBBD9F8598 /* Build configuration list for PBXNativeTarget "PrismLog" */;
+			buildPhases = (
+				AE12DA5B2E679934C331001A /* Sources */,
+				5ACA09C9D8231A204F578830 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PrismLog;
+			packageProductDependencies = (
+			);
+			productName = PrismLog;
+			productReference = 85FD7405886CB90BC3E30B82 /* PrismLog.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F6C641AF3DB9094D6A269B9D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					1FDD417487CB8701D6E3FAD2 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = 8C5791588B7F7F9AEF9A1001;
+					};
+					8C5791588B7F7F9AEF9A1001 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 326E743078581C0A45E58E53 /* Build configuration list for PBXProject "PrismLog" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 100713299F9ACEB09C6D2401;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B2B897BD63D0189082D2586D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8C5791588B7F7F9AEF9A1001 /* PrismLog */,
+				1FDD417487CB8701D6E3FAD2 /* PrismLogUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		5ACA09C9D8231A204F578830 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D40796FFA68099E52E621304 /* Assets.xcassets in Resources */,
+				980EF80FF8F99D7A705FAC96 /* Pretendard-Bold.otf in Resources */,
+				323CDB6A35DF39B263E1992A /* Pretendard-ExtraBold.otf in Resources */,
+				B48C172F506FEEF6E6B63815 /* Pretendard-Medium.otf in Resources */,
+				AD101E090723CF59D41E5D69 /* Pretendard-Regular.otf in Resources */,
+				0440BFB68B70E44A9E5CB85F /* Pretendard-SemiBold.otf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		555BD4879654B93BE15818C2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2AF191BC35C576103399C430 /* AppShellUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AE12DA5B2E679934C331001A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3B8195855789119E131511B3 /* HomeScreen.swift in Sources */,
+				5EF7EEEE647B226E97161C68 /* PrismComposerButton.swift in Sources */,
+				AB63C63D193BDED745FF6A99 /* PrismGlass.swift in Sources */,
+				2D2005F549C58AE4CC9260C1 /* PrismLogApp.swift in Sources */,
+				BD02F5B4AB3718855E79E2D5 /* PrismMotion.swift in Sources */,
+				2B810C17BCCB20ECC4A15732 /* PrismPalette.swift in Sources */,
+				17A18ECF1B9F253A86E681A0 /* PrismScreenScaffold.swift in Sources */,
+				55EBE291F0BEE1DC907B0FBC /* PrismTab.swift in Sources */,
+				7C983A1B09F9A40C9B965FAA /* PrismTypography.swift in Sources */,
+				5A8C667743B39EFC3816080B /* PrismWordmark.swift in Sources */,
+				CD660C5494C947E483CB942C /* RecordsScreen.swift in Sources */,
+				FEF80F50F937945C0C3E1163 /* RootView.swift in Sources */,
+				AEE4F403267812B7838C93A8 /* SettingsScreen.swift in Sources */,
+				D73C77F8378D5EDE1DF4EE1E /* SpectrumBloomBackground.swift in Sources */,
+				34E06AB12A80C6C7C21BAEAA /* TimelineScreen.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B00046914E3665257046DA29 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8C5791588B7F7F9AEF9A1001 /* PrismLog */;
+			targetProxy = C1049249FC98A7D45AF17A9E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1DA619353D22B5960CAFCC05 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Support/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = kr.lawdigest.prismlog;
+				PRODUCT_NAME = PrismLog;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		36BAC361FB7CA8F59AE68598 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = kr.lawdigest.prismlog.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = PrismLog;
+			};
+			name = Release;
+		};
+		65653070ADDC2CD8ACB47402 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		AB165A1945D7DEF9E8A98873 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		C3CB9214C0EEFE2A000E9CB4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = kr.lawdigest.prismlog.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = PrismLog;
+			};
+			name = Debug;
+		};
+		C517B360CBB7C47313D2D0AF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Support/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = kr.lawdigest.prismlog;
+				PRODUCT_NAME = PrismLog;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2BC59347B431CDE38BB1AAE4 /* Build configuration list for PBXNativeTarget "PrismLogUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C3CB9214C0EEFE2A000E9CB4 /* Debug */,
+				36BAC361FB7CA8F59AE68598 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		326E743078581C0A45E58E53 /* Build configuration list for PBXProject "PrismLog" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				65653070ADDC2CD8ACB47402 /* Debug */,
+				AB165A1945D7DEF9E8A98873 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9036D477D16072BBBD9F8598 /* Build configuration list for PBXNativeTarget "PrismLog" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DA619353D22B5960CAFCC05 /* Debug */,
+				C517B360CBB7C47313D2D0AF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = F6C641AF3DB9094D6A269B9D /* Project object */;
+}

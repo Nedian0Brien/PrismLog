@@ -33,3 +33,10 @@ logs/
 # Cache
 .cache/
 .turbo/
+
+# iOS / Xcode
+ios/build/
+ios/DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
