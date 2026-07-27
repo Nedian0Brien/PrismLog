@@ -4,6 +4,127 @@ import Testing
 
 @testable import PrismLog
 
+/// The denormalized game fields and the activity editor both rewrite payloads
+/// in place; these pin the exact shape they leave behind.
+@Suite(.serialized)
+@MainActor
+struct RecordMutationTests {
+    private func makeStore() throws -> PrismStore {
+        let container = try ModelContainer(
+            for: StoredLog.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        return PrismStore(
+            container: container,
+            api: PrismAPIClient(baseURL: URL(string: "http://127.0.0.1:9")!)
+        )
+    }
+
+    @Test("게임 세션을 수정하면 시간·메모·사진이 바뀌고 누적이 다시 계산된다")
+    func editingAGameSessionRecomputesTotals() async throws {
+        let store = try makeStore()
+        let id = UUID()
+
+        store.context.insert(StoredLog(
+            id: id,
+            userID: store.userID,
+            category: "culture",
+            title: "발더스 게이트 3",
+            payloadData: StoredLog.encodeObject([
+                "type": .string("게임"),
+                "game_sessions": .array([
+                    .object([
+                        "id": .string("g1"),
+                        "played_at": .string("2026-06-01T20:00:00Z"),
+                        "duration_minutes": .int(60),
+                        "note": .string("원래 메모"),
+                        "photos": .array([]),
+                    ]),
+                    .object([
+                        "id": .string("g2"),
+                        "played_at": .string("2026-06-03T21:00:00Z"),
+                        "duration_minutes": .int(30),
+                        "note": .string(""),
+                        "photos": .array([]),
+                    ]),
+                ]),
+                "playtime": .string("1시간 30분"),
+            ])
+        ))
+        try store.context.save()
+        store.reload()
+
+        await store.updateGameSession(
+            id: id,
+            sessionID: "g1",
+            playedAt: PrismDateCoding.parse("2026-06-02T19:00:00Z")!,
+            durationMinutes: 90,
+            note: "수정된 메모",
+            photoPaths: ["/uploads/game-sessions/shot.jpg"]
+        )
+
+        let record = try #require(store.record(id: id))
+        let sessions = try #require(record.payload.array("game_sessions"))
+        let edited = try #require(sessions.first { $0.objectValue?.string("id") == "g1" }?.objectValue)
+
+        #expect(edited.int("duration_minutes") == 90)
+        #expect(edited.string("note") == "수정된 메모")
+        #expect(edited.array("photos")?.count == 1)
+        #expect(record.payload.string("playtime") == "2시간 00분", "90+30분이 다시 합산돼야 한다")
+        // The untouched session must survive byte-for-byte.
+        let other = try #require(sessions.first { $0.objectValue?.string("id") == "g2" }?.objectValue)
+        #expect(other.int("duration_minutes") == 30)
+    }
+
+    @Test("공부 활동 수정은 제목·메모·시각·사진만 바꾸고 진행률은 남긴다")
+    func editingAStudyActivityLeavesProgressAlone() async throws {
+        let store = try makeStore()
+        let id = UUID()
+        let movedTo = PrismDateCoding.parse("2026-05-05T09:30:00Z")!
+
+        store.context.insert(StoredLog(
+            id: id,
+            userID: store.userID,
+            category: "study",
+            title: "150p까지 공부",
+            payloadData: StoredLog.encodeObject([
+                "progress_mode": .string("page"),
+                "pages_read": .int(150),
+                "pages_total": .int(500),
+                "progress": .int(30),
+                "goal": .string("주 3회"),
+            ])
+        ))
+        try store.context.save()
+        store.reload()
+
+        await store.updateStudyActivity(
+            id: id,
+            title: "154p까지 공부",
+            summary: "새 메모",
+            occurredAt: movedTo,
+            photoPaths: ["/uploads/study-sessions/note.jpg"]
+        )
+
+        let record = try #require(store.record(id: id))
+        #expect(record.title == "154p까지 공부")
+        #expect(record.summary == "새 메모")
+        #expect(record.occurredAt == movedTo)
+        #expect(record.payload.array("photos")?.count == 1)
+        #expect(record.payload.int("progress") == 30, "진행률은 편집 대상이 아니다")
+        #expect(record.payload.string("goal") == "주 3회", "모르는 키는 남는다")
+    }
+
+    @Test("히트맵 강도는 3건이면 이미 최고 단계다")
+    func heatmapIntensityMatchesTheWebCap() {
+        #expect(DashboardMetrics.intensity(for: 0) == 0)
+        #expect(DashboardMetrics.intensity(for: 1) == 1)
+        #expect(DashboardMetrics.intensity(for: 2) == 2)
+        #expect(DashboardMetrics.intensity(for: 3) == 3)
+        #expect(DashboardMetrics.intensity(for: 9) == 3)
+    }
+}
+
 /// Local-first means an unreachable server is a normal state, not an error
 /// screen. These use a real socket that nothing is listening on rather than a
 /// mock, so the actual `URLError` mapping is exercised.

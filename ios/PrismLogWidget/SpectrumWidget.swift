@@ -80,7 +80,7 @@ struct SpectrumWidgetView: View {
                 .fill(accent.color)
                 .frame(width: 7, height: 7)
 
-            Text(accent.label)
+            Text(accent.dashboardLabel)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.primary)
 

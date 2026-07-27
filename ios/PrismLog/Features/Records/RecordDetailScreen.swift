@@ -11,14 +11,25 @@ struct RecordDetailScreen: View {
     @State private var loggingProgress = false
     @State private var addingNote = false
     @State private var editing = false
+    /// Captured on first appearance. A study detail anchors on one activity
+    /// log; deleting that activity from the timeline below would otherwise
+    /// kill the whole screen even though the subject still exists.
+    @State private var fallbackEntityID: UUID?
+    @State private var seriesToast: SeriesProgressChange?
+    @State private var toastDismissTask: Task<Void, Never>?
 
-    private var record: RecordItem? { store.record(id: recordID) }
+    private var record: RecordItem? {
+        if let direct = store.record(id: recordID) { return direct }
+        guard let entityID = fallbackEntityID else { return nil }
+        return store.records.first { $0.entityID == entityID }
+    }
 
     var body: some View {
         ZStack {
             if let record {
                 SpectrumBloomBackground(focus: record.accent)
 
+                ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         hero(record)
@@ -34,15 +45,20 @@ struct RecordDetailScreen: View {
                                 }
 
                                 if record.category == .study {
-                                    if record.pagesTotal > 0 {
-                                        progressCard(record)
-                                    }
+                                    let activities = StudyGrouping.activities(for: record, in: store.records)
+                                    StudyStatusCard(record: record, activities: activities)
+                                    StudyTrendCard(record: record, activities: activities)
+                                    StudyActivityTimeline(record: record, activities: activities)
                                     StudyTableOfContents(record: record)
                                     studyReflection(record)
                                 }
 
                                 if let seriesProgress = record.seriesProgress {
-                                    SeriesProgressSection(record: record, progress: seriesProgress)
+                                    SeriesProgressSection(
+                                        record: record,
+                                        progress: seriesProgress,
+                                        onProgressSaved: showSeriesToast
+                                    )
                                 }
 
                                 if record.cultureType == .game {
@@ -116,10 +132,46 @@ struct RecordDetailScreen: View {
                     default: CultureEditSheet(record: record)
                     }
                 }
+                // Land on the episode you'd watch next, the way the web
+                // scrolls its season list — a long series otherwise opens on
+                // season 1 episode 1 every time.
+                .task {
+                    guard record.seriesProgress?.nextEpisode != nil else { return }
+                    try? await Task.sleep(for: .milliseconds(650))
+                    withAnimation(PrismMotion.screen) {
+                        proxy.scrollTo("series.currentEpisode", anchor: .center)
+                    }
+                }
+                }
             } else {
                 PrismColor.background.ignoresSafeArea()
                 ContentUnavailableView("기록을 찾을 수 없습니다", systemImage: "questionmark.folder")
             }
+        }
+        .overlay(alignment: .top) {
+            if let seriesToast {
+                SeriesProgressToastView(change: seriesToast)
+                    .padding(.horizontal, 18)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .onAppear {
+            if fallbackEntityID == nil {
+                fallbackEntityID = store.record(id: recordID)?.entityID
+            }
+        }
+    }
+
+    /// Floats the update toast for a beat, replacing any one still showing —
+    /// binge-tapping episodes shouldn't queue a parade of toasts.
+    private func showSeriesToast(_ change: SeriesProgressChange) {
+        toastDismissTask?.cancel()
+        withAnimation(PrismMotion.morph) { seriesToast = change }
+
+        toastDismissTask = Task {
+            try? await Task.sleep(for: .milliseconds(2400))
+            guard !Task.isCancelled else { return }
+            withAnimation(PrismMotion.screen) { seriesToast = nil }
         }
     }
 

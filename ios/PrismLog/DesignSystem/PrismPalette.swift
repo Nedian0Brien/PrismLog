@@ -71,6 +71,13 @@ enum PrismAccent: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .game: "gamecontroller.fill"
         }
     }
+
+    /// The dashboard splits records three ways — 독서 / 공부 / 문화 — and reuses
+    /// the movie red for the whole culture bucket, exactly as the web aliases
+    /// `movie: culture` in its color table (`core.jsx:5`). Anywhere a count of
+    /// *all* culture records is shown, this is the label; calling that number
+    /// "영화" would be a lie whenever a series or game is in it.
+    var dashboardLabel: String { self == .movie ? "문화" : label }
 }
 
 // MARK: - Neutral surface tokens

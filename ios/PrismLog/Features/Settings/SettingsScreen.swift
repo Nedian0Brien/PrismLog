@@ -10,7 +10,9 @@ struct SettingsScreen: View {
     private enum BackupState: Equatable {
         case idle
         case running
-        case done(String)
+        /// File name plus the server's own tally ("엔티티 3개 · 로그 39개") —
+        /// the tally is the part that tells you the backup wasn't empty.
+        case done(name: String, detail: String?)
         case failed(String)
     }
 
@@ -179,10 +181,18 @@ struct SettingsScreen: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             switch backupState {
-            case .done(let name):
-                Text("저장됨 · \(name)")
-                    .font(.prismMicro)
-                    .foregroundStyle(PrismAccent.reading.color)
+            case .done(let name, let detail):
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("저장됨 · \(name)")
+                        .font(.prismMicro)
+                        .foregroundStyle(PrismAccent.reading.color)
+
+                    if let detail {
+                        Text(detail)
+                            .font(.prismMicro)
+                            .prismMuted()
+                    }
+                }
             case .failed(let message):
                 Text(message)
                     .font(.prismMicro)
@@ -242,7 +252,10 @@ struct SettingsScreen: View {
         backupState = .running
         do {
             let result = try await PrismAPIClient.shared.createBackup(userID: store.userID)
-            backupState = .done(result.fileName ?? "백업 완료")
+            let detail = result.counts.map { counts in
+                "엔티티 \(counts.int("entities") ?? 0)개 · 로그 \(counts.int("logs") ?? 0)개"
+            }
+            backupState = .done(name: result.fileName ?? "백업 완료", detail: detail)
             PrismHaptics.saved()
         } catch {
             backupState = .failed(error.localizedDescription)

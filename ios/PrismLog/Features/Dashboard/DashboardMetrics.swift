@@ -118,13 +118,10 @@ enum DashboardMetrics {
         }
     }
 
-    /// 0…3, matching the four steps the web heatmap draws.
+    /// 0…3, matching the four steps the web heatmap draws — the web caps its
+    /// per-day increment at 3 (`buildHeatmapMatrix`, `core.jsx:889`), so three
+    /// records already reach full brightness.
     static func intensity(for count: Int) -> Int {
-        switch count {
-        case 0: 0
-        case 1: 1
-        case 2...3: 2
-        default: 3
-        }
+        min(max(count, 0), 3)
     }
 }

@@ -95,7 +95,7 @@ struct CategoryToggleChips: View {
                         if isOn { enabled.remove(accent) } else { enabled.insert(accent) }
                     }
                 } label: {
-                    Text(accent.label)
+                    Text(accent.dashboardLabel)
                         .font(.prismCaption)
                         .foregroundStyle(isOn ? accent.color : PrismColor.textMuted)
                         .padding(.horizontal, 12)
@@ -111,7 +111,7 @@ struct CategoryToggleChips: View {
                         }
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(accent.label)
+                .accessibilityLabel(accent.dashboardLabel)
                 .accessibilityValue(isOn ? "표시" : "숨김")
                 .accessibilityIdentifier("trend.toggle.\(accent.rawValue)")
             }

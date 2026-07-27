@@ -231,7 +231,11 @@ struct StudyProgressSheet: View {
         saving = true
         defer { saving = false }
 
-        let uploaded = pendingPhotos.isEmpty ? [] : await store.uploadPhotos(pendingPhotos)
+        // Study photos live under their own upload category on the server —
+        // the web posts to /uploads/study-sessions, not /uploads/reading-sessions.
+        let uploaded = pendingPhotos.isEmpty
+            ? []
+            : await store.uploadPhotos(pendingPhotos, category: "study-sessions")
 
         await store.addStudyActivity(
             to: record,

@@ -43,7 +43,7 @@ struct HomeScreen: View {
                             .foregroundStyle(slice.accent.color)
                             .frame(width: 20)
 
-                        Text(slice.accent.label)
+                        Text(slice.accent.dashboardLabel)
                             .font(.prismCallout)
                             .foregroundStyle(PrismColor.text)
 
@@ -161,7 +161,7 @@ struct HomeScreen: View {
                 heatmapChip(nil, label: "전체")
                 heatmapChip(.reading, label: PrismAccent.reading.label)
                 heatmapChip(.study, label: PrismAccent.study.label)
-                heatmapChip(.movie, label: PrismAccent.movie.label)
+                heatmapChip(.movie, label: PrismAccent.movie.dashboardLabel)
                 Spacer(minLength: 0)
             }
 
@@ -205,7 +205,10 @@ struct HomeScreen: View {
                     .padding(.horizontal, 4)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                ForEach(store.records.prefix(5)) { record in
+                // Four rows by creation time, matching the web — `records` is
+                // sorted by occurredAt, which diverges the moment someone
+                // backdates a record.
+                ForEach(store.records.sorted { $0.createdAt > $1.createdAt }.prefix(4)) { record in
                     RecordSummaryRow(record: record)
                 }
             }

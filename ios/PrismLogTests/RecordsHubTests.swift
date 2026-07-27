@@ -265,6 +265,66 @@ struct RecordsHubTests {
         #expect(updated.progress == 40)
     }
 
+    @Test("활동 목록은 직전 활동 대비 증분을 갖고 첫 로그는 '공부 시작'이 된다")
+    func activitiesCarryDeltasAndTheFirstIsRenamed() throws {
+        let store = try makeStore()
+        let textbook = UUID()
+
+        // The first log the web writes is titled after the subject itself.
+        insert(
+            into: store, category: "study", title: "실전 AI 애플리케이션 개발",
+            entityID: textbook, entityTitle: "실전 AI 애플리케이션 개발", daysAgo: 10,
+            payload: ["progress_mode": .string("page"), "pages_read": .int(0), "pages_total": .int(500)]
+        )
+        insert(
+            into: store, category: "study", title: "150p까지 공부",
+            entityID: textbook, entityTitle: "실전 AI 애플리케이션 개발", daysAgo: 6,
+            payload: [
+                "progress_mode": .string("page"), "pages_read": .int(150),
+                "pages_total": .int(500), "progress": .int(30),
+            ]
+        )
+        insert(
+            into: store, category: "study", title: "250p까지 공부",
+            entityID: textbook, entityTitle: "실전 AI 애플리케이션 개발", daysAgo: 2,
+            payload: [
+                "progress_mode": .string("page"), "pages_read": .int(250),
+                "pages_total": .int(500), "progress": .int(50),
+            ]
+        )
+        try store.context.save()
+        store.reload()
+
+        let anchor = try #require(store.records(in: .study).first)
+        let activities = StudyGrouping.activities(for: anchor, in: store.records)
+
+        #expect(activities.count == 3, "과목의 모든 로그가 활동이 된다")
+        #expect(activities.map(\.label) == ["250p까지 공부", "150p까지 공부", "공부 시작"])
+        #expect(activities[0].progressStart == 30, "직전 활동에서 시작")
+        #expect(activities[0].progressDelta == 20)
+        #expect(activities.last?.progressDelta == 0, "첫 활동은 증분이 없다")
+    }
+
+    @Test("중첩 목차는 자식 노드까지 세어 완료 수를 낸다")
+    func nestedTocCountsChildren() {
+        let node: (Bool, [JSONValue]) -> JSONValue = { done, children in
+            .object(["completed": .bool(done), "children": .array(children)])
+        }
+        let payload: [String: JSONValue] = [
+            "toc": .array([
+                node(true, [node(true, []), node(false, [])]),
+                node(false, []),
+            ]),
+            // The flat array disagrees on purpose — the tree must win.
+            "completed": .array([.bool(true)]),
+        ]
+
+        // 2 top-level nodes + 2 children = 4 nodes; the parent and its first
+        // child are done.
+        #expect(StudyGrouping.totalCount(payload) == 4)
+        #expect(StudyGrouping.completedCount(payload) == 2)
+    }
+
     @Test("프리뷰는 최신 3건까지만 담는다")
     func previewsCapAtThree() throws {
         let store = try makeStore()

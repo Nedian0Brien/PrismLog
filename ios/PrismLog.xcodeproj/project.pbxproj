@@ -47,6 +47,7 @@
 		980EF80FF8F99D7A705FAC96 /* Pretendard-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 8BE1369EB6A1099600A179E8 /* Pretendard-Bold.otf */; };
 		98A9F6E1BF50FAD9C1814990 /* NewStudySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BA7FC1452574EEFD368A2A4 /* NewStudySheet.swift */; };
 		9B0702252D5456FABE773906 /* MediaSearchDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = C75BA2CB9C41C4ED3DBE9E52 /* MediaSearchDTO.swift */; };
+		9CE07716CF1F10EC571CAE1F /* StudyDetailSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82E0F994A9D2DC9759F281C /* StudyDetailSections.swift */; };
 		9D51255BC0EB24B829A7E07C /* RecordsHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FAF1D89767ABCACD1B78BA8 /* RecordsHub.swift */; };
 		9F4ABB9BCACE8597A104E97E /* SpectrumRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77F051DE662F932880B953F0 /* SpectrumRing.swift */; };
 		A721706D81E437B137BD72C4 /* StudyGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45B9996E62550A64AE6D9DE1 /* StudyGrouping.swift */; };
@@ -183,6 +184,7 @@
 		E01FE663434F3A357BBC0D3F /* RecordDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordDetailScreen.swift; sourceTree = "<group>"; };
 		E4D57E7AB4730940A425513B /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
 		E5AE5EC93BC6B245782401A6 /* RecordListCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordListCards.swift; sourceTree = "<group>"; };
+		E82E0F994A9D2DC9759F281C /* StudyDetailSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyDetailSections.swift; sourceTree = "<group>"; };
 		F65312B8D910FA56C9028570 /* PrismScreenScaffold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismScreenScaffold.swift; sourceTree = "<group>"; };
 		FA739992409587393A5BE18E /* PrismComposerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismComposerButton.swift; sourceTree = "<group>"; };
 		FCC139D329C7B50D4A8161EF /* PrismLogWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PrismLogWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -319,6 +321,7 @@
 				E5AE5EC93BC6B245782401A6 /* RecordListCards.swift */,
 				6FAF1D89767ABCACD1B78BA8 /* RecordsHub.swift */,
 				7966B0305E656C4DC5A601E6 /* RecordsScreen.swift */,
+				E82E0F994A9D2DC9759F281C /* StudyDetailSections.swift */,
 				4D77F5D42B7DAA285B58B674 /* StudyProgressSheet.swift */,
 			);
 			path = Records;
@@ -642,6 +645,7 @@
 				9F4ABB9BCACE8597A104E97E /* SpectrumRing.swift in Sources */,
 				7C0FC813AC70AFBD157D3EE6 /* SpectrumSnapshot.swift in Sources */,
 				E3D198F1EBA9FEEC590623B5 /* StoredLog.swift in Sources */,
+				9CE07716CF1F10EC571CAE1F /* StudyDetailSections.swift in Sources */,
 				A721706D81E437B137BD72C4 /* StudyGrouping.swift in Sources */,
 				625CC463C44DA864EAB64D31 /* StudyProgressSheet.swift in Sources */,
 				4BA0527478D19E7980528117 /* TimelineBuilder.swift in Sources */,

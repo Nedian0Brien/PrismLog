@@ -33,7 +33,7 @@ struct DistributionBars: View {
     private func bar(_ accent: PrismAccent, value: Int, maxValue: Int) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(accent.label)
+                Text(accent.dashboardLabel)
                     .font(.prismCaption)
                     .foregroundStyle(accent.color)
 
@@ -52,6 +52,6 @@ struct DistributionBars: View {
             )
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(accent.label) \(value)건")
+        .accessibilityLabel("\(accent.dashboardLabel) \(value)건")
     }
 }

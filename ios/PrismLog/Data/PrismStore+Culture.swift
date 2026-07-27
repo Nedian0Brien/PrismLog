@@ -143,7 +143,13 @@ extension PrismStore {
         }
     }
 
-    func addGameSession(id: UUID, playedAt: Date, durationMinutes: Int, note: String) async {
+    func addGameSession(
+        id: UUID,
+        playedAt: Date,
+        durationMinutes: Int,
+        note: String,
+        photoPaths: [String] = []
+    ) async {
         guard durationMinutes > 0 else { return }
 
         await updateRecord(id: id) { payload in
@@ -154,13 +160,59 @@ extension PrismStore {
                 "played_at": .string(Self.isoStamp(playedAt)),
                 "duration_minutes": .int(durationMinutes),
                 "note": .string(note.trimmingCharacters(in: .whitespacesAndNewlines)),
-                "photos": .array([]),
+                "photos": .array(photoPaths.map { .string($0) }),
             ]), at: 0)
             payload["game_sessions"] = .array(sessions)
+            Self.refreshGameTotals(&payload)
+        }
+    }
 
-            let total = sessions.reduce(0) { $0 + ($1["duration_minutes"]?.intValue ?? 0) }
-            payload["playtime"] = .string("\(total / 60)시간 \(String(format: "%02d", total % 60))분")
-            payload["last_played_at"] = .string(Self.isoStamp(playedAt))
+    /// Rewrites one play session in place, matching the web's
+    /// `editGameSession` (`App.jsx:623`) — same fields, and the same
+    /// recomputed playtime label afterwards.
+    func updateGameSession(
+        id: UUID,
+        sessionID: String,
+        playedAt: Date,
+        durationMinutes: Int,
+        note: String,
+        photoPaths: [String]
+    ) async {
+        guard durationMinutes > 0 else { return }
+
+        await updateRecord(id: id) { payload in
+            var sessions = payload["game_sessions"]?.arrayValue ?? []
+            guard let index = sessions.firstIndex(where: {
+                $0.objectValue?.string("id") == sessionID
+            }) else { return }
+
+            var fields = sessions[index].objectValue ?? [:]
+            fields["date"] = .string(Self.isoStamp(playedAt))
+            fields["played_at"] = .string(Self.isoStamp(playedAt))
+            fields["duration_minutes"] = .int(durationMinutes)
+            fields["note"] = .string(note.trimmingCharacters(in: .whitespacesAndNewlines))
+            fields["photos"] = .array(photoPaths.map { .string($0) })
+            sessions[index] = .object(fields)
+
+            payload["game_sessions"] = .array(sessions)
+            Self.refreshGameTotals(&payload)
+        }
+    }
+
+    /// Playtime and last-played are denormalized from the session list — the
+    /// web's cards read them directly, so they must follow every mutation.
+    private static func refreshGameTotals(_ payload: inout [String: JSONValue]) {
+        let sessions = payload["game_sessions"]?.arrayValue ?? []
+
+        let total = sessions.reduce(0) { $0 + ($1.objectValue?.int("duration_minutes") ?? 0) }
+        payload["playtime"] = .string("\(total / 60)시간 \(String(format: "%02d", total % 60))분")
+
+        let lastPlayed = sessions
+            .compactMap { ($0.objectValue?.string("played_at") ?? $0.objectValue?.string("date")) }
+            .compactMap(PrismDateCoding.parse)
+            .max()
+        if let lastPlayed {
+            payload["last_played_at"] = .string(Self.isoStamp(lastPlayed))
         }
     }
 
@@ -319,6 +371,35 @@ extension PrismStore {
             needsEntity: false,
             syncState: .createdLocally
         ))
+
+        saveAndRefresh(flash: .study)
+        await sync()
+    }
+
+    /// Edits one study activity in place — title, memo, when it happened, and
+    /// its photos. The web's `StudyTimelineEditModal` patches exactly these
+    /// four; progress is deliberately not editable here, because changing it
+    /// retroactively would break every later activity's delta.
+    func updateStudyActivity(
+        id: UUID,
+        title: String,
+        summary: String,
+        occurredAt: Date,
+        photoPaths: [String]
+    ) async {
+        guard let log = storedLogForEditing(id: id) else { return }
+
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { log.title = trimmed }
+        log.summary = summary.trimmingCharacters(in: .whitespacesAndNewlines)
+        log.occurredAt = occurredAt
+
+        var payload = log.payload
+        payload["photos"] = .array(photoPaths.map { .string($0) })
+        log.payload = payload
+
+        log.updatedAt = .now
+        if log.syncState == .synced { log.syncState = .modifiedLocally }
 
         saveAndRefresh(flash: .study)
         await sync()
