@@ -243,6 +243,102 @@ extension PrismStore {
         await sync()
     }
 
+    /// One entry in a subject's session history.
+    ///
+    /// Which case applies is decided by the subject, not the caller's mood:
+    /// page-based subjects count pages, chapter-based ones count chapters.
+    enum StudyActivityValue: Hashable, Sendable {
+        case pages(Int)
+        case chapters(Int)
+    }
+
+    /// Adds one activity to a study subject.
+    ///
+    /// The web posts a *new* log against the existing `entity_id` instead of
+    /// editing the last one, which is what gives a subject its session history
+    /// (`recordsPage.jsx:4452`). Two consequences worth knowing:
+    ///
+    /// - The grouped card is rebuilt from the newest log **alone**, so the new
+    ///   log carries the previous payload forward wholesale. Anything dropped
+    ///   here vanishes from the web's view of the subject, including keys this
+    ///   app never reads.
+    /// - Without an `entity_id` there is nothing to attach to, so a subject
+    ///   that has never reached the server updates in place instead. That only
+    ///   happens offline, and the next activity after a sync branches normally.
+    func addStudyActivity(
+        to record: RecordItem,
+        value: StudyActivityValue,
+        photoPaths: [String] = []
+    ) async {
+        var payload = record.payload
+        let title: String
+
+        switch value {
+        case .pages(let pages):
+            let total = payload.int("pages_total") ?? payload.int("pages") ?? 0
+            payload["pages_read"] = .int(max(pages, 0))
+            payload["progress"] = .int(
+                total > 0 ? min(100, Int((Double(pages) / Double(total) * 100).rounded())) : 0
+            )
+            title = "\(pages)p까지 공부"
+
+        case .chapters(let done):
+            let total = Self.studyChapterCount(payload)
+            // `completed` is what the web reads; `toc` is what this app's
+            // table of contents reads. Writing only one leaves the two
+            // screens disagreeing about the same subject.
+            payload["completed"] = .array((0..<total).map { .bool($0 < done) })
+            payload["toc"] = .array(Self.markLeading(
+                nodes: payload["toc"]?.arrayValue ?? [],
+                completedCount: done
+            ))
+            payload["progress"] = .int(
+                total > 0 ? min(100, Int((Double(done) / Double(total) * 100).rounded())) : 0
+            )
+            title = "\(done)개 챕터 완료"
+        }
+
+        if !photoPaths.isEmpty {
+            payload["photos"] = .array(photoPaths.map { .string($0) })
+        }
+
+        guard let entityID = record.entityID else {
+            await updateRecord(id: record.id) { existing in existing = payload }
+            return
+        }
+
+        context.insert(StoredLog(
+            id: UUID(),
+            userID: userID,
+            category: LogCategory.study.rawValue,
+            entityID: entityID,
+            title: title,
+            tags: record.tags,
+            payloadData: StoredLog.encodeObject(payload),
+            entityTitle: record.entityTitle,
+            needsEntity: false,
+            syncState: .createdLocally
+        ))
+
+        saveAndRefresh(flash: .study)
+        await sync()
+    }
+
+    static func studyChapterCount(_ payload: [String: JSONValue]) -> Int {
+        payload.array("chapters")?.count ?? payload.array("toc")?.count ?? 0
+    }
+
+    /// Marks the first `completedCount` top-level nodes done and the rest not.
+    /// Children are left alone — the count is a pointer into the chapter list,
+    /// not a claim about every leaf under it.
+    private static func markLeading(nodes: [JSONValue], completedCount: Int) -> [JSONValue] {
+        nodes.enumerated().map { index, node in
+            guard var fields = node.objectValue else { return node }
+            fields["completed"] = .bool(index < completedCount)
+            return .object(fields)
+        }
+    }
+
     /// Toggles one table-of-contents node. The tree is arbitrary depth, so this
     /// walks it rather than indexing.
     func setStudyNodeCompleted(id: UUID, nodeID: String, completed: Bool) async {

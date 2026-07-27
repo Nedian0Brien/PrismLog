@@ -30,6 +30,7 @@
 		5A8C667743B39EFC3816080B /* PrismWordmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B4BE3B421AC0CD21F26ADC /* PrismWordmark.swift */; };
 		5EF7EEEE647B226E97161C68 /* PrismComposerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA739992409587393A5BE18E /* PrismComposerButton.swift */; };
 		6107068124859BE66F0057A8 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 398C9DE5A24530799A96565C /* AppIcon.icon */; };
+		625CC463C44DA864EAB64D31 /* StudyProgressSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D77F5D42B7DAA285B58B674 /* StudyProgressSheet.swift */; };
 		65E7BB180C7D9AD4DE9152A4 /* WidgetRefresher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B55AC8439ED4BF41E2E39BE /* WidgetRefresher.swift */; };
 		7C0FC813AC70AFBD157D3EE6 /* SpectrumSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C170F021CF139BC66B9AC88 /* SpectrumSnapshot.swift */; };
 		7C983A1B09F9A40C9B965FAA /* PrismTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 191A0B160303D5288BFABE39 /* PrismTypography.swift */; };
@@ -136,6 +137,7 @@
 		45B9996E62550A64AE6D9DE1 /* StudyGrouping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyGrouping.swift; sourceTree = "<group>"; };
 		48858DFD2076D9D7F28BF07B /* RecordItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordItem.swift; sourceTree = "<group>"; };
 		4C170F021CF139BC66B9AC88 /* SpectrumSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumSnapshot.swift; sourceTree = "<group>"; };
+		4D77F5D42B7DAA285B58B674 /* StudyProgressSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyProgressSheet.swift; sourceTree = "<group>"; };
 		4E61BA97ED7A0BBAA0482735 /* PrismLogUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PrismLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		51208707E83C2E6E04149802 /* OfflineBehaviourTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineBehaviourTests.swift; sourceTree = "<group>"; };
 		5EDE5A3C88606ADBB49FCF54 /* AppShellUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellUITests.swift; sourceTree = "<group>"; };
@@ -311,6 +313,7 @@
 				E5AE5EC93BC6B245782401A6 /* RecordListCards.swift */,
 				6FAF1D89767ABCACD1B78BA8 /* RecordsHub.swift */,
 				7966B0305E656C4DC5A601E6 /* RecordsScreen.swift */,
+				4D77F5D42B7DAA285B58B674 /* StudyProgressSheet.swift */,
 			);
 			path = Records;
 			sourceTree = "<group>";
@@ -633,6 +636,7 @@
 				7C0FC813AC70AFBD157D3EE6 /* SpectrumSnapshot.swift in Sources */,
 				E3D198F1EBA9FEEC590623B5 /* StoredLog.swift in Sources */,
 				A721706D81E437B137BD72C4 /* StudyGrouping.swift in Sources */,
+				625CC463C44DA864EAB64D31 /* StudyProgressSheet.swift in Sources */,
 				34E06AB12A80C6C7C21BAEAA /* TimelineScreen.swift in Sources */,
 				1CC497134900E65EDCF56BA9 /* TrendChart.swift in Sources */,
 				65E7BB180C7D9AD4DE9152A4 /* WidgetRefresher.swift in Sources */,

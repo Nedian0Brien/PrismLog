@@ -146,6 +146,125 @@ struct RecordsHubTests {
         #expect(byAccent[.game]?.detail == "플레이 시간")
     }
 
+    @Test("공부 활동 추가는 같은 엔티티에 새 로그를 만든다")
+    func studyActivityCreatesASiblingLog() async throws {
+        let store = try makeStore()
+        let textbook = UUID()
+
+        insert(
+            into: store,
+            category: "study",
+            title: "150p까지 공부",
+            entityID: textbook,
+            entityTitle: "실전 AI 애플리케이션 개발",
+            daysAgo: 2,
+            payload: [
+                "progress_mode": .string("page"),
+                "pages_read": .int(150),
+                "pages_total": .int(500),
+                "progress": .int(30),
+                "goal": .string("주 3회"),
+                // A key this app never reads. The web wrote it and rebuilds the
+                // subject card from the newest log, so losing it here would
+                // change what the web shows.
+                "categoryLabel": .string("공부"),
+            ]
+        )
+        try store.context.save()
+        store.reload()
+
+        let previous = try #require(store.records.first)
+        await store.addStudyActivity(to: previous, value: .pages(250))
+
+        let groups = StudyGrouping.groups(from: store.records(in: .study))
+        #expect(groups.count == 1, "같은 과목이므로 카드는 여전히 하나여야 한다")
+        #expect(groups[0].activityCount == 2, "활동은 둘로 늘어야 한다")
+
+        let latest = groups[0].latest
+        #expect(latest.id != previous.id, "기존 로그를 고치는 게 아니라 새 로그를 만든다")
+        #expect(latest.entityID == textbook)
+        #expect(latest.title == "250p까지 공부")
+        #expect(latest.pagesRead == 250)
+        #expect(latest.progress == 50)
+        #expect(latest.payload.string("goal") == "주 3회", "이전 payload를 이어받아야 한다")
+        #expect(latest.payload.string("categoryLabel") == "공부", "모르는 키도 그대로 넘겨야 한다")
+        #expect(store.pendingChangeCount == 1, "서버에 못 보냈으니 큐에 남아야 한다")
+    }
+
+    @Test("챕터 모드는 completed 배열과 toc를 함께 갱신한다")
+    func studyActivityKeepsChapterRepresentationsInStep() async throws {
+        let store = try makeStore()
+        let node: (String, Bool) -> JSONValue = { title, done in
+            .object([
+                "id": .string(title),
+                "title": .string(title),
+                "completed": .bool(done),
+                "children": .array([]),
+            ])
+        }
+
+        insert(
+            into: store,
+            category: "study",
+            title: "1개 챕터 완료",
+            entityID: UUID(),
+            daysAgo: 1,
+            payload: [
+                "progress_mode": .string("chapter"),
+                "chapters": .array([node("1장", true), node("2장", false), node("3장", false)]),
+                "completed": .array([.bool(true), .bool(false), .bool(false)]),
+                "toc": .array([node("1장", true), node("2장", false), node("3장", false)]),
+            ]
+        )
+        try store.context.save()
+        store.reload()
+
+        let previous = try #require(store.records.first)
+        await store.addStudyActivity(to: previous, value: .chapters(2))
+
+        let latest = try #require(StudyGrouping.groups(from: store.records(in: .study)).first?.latest)
+
+        #expect(latest.title == "2개 챕터 완료")
+        #expect(latest.progress == 67)
+        #expect(
+            latest.payload.array("completed")?.map(\.boolValue) == [true, true, false],
+            "웹이 읽는 completed 배열이 갱신돼야 한다"
+        )
+        // The app's own table of contents reads `toc`, so leaving it behind
+        // would make the two screens disagree about the same subject.
+        #expect(
+            (latest.payload.array("toc") ?? []).map { $0.objectValue?["completed"]?.boolValue }
+                == [true, true, false],
+            "toc도 같은 상태여야 한다"
+        )
+    }
+
+    @Test("엔티티가 없으면 새 로그 대신 기존 기록을 갱신한다")
+    func studyActivityWithoutAnEntityUpdatesInPlace() async throws {
+        let store = try makeStore()
+        insert(
+            into: store,
+            category: "study",
+            title: "아직 동기화 전",
+            daysAgo: 1,
+            payload: [
+                "progress_mode": .string("page"),
+                "pages_read": .int(10),
+                "pages_total": .int(100),
+            ]
+        )
+        try store.context.save()
+        store.reload()
+
+        let previous = try #require(store.records.first)
+        await store.addStudyActivity(to: previous, value: .pages(40))
+
+        #expect(store.records(in: .study).count == 1, "붙일 엔티티가 없으면 로그를 늘리지 않는다")
+        let updated = try #require(store.record(id: previous.id))
+        #expect(updated.pagesRead == 40)
+        #expect(updated.progress == 40)
+    }
+
     @Test("프리뷰는 최신 3건까지만 담는다")
     func previewsCapAtThree() throws {
         let store = try makeStore()

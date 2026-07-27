@@ -217,6 +217,7 @@ struct ReadingListCard: View {
 struct StudyListCard: View {
     let group: StudyGroup
     let onEdit: () -> Void
+    let onLogProgress: () -> Void
 
     private var record: RecordItem { group.latest }
 
@@ -247,17 +248,22 @@ struct StudyListCard: View {
 
             ProgressMeter(value: Double(group.progress) / 100, accent: .study)
 
-            // No "+ 기록" here, unlike the web: adding a study activity means
-            // creating a second log against the same entity, which this app
-            // has no write path for yet. Tracked as a follow-up rather than
-            // faked with a button that opens the edit sheet.
             HStack(alignment: .bottom, spacing: 10) {
-                TagChips(tags: group.tags, accent: .study)
+                VStack(alignment: .leading, spacing: 6) {
+                    TagChips(tags: group.tags, accent: .study)
+
+                    // The session count is the point of grouping — without it
+                    // a subject studied nine times looks the same as one
+                    // studied once.
+                    Text("\(group.activityCount)회 기록")
+                        .font(.prismMicro)
+                        .monospacedDigit()
+                        .prismMuted()
+                }
+
                 Spacer(minLength: 0)
-                Text("\(group.activityCount)회 기록")
-                    .font(.prismMicro)
-                    .monospacedDigit()
-                    .prismMuted()
+
+                CardActionButton(title: "+ 기록", accent: .study, filled: true, action: onLogProgress)
             }
         }
     }

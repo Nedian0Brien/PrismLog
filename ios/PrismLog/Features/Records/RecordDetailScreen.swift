@@ -86,6 +86,11 @@ struct RecordDetailScreen: View {
                                     addingNote = true
                                 }
                                 Divider()
+                            } else if record.category == .study {
+                                Button("공부 기록 추가", systemImage: "plus.circle") {
+                                    loggingProgress = true
+                                }
+                                Divider()
                             }
                             Button("편집", systemImage: "pencil") { editing = true }
                         } label: {
@@ -95,7 +100,11 @@ struct RecordDetailScreen: View {
                     }
                 }
                 .sheet(isPresented: $loggingProgress) {
-                    ReadingProgressSheet(record: record)
+                    if record.category == .study {
+                        StudyProgressSheet(record: record)
+                    } else {
+                        ReadingProgressSheet(record: record)
+                    }
                 }
                 .sheet(isPresented: $addingNote) {
                     ReadingNoteSheet(record: record)

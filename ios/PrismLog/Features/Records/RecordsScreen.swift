@@ -56,6 +56,7 @@ struct RecordsScreen: View {
             .sheet(item: $loggingProgress) { record in
                 switch record.category {
                 case .reading: ReadingProgressSheet(record: record)
+                case .study: StudyProgressSheet(record: record)
                 default: GameSessionSheet(record: record)
                 }
             }
@@ -189,7 +190,8 @@ struct RecordsScreen: View {
                             NavigationLink(value: group.id) {
                                 StudyListCard(
                                     group: group,
-                                    onEdit: { editing = group.latest }
+                                    onEdit: { editing = group.latest },
+                                    onLogProgress: { loggingProgress = group.latest }
                                 )
                             }
                             .buttonStyle(.plain)
