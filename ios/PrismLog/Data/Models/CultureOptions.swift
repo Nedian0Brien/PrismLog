@@ -22,10 +22,17 @@ struct SeriesEpisode: Identifiable, Hashable, Sendable {
     let name: String?
     let watched: Bool
     let watchedAt: Date?
+    let overview: String?
+    /// TMDB still. Often absent — the timeline falls back to the code label.
+    let stillURL: URL?
 
     /// Matches the web's map key: `"{season}-{episode}"`.
     var key: String { "\(seasonNumber)-\(episodeNumber)" }
     var id: String { key }
+
+    /// "S1 · E3", the label the timeline shows under each still.
+    var code: String { "S\(seasonNumber) · E\(episodeNumber)" }
+    var displayName: String { name?.isEmpty == false ? name! : "EP \(episodeNumber)" }
 }
 
 struct SeriesSeason: Identifiable, Hashable, Sendable {
@@ -102,7 +109,9 @@ struct SeriesProgress: Sendable {
                     absoluteNumber: cursor,
                     name: info?.string("name"),
                     watched: cursor <= watched,
-                    watchedAt: watchDates.string(key).flatMap(PrismDateCoding.parse)
+                    watchedAt: watchDates.string(key).flatMap(PrismDateCoding.parse),
+                    overview: info?.string("overview"),
+                    stillURL: info?.string("still_url").flatMap(PrismMedia.url(for:))
                 ))
             }
 
@@ -122,7 +131,9 @@ struct SeriesProgress: Sendable {
                     absoluteNumber: number,
                     name: nil,
                     watched: number <= watched,
-                    watchedAt: watchDates.string("1-\(number)").flatMap(PrismDateCoding.parse)
+                    watchedAt: watchDates.string("1-\(number)").flatMap(PrismDateCoding.parse),
+                    overview: nil,
+                    stillURL: nil
                 )
             }
             built = [SeriesSeason(seasonNumber: 1, name: nil, episodes: episodes)]

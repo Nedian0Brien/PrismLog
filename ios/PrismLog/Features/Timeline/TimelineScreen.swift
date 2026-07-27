@@ -194,6 +194,10 @@ struct TimelineEntryCard: View {
                 body(showsTitle: true)
             }
 
+            if !item.episodesToday.isEmpty {
+                EpisodeStillStrip(episodes: item.episodesToday, accent: item.accent)
+            }
+
             if !item.photos.isEmpty {
                 PhotoStrip(photos: item.photos, accent: item.accent, height: 74)
             }
@@ -215,11 +219,14 @@ struct TimelineEntryCard: View {
                 }
         }
         .glassEffect(.regular, in: .rect(cornerRadius: PrismGlassMetrics.cardCorner))
-        // Entries settle in as they arrive, the way the web reveals them on
-        // scroll. Skipped entirely under Reduce Motion.
+        // Entries rise into place as you scroll to them, and the progress bar
+        // fills at that moment — the same reveal the web drives with an
+        // IntersectionObserver at a 0.24 threshold. Once revealed they stay
+        // revealed; scrolling back up must not replay the animation.
         .opacity(shown ? 1 : 0.42)
         .offset(y: shown ? 0 : 14)
-        .onAppear {
+        .onScrollVisibilityChange(threshold: 0.24) { visible in
+            guard visible, !shown else { return }
             if reduceMotion {
                 shown = true
             } else {
@@ -270,8 +277,8 @@ struct TimelineEntryCard: View {
 
             if item.progress != nil {
                 progressBlock
-            } else if !item.gameSessionMinutes.isEmpty {
-                GameSessionDonuts(minutes: item.gameSessionMinutes, accent: item.accent)
+            } else if item.gameMinutes > 0 {
+                PlaytimeDonuts(minutes: item.gameMinutes, accent: item.accent)
             }
 
             if !item.snippet.isEmpty {
@@ -315,10 +322,11 @@ struct TimelineEntryCard: View {
             TimelineProgressBar(
                 value: value,
                 start: item.progressStart,
-                accent: item.accent
+                accent: item.accent,
+                shown: shown
             )
 
-            HStack(spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
                 if !item.deltaLabel.isEmpty {
                     Text(item.deltaLabel)
                         .font(.prismMicro)
@@ -328,16 +336,140 @@ struct TimelineEntryCard: View {
                         .padding(.vertical, 5)
                         .background { Capsule().fill(item.accent.color.opacity(0.1)) }
                         .overlay { Capsule().stroke(item.accent.color.opacity(0.14), lineWidth: 1) }
+                        .fixedSize()
                 }
 
-                Spacer(minLength: 0)
+                if item.episodesToday.isEmpty {
+                    Spacer(minLength: 0)
 
-                Text(item.summary)
-                    .font(.prismMicro)
+                    Text(item.summary.isEmpty ? "진행 정보 없음" : item.summary)
+                        .font(.prismMicro)
+                        .monospacedDigit()
+                        .prismMuted()
+                } else {
+                    SeriesDayStats(item: item)
+                }
+            }
+        }
+    }
+}
+
+/// The three numbers a series day is about: how much you watched, what it
+/// bought you, and where that leaves the series.
+struct SeriesDayStats: View {
+    let item: TimelineItem
+
+    var body: some View {
+        HStack(spacing: 6) {
+            stat("본 에피소드", value: "\(item.episodesToday.count)", unit: "화", tinted: true)
+            stat("오늘 진행률", value: "+\(item.seriesDayDelta)", unit: "%", tinted: false)
+            stat("전체 진행률", value: "\(item.progress ?? 0)", unit: "%", tinted: true, valueInAccent: true)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func stat(
+        _ label: String,
+        value: String,
+        unit: String,
+        tinted: Bool,
+        valueInAccent: Bool = false
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.prismMicro)
+                .prismMuted()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(PrismFont.numeral(18, weight: .heavy))
                     .monospacedDigit()
+                    .foregroundStyle(valueInAccent ? item.accent.color : PrismColor.text)
+
+                Text(unit)
+                    .font(.prismMicro)
                     .prismMuted()
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 9)
+        .background {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(tinted ? item.accent.color.opacity(0.08) : Color.white.opacity(0.03))
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(
+                    tinted ? item.accent.color.opacity(0.13) : Color.white.opacity(0.08),
+                    lineWidth: 1
+                )
+        }
+    }
+}
+
+/// Stills of the episodes watched that day. TMDB does not always supply one,
+/// so the code label doubles as the placeholder rather than leaving a hole.
+struct EpisodeStillStrip: View {
+    let episodes: [SeriesEpisode]
+    let accent: PrismAccent
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(alignment: .top, spacing: 10) {
+                ForEach(episodes) { episode in
+                    VStack(alignment: .leading, spacing: 6) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [accent.color.opacity(0.14), Color.white.opacity(0.05)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+
+                            if let still = episode.stillURL {
+                                AsyncImage(url: still) { phase in
+                                    if case .success(let image) = phase {
+                                        image.resizable().scaledToFill()
+                                    } else {
+                                        Color.clear
+                                    }
+                                }
+                            } else {
+                                Text(episode.code)
+                                    .font(.prismMicro)
+                                    .prismMuted()
+                            }
+                        }
+                        .frame(width: 120, height: 68)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(accent.color.opacity(0.13), lineWidth: 1)
+                        }
+
+                        Text(episode.code)
+                            .font(.prismMicro)
+                            .monospacedDigit()
+                            .prismMuted()
+
+                        Text(episode.displayName)
+                            .font(.prismCaption)
+                            .foregroundStyle(PrismColor.text)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(width: 120, alignment: .leading)
+                }
+            }
+            .padding(.horizontal, 1)
+        }
+        .scrollIndicators(.hidden)
     }
 }
 
@@ -348,10 +480,10 @@ struct TimelineProgressBar: View {
     let value: Int
     let start: Int
     let accent: PrismAccent
+    /// Driven by the card, so the bar fills as the entry scrolls into view
+    /// rather than before anyone has looked at it.
+    let shown: Bool
     var height: CGFloat = 14
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var shown = false
 
     var body: some View {
         let clamped = min(max(value, 0), 100)
@@ -385,13 +517,7 @@ struct TimelineProgressBar: View {
             }
         }
         .frame(height: height)
-        .onAppear {
-            if reduceMotion {
-                shown = true
-            } else {
-                withAnimation(.spring(response: 0.8, dampingFraction: 0.88).delay(0.12)) { shown = true }
-            }
-        }
+        .animation(.spring(response: 0.8, dampingFraction: 0.88).delay(0.1), value: shown)
         .accessibilityHidden(true)
     }
 
@@ -400,19 +526,25 @@ struct TimelineProgressBar: View {
     }
 }
 
-/// One donut per play session, mirroring the web's conic gradients. The ring
-/// fills relative to the longest session of the day, so a marathon reads
-/// differently from a quick round.
-struct GameSessionDonuts: View {
-    let minutes: [Int]
+/// Playtime as rings: one filled donut per whole hour, plus a partial one for
+/// the remaining minutes. Ported from `renderGamePlaytime` — an hour is the
+/// unit a play session is felt in, so five of them read at a glance in a way
+/// that "5시간 12분" does not.
+struct PlaytimeDonuts: View {
+    let minutes: Int
     let accent: PrismAccent
 
-    private var longest: Int { max(minutes.max() ?? 0, 1) }
+    private var fills: [Double] {
+        let hours = minutes / 60
+        let rest = minutes % 60
+        var values = Array(repeating: 1.0, count: hours)
+        if rest > 0 { values.append(Double(rest) / 60) }
+        return values
+    }
 
-    private var totalLabel: String {
-        let total = minutes.reduce(0, +)
-        let hours = total / 60
-        let rest = total % 60
+    private var label: String {
+        let hours = minutes / 60
+        let rest = minutes % 60
         if hours > 0, rest > 0 { return "\(hours)시간 \(rest)분" }
         if hours > 0 { return "\(hours)시간" }
         return "\(rest)분"
@@ -421,25 +553,25 @@ struct GameSessionDonuts: View {
     var body: some View {
         HStack(spacing: 8) {
             HStack(spacing: 6) {
-                ForEach(Array(minutes.enumerated()), id: \.offset) { _, value in
+                ForEach(Array(fills.enumerated()), id: \.offset) { _, fill in
                     Circle()
-                        .trim(from: 0, to: Double(value) / Double(longest))
+                        .trim(from: 0, to: fill)
                         .stroke(accent.color, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                        .background {
-                            Circle().stroke(Color.white.opacity(0.1), lineWidth: 4)
-                        }
+                        .background { Circle().stroke(Color.white.opacity(0.1), lineWidth: 4) }
                         .frame(width: 14, height: 14)
                 }
             }
 
-            Text(totalLabel)
+            Text(label)
                 .font(.prismMicro)
                 .monospacedDigit()
                 .prismMuted()
 
             Spacer(minLength: 0)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("플레이 시간 \(label)")
     }
 }
 

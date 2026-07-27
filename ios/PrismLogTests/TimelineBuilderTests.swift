@@ -303,20 +303,28 @@ struct TimelineBuilderTests {
                     .object([
                         "season_number": .int(1),
                         "episode_count": .int(9),
+                        // camelCase on purpose: this is how the web actually
+                        // stores enriched episodes.
                         "episodes": .array((1...9).map { number in
                             .object([
-                                "season_number": .int(1),
-                                "episode_number": .int(number),
+                                "seasonNumber": .int(1),
+                                "episodeNumber": .int(number),
                                 "name": .string("EP\(number)"),
+                                "overview": .string("EP\(number) 줄거리"),
+                                "stillUrl": number == 3
+                                    ? .string("https://image.tmdb.org/still3.jpg")
+                                    : .null,
                             ])
                         }),
                     ])
                 ]),
+                // 3 and 4 share a timestamp, the way a binge does — the tie has
+                // to break on airing order or the entry describes EP3.
                 "episode_watch_dates": .object([
                     "1-1": .string(stamp(date(18, 21))),
                     "1-2": .string(stamp(date(18, 22))),
                     "1-3": .string(stamp(date(20, 20))),
-                    "1-4": .string(stamp(date(20, 21))),
+                    "1-4": .string(stamp(date(20, 20))),
                 ]),
             ]
         )
@@ -329,16 +337,24 @@ struct TimelineBuilderTests {
         let latest = try #require(days.first?.items.first)
         #expect(latest.deltaLabel == "+2화")
         #expect(latest.episodesToday.count == 2)
-        #expect(latest.snippet == "EP3 · EP4")
         // 4 of 9 watched overall, 2 of them that day.
         #expect(latest.progress == 44)
         #expect(latest.progressStart == 22)
+        #expect(latest.seriesDayDelta == 22, "오늘 진행률 스탯에 쓰인다")
+
+        // The body is the synopsis of the episode you finished on, not the one
+        // you started with.
+        #expect(latest.snippet == "EP4 줄거리")
+        #expect(latest.episodesToday.map(\.code) == ["S1 · E3", "S1 · E4"])
+        #expect(latest.episodesToday.first?.stillURL?.absoluteString
+                == "https://image.tmdb.org/still3.jpg")
+        #expect(latest.episodesToday.last?.stillURL == nil, "스틸이 없으면 코드로 대체된다")
     }
 
     // MARK: - Game
 
-    @Test("게임은 플레이한 날마다 세션 시간이 모인다")
-    func gameSessionsGroupByDay() throws {
+    @Test("게임은 세션마다 한 줄이다 — 같은 날이라도 합치지 않는다")
+    func gameSessionsStayIndividualRows() throws {
         let store = try makeStore()
 
         insert(
@@ -367,7 +383,7 @@ struct TimelineBuilderTests {
                     .object([
                         "id": .string("g3"),
                         "played_at": .string(stamp(date(22, 23))),
-                        "duration_minutes": .int(45),
+                        "duration_minutes": .int(75),
                         "note": .string("보스전"),
                     ]),
                 ]),
@@ -378,11 +394,32 @@ struct TimelineBuilderTests {
 
         let days = TimelineBuilder.days(from: store.records)
         #expect(days.count == 2)
+        #expect(days.first?.items.count == 2, "같은 날 두 번 플레이했으면 두 줄")
 
         let latest = try #require(days.first?.items.first)
-        #expect(latest.gameSessionMinutes == [45, 45], "그날의 세션이 각각 남는다")
+        #expect(latest.gameMinutes == 75, "그 세션의 시간")
         #expect(latest.snippet == "보스전")
         #expect(latest.progress == nil, "게임에는 진행률이 없다")
+    }
+
+    @Test("세션에 시간이 없으면 playtime 문자열에서 읽는다")
+    func playtimeStringIsParsedWhenSessionsAreMissing() throws {
+        let store = try makeStore()
+
+        insert(
+            into: store, category: "culture", title: "옛날 게임 기록",
+            entityID: UUID(), occurredAt: date(5),
+            payload: [
+                "type": .string("게임"),
+                "status": .string("플레이 중"),
+                "playtime": .string("2시간 30분"),
+            ]
+        )
+        try store.context.save()
+        store.reload()
+
+        let item = try #require(TimelineBuilder.days(from: store.records).first?.items.first)
+        #expect(item.gameMinutes == 150)
     }
 
     // MARK: - Shape
@@ -422,6 +459,47 @@ struct TimelineBuilderTests {
         #expect(items.map(\.title) == ["영화", "공부", "책"], "같은 날 안에서는 늦은 시각이 위")
         #expect(items.map(\.accent) == [.movie, .study, .reading])
         #expect(items[0].progress == nil, "영화에는 진행률이 없다")
+    }
+
+    @Test("공부 항목은 로그에 붙은 사진을 가져온다")
+    func studyPhotosComeFromTheLogItself() throws {
+        let store = try makeStore()
+
+        insert(
+            into: store, category: "study", title: "80p까지 공부",
+            entityID: UUID(), entityTitle: "교재", occurredAt: date(11),
+            payload: [
+                "progress_mode": .string("page"),
+                "pages_read": .int(80),
+                "pages_total": .int(200),
+                "photos": .array([
+                    .string("/uploads/study-sessions/a.jpg"),
+                    .string("/uploads/study-sessions/b.jpg"),
+                ]),
+            ]
+        )
+        try store.context.save()
+        store.reload()
+
+        let item = try #require(TimelineBuilder.days(from: store.records).first?.items.first)
+        #expect(item.photos.count == 2, "공부는 세션이 아니라 로그에 사진이 붙는다")
+        #expect(item.title == "교재", "공부 줄의 주인공은 과목이다")
+    }
+
+    @Test("공부 외에는 로그 제목을 쓴다")
+    func nonStudyRowsKeepTheLogTitle() throws {
+        let store = try makeStore()
+
+        insert(
+            into: store, category: "culture", title: "오펜하이머",
+            entityID: UUID(), entityTitle: "엔티티 제목", occurredAt: date(2),
+            payload: ["type": .string("영화"), "status": .string("시청 완료")]
+        )
+        try store.context.save()
+        store.reload()
+
+        let item = try #require(TimelineBuilder.days(from: store.records).first?.items.first)
+        #expect(item.title == "오펜하이머")
     }
 
     @Test("기록이 없으면 빈 타임라인이다")

@@ -27,10 +27,15 @@ struct TimelineItem: Identifiable, Hashable, Sendable {
     let progressStart: Int
     /// "+42p", "+2챕터", "+3화" — the day's gain in the record's own unit.
     let deltaLabel: String
-    /// One entry per play session that day; the feed draws them as donuts.
-    let gameSessionMinutes: [Int]
+    /// This session's length. The feed draws it as one donut per whole hour
+    /// plus a partial for the remainder, so a three-hour evening looks like
+    /// three rings rather than one full bar.
+    let gameMinutes: Int
     let photos: [URL]
+    /// Episodes watched on this entry's day, in airing order.
     let episodesToday: [SeriesEpisode]
+    /// Share of the whole series watched on this day, as a percentage.
+    let seriesDayDelta: Int
 
     var progressDelta: Int {
         guard let progress else { return 0 }
@@ -168,8 +173,7 @@ enum TimelineBuilder {
         var studyAmountEnd = 0
         var studyAmountMode: StudyAmountMode = .percent
 
-        // Game, one element per session that day.
-        var gameSessionMinutes: [Int] = []
+        var gameMinutes = 0
 
         // Series.
         var episodesToday: [SeriesEpisode] = []
@@ -180,7 +184,6 @@ enum TimelineBuilder {
     private static func collapse(_ entries: [Entry], calendar: Calendar) -> [Aggregate] {
         var readingDays: [String: Aggregate] = [:]
         var studyDays: [String: Aggregate] = [:]
-        var gameDays: [String: Aggregate] = [:]
         var seriesDays: [String: Aggregate] = [:]
         var order: [String] = []
         var passthrough: [Aggregate] = []
@@ -266,24 +269,20 @@ enum TimelineBuilder {
             case .culture, .movie, .series, .game:
                 switch record.cultureType {
                 case .game:
-                    let mapKey = key(entry, entry.date, "game")
-                    if var existing = gameDays[mapKey] {
-                        existing.entry = entry
-                        existing.date = entry.date
-                        existing.gameSessionMinutes.append(entry.gameSession?.durationMinutes ?? 0)
-                        if let note = entry.gameSession?.note, !note.isEmpty { existing.note = note }
-                        existing.photos += entry.gameSession?.photos ?? []
-                        gameDays[mapKey] = existing
-                    } else {
-                        var aggregate = Aggregate(entry: entry, date: entry.date)
-                        if let session = entry.gameSession {
-                            aggregate.gameSessionMinutes = [session.durationMinutes]
-                            aggregate.note = session.note
-                            aggregate.photos = session.photos
-                        }
-                        gameDays[mapKey] = aggregate
-                        order.append(mapKey)
+                    // Not aggregated, unlike reading and study: the web keeps
+                    // every play session as its own row, and two sessions in
+                    // one evening are two things you did.
+                    var aggregate = Aggregate(entry: entry, date: entry.date)
+                    if let session = entry.gameSession {
+                        aggregate.gameMinutes = session.durationMinutes
+                        aggregate.note = session.note
+                        aggregate.photos = session.photos
                     }
+                    if aggregate.gameMinutes == 0 {
+                        // Older records only carry a formatted playtime string.
+                        aggregate.gameMinutes = minutes(fromPlaytime: record.payload.string("playtime"))
+                    }
+                    passthrough.append(aggregate)
 
                 case .series:
                     let watched = record.seriesProgress?.seasons
@@ -320,25 +319,47 @@ enum TimelineBuilder {
         }
 
         let byKey = readingDays.merging(studyDays) { a, _ in a }
-            .merging(gameDays) { a, _ in a }
             .merging(seriesDays) { a, _ in a }
 
         return order.compactMap { byKey[$0] } + passthrough
+    }
+
+    /// Reads the web's formatted playtime back into minutes — "3시간 20분",
+    /// "45분", or a bare number of hours.
+    private static func minutes(fromPlaytime text: String?) -> Int {
+        guard let text, !text.isEmpty else { return 0 }
+
+        let hours = number(in: text, before: "시간")
+        let mins = number(in: text, before: "분")
+        if hours > 0 || mins > 0 { return hours * 60 + mins }
+
+        return Int((Double(text.trimmingCharacters(in: .whitespaces)) ?? 0) * 60)
+    }
+
+    private static func number(in text: String, before unit: String) -> Int {
+        guard let range = text.range(of: unit) else { return 0 }
+        let digits = text[..<range.lowerBound].reversed().prefix { $0.isNumber }
+        return Int(String(digits.reversed())) ?? 0
     }
 
     // MARK: Pass 3 — map
 
     private static func item(from aggregate: Aggregate) -> TimelineItem {
         let record = aggregate.entry.record
-        let accent = record.accent
+        let episodes = aggregate.episodesToday.sorted { $0.absoluteNumber < $1.absoluteNumber }
 
         return TimelineItem(
             id: identity(aggregate),
             recordID: record.id,
             date: aggregate.date,
-            accent: accent,
+            accent: record.accent,
             categoryLabel: record.categoryLabel,
-            title: record.entityTitle ?? record.title,
+            // A study log is titled by its session ("250p까지 공부"); the row is
+            // about the subject. Everywhere else the log's own title is the
+            // specific thing and the entity title is the generic one.
+            title: record.category == .study
+                ? (record.entityTitle ?? record.title)
+                : record.title,
             status: status(record),
             posterURL: record.coverURL,
             summary: summary(aggregate),
@@ -346,10 +367,28 @@ enum TimelineBuilder {
             progress: progress(aggregate),
             progressStart: progressStart(aggregate),
             deltaLabel: deltaLabel(aggregate),
-            gameSessionMinutes: aggregate.gameSessionMinutes.filter { $0 > 0 },
-            photos: aggregate.photos,
-            episodesToday: aggregate.episodesToday.sorted { $0.absoluteNumber < $1.absoluteNumber }
+            gameMinutes: aggregate.gameMinutes,
+            photos: photos(aggregate),
+            episodesToday: episodes,
+            seriesDayDelta: seriesDayDelta(aggregate)
         )
+    }
+
+    private static func photos(_ aggregate: Aggregate) -> [URL] {
+        // Study photos hang off the log itself rather than a session, because a
+        // study activity *is* the session.
+        if aggregate.entry.record.category == .study {
+            return (aggregate.entry.record.payload.array("photos") ?? [])
+                .compactMap(\.stringValue)
+                .compactMap(PrismMedia.url(for:))
+        }
+        return aggregate.photos
+    }
+
+    private static func seriesDayDelta(_ aggregate: Aggregate) -> Int {
+        guard let total = aggregate.entry.record.seriesProgress?.totalEpisodes, total > 0 else { return 0 }
+        let share = Double(aggregate.episodesToday.count) / Double(total) * 100
+        return min(100, Int(share.rounded()))
     }
 
     private static func identity(_ aggregate: Aggregate) -> String {
@@ -389,11 +428,18 @@ enum TimelineBuilder {
     private static func snippet(_ aggregate: Aggregate) -> String {
         if !aggregate.note.isEmpty { return aggregate.note }
 
-        if !aggregate.episodesToday.isEmpty {
-            let names = aggregate.episodesToday
-                .compactMap { $0.name?.isEmpty == false ? $0.name : nil }
-            if !names.isEmpty { return names.joined(separator: " · ") }
-        }
+        // For a series the body is the synopsis of the episode you finished on
+        // — the last one watched that day, not the first. Binge-watching writes
+        // the same timestamp to every episode, so airing order breaks the tie;
+        // otherwise a four-episode evening would describe where it started.
+        let lastWatched = aggregate.episodesToday
+            .sorted {
+                let left = $0.watchedAt ?? .distantPast
+                let right = $1.watchedAt ?? .distantPast
+                return left == right ? $0.absoluteNumber < $1.absoluteNumber : left < right
+            }
+            .last
+        if let overview = lastWatched?.overview, !overview.isEmpty { return overview }
 
         return aggregate.entry.record.summary
     }
