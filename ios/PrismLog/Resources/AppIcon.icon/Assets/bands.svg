@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!--
+    The prism body. Bands run parallel to the left face rather than horizontally
+    — that is what makes them read as light crossing glass instead of as a flag.
+
+    Triangle: apex (512,168), base (146,812)–(878,812).
+    Cuts parallel to the left face meet the right face at (634,382.7) and
+    (756,597.3); solving `left-face direction from a point on the base` gives
+    those two points. Band widths narrow toward the red end, which is what
+    dispersion looks like.
+
+    Colors and order match the dashboard ring and the wordmark: 독서 · 공부 · 문화.
+  -->
+  <defs>
+    <clipPath id="tri">
+      <path d="M512 168 L878 812 L146 812 Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#tri)">
+    <path d="M512 168 L634 382.7 L390 812 L146 812 Z" fill="#2DB5A3"/>
+    <path d="M634 382.7 L756 597.3 L634 812 L390 812 Z" fill="#F0C930"/>
+    <path d="M756 597.3 L878 812 L634 812 Z" fill="#E63946"/>
+  </g>
+</svg>

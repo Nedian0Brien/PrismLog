@@ -1,6 +1,9 @@
 {
   "fill" : {
-    "automatic-gradient" : "display-p3:0.10196,0.09412,0.08627,1.00000",
+    "linear-gradient" : [
+      "display-p3:0.18824,0.17255,0.16078,1.00000",
+      "display-p3:0.05882,0.05098,0.04706,1.00000"
+    ],
     "orientation" : {
       "start" : { "x" : 0.5, "y" : 0 },
       "stop" : { "x" : 0.5, "y" : 1 }
@@ -10,24 +13,16 @@
     {
       "layers" : [
         {
-          "image-name" : "prism.svg",
-          "name" : "prism",
+          "image-name" : "glass.svg",
+          "name" : "glass",
           "position" : {
             "scale" : 1,
             "translation-in-points" : [0, 0]
           }
         },
         {
-          "image-name" : "spectrum.svg",
-          "name" : "spectrum",
-          "position" : {
-            "scale" : 1,
-            "translation-in-points" : [0, 0]
-          }
-        },
-        {
-          "image-name" : "beam.svg",
-          "name" : "beam",
+          "image-name" : "bands.svg",
+          "name" : "bands",
           "position" : {
             "scale" : 1,
             "translation-in-points" : [0, 0]
@@ -44,7 +39,7 @@
       ],
       "shadow" : {
         "kind" : "neutral",
-        "opacity" : 0.45
+        "opacity" : 0.42
       },
       "translucency" : {
         "enabled" : true,
