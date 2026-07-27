@@ -72,30 +72,14 @@ struct RootView: View {
         }
     }
 
-    /// Only 독서 has a full authoring flow so far; the rest say so plainly
-    /// rather than opening a form that cannot save.
     @ViewBuilder
     private func composerSheet(for accent: PrismAccent) -> some View {
-        if accent == .reading {
-            NewReadingSheet()
-        } else {
-            NavigationStack {
-                ZStack {
-                    SpectrumBloomBackground(focus: accent)
-                    ContentUnavailableView {
-                        Label("\(accent.label) 기록 작성은 준비 중입니다", systemImage: accent.symbol)
-                    } description: {
-                        Text("지금은 독서 기록만 앱에서 만들 수 있습니다.\n\(accent.label) 기록은 웹에서 추가한 뒤 여기서 확인하세요.")
-                    }
-                }
-                .navigationTitle(accent.label)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("닫기") { pendingComposer = nil }
-                    }
-                }
-            }
+        switch accent {
+        case .reading: NewReadingSheet()
+        case .study: NewStudySheet()
+        case .movie: NewCultureSheet(type: .movie)
+        case .series: NewCultureSheet(type: .series)
+        case .game: NewCultureSheet(type: .game)
         }
     }
 }

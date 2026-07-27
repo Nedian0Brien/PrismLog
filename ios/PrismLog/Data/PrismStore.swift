@@ -41,7 +41,8 @@ final class PrismStore {
     /// SwiftData with no diagnostic. Taking the container here makes that
     /// impossible to get wrong at a call site.
     private let container: ModelContainer
-    private let context: ModelContext
+    /// Internal so the per-category write helpers can live in their own files.
+    let context: ModelContext
     private let api: PrismAPIClient
 
     init(container: ModelContainer, api: PrismAPIClient = .shared) {
@@ -255,6 +256,31 @@ final class PrismStore {
         reload()
         flashSaved(record(id: id)?.accent)
 
+        await sync()
+    }
+
+    /// Commit + republish + acknowledge, the tail every local write shares.
+    func saveAndRefresh(flash accent: PrismAccent?) {
+        try? context.save()
+        reload()
+        flashSaved(accent)
+    }
+
+    func storedLogForEditing(id: UUID) -> StoredLog? {
+        storedLog(id: id)
+    }
+
+    /// Title and tags live on the log row rather than in `payload`.
+    func renameRecord(id: UUID, title: String, tags: [String]) async {
+        guard let log = storedLog(id: id) else { return }
+
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { log.title = trimmed }
+        log.tags = tags
+        log.updatedAt = .now
+        if log.syncState == .synced { log.syncState = .modifiedLocally }
+
+        saveAndRefresh(flash: record(id: id)?.accent)
         await sync()
     }
 

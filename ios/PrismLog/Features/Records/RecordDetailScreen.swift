@@ -33,6 +33,26 @@ struct RecordDetailScreen: View {
                                     }
                                 }
 
+                                if record.category == .study {
+                                    if record.pagesTotal > 0 {
+                                        progressCard(record)
+                                    }
+                                    StudyTableOfContents(record: record)
+                                    studyReflection(record)
+                                }
+
+                                if let seriesProgress = record.seriesProgress {
+                                    SeriesProgressSection(record: record, progress: seriesProgress)
+                                }
+
+                                if record.cultureType == .game {
+                                    GameSessionsSection(record: record)
+                                }
+
+                                if let overview = record.overview, !overview.isEmpty {
+                                    overviewCard(overview)
+                                }
+
                                 if !record.review.isEmpty {
                                     reviewCard(record)
                                 }
@@ -81,7 +101,11 @@ struct RecordDetailScreen: View {
                     ReadingNoteSheet(record: record)
                 }
                 .sheet(isPresented: $editing) {
-                    ReadingEditSheet(record: record)
+                    switch record.category {
+                    case .reading: ReadingEditSheet(record: record)
+                    case .study: StudyEditSheet(record: record)
+                    default: CultureEditSheet(record: record)
+                    }
                 }
             } else {
                 PrismColor.background.ignoresSafeArea()
@@ -243,6 +267,54 @@ struct RecordDetailScreen: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .prismGlassCard(tint: record.accent.color)
+    }
+
+    @ViewBuilder
+    private func studyReflection(_ record: RecordItem) -> some View {
+        let goal = record.payload.string("goal") ?? ""
+        let retrospect = record.payload.string("retrospect") ?? ""
+
+        if !goal.isEmpty || !retrospect.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                if !goal.isEmpty {
+                    VStack(alignment: .leading, spacing: 5) {
+                        cardTitle("학습 목표")
+                        Text(goal)
+                            .font(.prismBody)
+                            .foregroundStyle(PrismColor.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                if !goal.isEmpty, !retrospect.isEmpty {
+                    Divider().overlay(PrismColor.hairline)
+                }
+
+                if !retrospect.isEmpty {
+                    VStack(alignment: .leading, spacing: 5) {
+                        cardTitle("회고")
+                        Text(retrospect)
+                            .font(.prismBody)
+                            .foregroundStyle(PrismColor.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .prismGlassCard()
+        }
+    }
+
+    private func overviewCard(_ overview: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            cardTitle("줄거리")
+            Text(overview)
+                .font(.prismBody)
+                .foregroundStyle(PrismColor.text)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .prismGlassCard()
     }
 
     private func reviewCard(_ record: RecordItem) -> some View {
