@@ -35,6 +35,7 @@
 		7C983A1B09F9A40C9B965FAA /* PrismTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 191A0B160303D5288BFABE39 /* PrismTypography.swift */; };
 		7CB22EFDD6133478EA002EA4 /* PrismPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199DAE65F4402327298098BE /* PrismPalette.swift */; };
 		7E8F3A3054D3DD7F20B26C1B /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12CD85814256B83644C027F8 /* JSONValue.swift */; };
+		81F403EDC62892FC453184AE /* RecordListCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5AE5EC93BC6B245782401A6 /* RecordListCards.swift */; };
 		84A0DDAF0D2B9E48C34CD9A9 /* NewCultureSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E3AFA98A64E1E0BAADD6D36 /* NewCultureSheet.swift */; };
 		84CCFFB5C564650E880CCA4B /* NewReadingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B8283AA72D3A7782B9B46E6 /* NewReadingSheet.swift */; };
 		8A04A495F1442B561C831AA9 /* LiveAPIRoundTripTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 836B2A42E6075D004B01D889 /* LiveAPIRoundTripTests.swift */; };
@@ -43,7 +44,9 @@
 		980EF80FF8F99D7A705FAC96 /* Pretendard-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 8BE1369EB6A1099600A179E8 /* Pretendard-Bold.otf */; };
 		98A9F6E1BF50FAD9C1814990 /* NewStudySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BA7FC1452574EEFD368A2A4 /* NewStudySheet.swift */; };
 		9B0702252D5456FABE773906 /* MediaSearchDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = C75BA2CB9C41C4ED3DBE9E52 /* MediaSearchDTO.swift */; };
+		9D51255BC0EB24B829A7E07C /* RecordsHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FAF1D89767ABCACD1B78BA8 /* RecordsHub.swift */; };
 		9F4ABB9BCACE8597A104E97E /* SpectrumRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77F051DE662F932880B953F0 /* SpectrumRing.swift */; };
+		A721706D81E437B137BD72C4 /* StudyGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45B9996E62550A64AE6D9DE1 /* StudyGrouping.swift */; };
 		A8DA3FFCA899D62628362E96 /* PrismDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8855042B1B0510A9C18E19CA /* PrismDTO.swift */; };
 		AB63C63D193BDED745FF6A99 /* PrismGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA7DB1275DA302B04D3004F /* PrismGlass.swift */; };
 		AD101E090723CF59D41E5D69 /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = D79AC3C7AC77AC06362729C7 /* Pretendard-Regular.otf */; };
@@ -66,6 +69,7 @@
 		E754F1D6045B4829AD6CE8BA /* PrismFeedback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EBADFE1E072C9EE14ADB4BC /* PrismFeedback.swift */; };
 		EC8FBDB3390F6A693BB2B1AD /* PrismStore+Culture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1443EAEC6E5E8FB11BD296AD /* PrismStore+Culture.swift */; };
 		F1FF07742A6D1EB1FB2C117F /* PrismStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 152E240D32692C198201E992 /* PrismStore.swift */; };
+		F5D4855679D449F460AA46DE /* RecordsHubTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D1348F402F596720C35B30 /* RecordsHubTests.swift */; };
 		FA5D37AEB332EA5744EAED29 /* CategoryDetailSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37885200E9558756FAB5D916 /* CategoryDetailSections.swift */; };
 		FDCF7FD97F9A3994FBE81F1E /* SpectrumWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D224E48DE0AEB0B34CC12B /* SpectrumWidget.swift */; };
 		FEF80F50F937945C0C3E1163 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4F2C28074DF4C64D0D21DD8 /* RootView.swift */; };
@@ -129,6 +133,7 @@
 		3B55AC8439ED4BF41E2E39BE /* WidgetRefresher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetRefresher.swift; sourceTree = "<group>"; };
 		42B4BE3B421AC0CD21F26ADC /* PrismWordmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismWordmark.swift; sourceTree = "<group>"; };
 		4420F18602ED6C61D97E01C5 /* PrismAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismAPIClient.swift; sourceTree = "<group>"; };
+		45B9996E62550A64AE6D9DE1 /* StudyGrouping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyGrouping.swift; sourceTree = "<group>"; };
 		48858DFD2076D9D7F28BF07B /* RecordItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordItem.swift; sourceTree = "<group>"; };
 		4C170F021CF139BC66B9AC88 /* SpectrumSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumSnapshot.swift; sourceTree = "<group>"; };
 		4E61BA97ED7A0BBAA0482735 /* PrismLogUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PrismLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -138,6 +143,7 @@
 		6B8283AA72D3A7782B9B46E6 /* NewReadingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewReadingSheet.swift; sourceTree = "<group>"; };
 		6BA7FC1452574EEFD368A2A4 /* NewStudySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewStudySheet.swift; sourceTree = "<group>"; };
 		6EBADFE1E072C9EE14ADB4BC /* PrismFeedback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismFeedback.swift; sourceTree = "<group>"; };
+		6FAF1D89767ABCACD1B78BA8 /* RecordsHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordsHub.swift; sourceTree = "<group>"; };
 		741AC00831E0AA0F816F693C /* PhotoStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoStrip.swift; sourceTree = "<group>"; };
 		77F051DE662F932880B953F0 /* SpectrumRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpectrumRing.swift; sourceTree = "<group>"; };
 		7966B0305E656C4DC5A601E6 /* RecordsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordsScreen.swift; sourceTree = "<group>"; };
@@ -147,6 +153,7 @@
 		861BF59E04029419662418D3 /* Pretendard-ExtraBold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-ExtraBold.otf"; sourceTree = "<group>"; };
 		8855042B1B0510A9C18E19CA /* PrismDTO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismDTO.swift; sourceTree = "<group>"; };
 		8BE1369EB6A1099600A179E8 /* Pretendard-Bold.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-Bold.otf"; sourceTree = "<group>"; };
+		92D1348F402F596720C35B30 /* RecordsHubTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordsHubTests.swift; sourceTree = "<group>"; };
 		93995DC3AD70921841B9EC6C /* PrismTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismTab.swift; sourceTree = "<group>"; };
 		9ACC5EE379E0AB01617BA8F6 /* ReadingOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingOptions.swift; sourceTree = "<group>"; };
 		9C5409EB54C011E202B28E6B /* DashboardMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardMetrics.swift; sourceTree = "<group>"; };
@@ -169,6 +176,7 @@
 		DDA7DB1275DA302B04D3004F /* PrismGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismGlass.swift; sourceTree = "<group>"; };
 		E01FE663434F3A357BBC0D3F /* RecordDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordDetailScreen.swift; sourceTree = "<group>"; };
 		E4D57E7AB4730940A425513B /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
+		E5AE5EC93BC6B245782401A6 /* RecordListCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordListCards.swift; sourceTree = "<group>"; };
 		F65312B8D910FA56C9028570 /* PrismScreenScaffold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismScreenScaffold.swift; sourceTree = "<group>"; };
 		FA739992409587393A5BE18E /* PrismComposerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismComposerButton.swift; sourceTree = "<group>"; };
 		FCC139D329C7B50D4A8161EF /* PrismLogWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PrismLogWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -276,6 +284,7 @@
 				836B2A42E6075D004B01D889 /* LiveAPIRoundTripTests.swift */,
 				51208707E83C2E6E04149802 /* OfflineBehaviourTests.swift */,
 				6AB021C882F3CDDA78A73B73 /* PayloadFidelityTests.swift */,
+				92D1348F402F596720C35B30 /* RecordsHubTests.swift */,
 				C579DB9E8B60C0C313B5E950 /* WebParityTests.swift */,
 			);
 			path = PrismLogTests;
@@ -299,6 +308,8 @@
 				37C8B3ACA5A7083EDD6BEF12 /* ReadingEditSheet.swift */,
 				CA04784CCDEB94E66CE10704 /* ReadingProgressSheet.swift */,
 				E01FE663434F3A357BBC0D3F /* RecordDetailScreen.swift */,
+				E5AE5EC93BC6B245782401A6 /* RecordListCards.swift */,
+				6FAF1D89767ABCACD1B78BA8 /* RecordsHub.swift */,
 				7966B0305E656C4DC5A601E6 /* RecordsScreen.swift */,
 			);
 			path = Records;
@@ -374,6 +385,7 @@
 				9866FC5074439603B5B2349C /* Network */,
 				152E240D32692C198201E992 /* PrismStore.swift */,
 				1443EAEC6E5E8FB11BD296AD /* PrismStore+Culture.swift */,
+				45B9996E62550A64AE6D9DE1 /* StudyGrouping.swift */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -566,6 +578,7 @@
 				8A04A495F1442B561C831AA9 /* LiveAPIRoundTripTests.swift in Sources */,
 				556459F24BECAA9C4601E699 /* OfflineBehaviourTests.swift in Sources */,
 				17080C15E36F49841017106F /* PayloadFidelityTests.swift in Sources */,
+				F5D4855679D449F460AA46DE /* RecordsHubTests.swift in Sources */,
 				BCB5C0B1F063CCFD27DDAC6C /* WebParityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -610,6 +623,8 @@
 				D0176E0DBD7BF4CD445C2651 /* ReadingProgressSheet.swift in Sources */,
 				98065553C37B898DF8A7BD01 /* RecordDetailScreen.swift in Sources */,
 				1BC7D4E4C818F087F81A84DF /* RecordItem.swift in Sources */,
+				81F403EDC62892FC453184AE /* RecordListCards.swift in Sources */,
+				9D51255BC0EB24B829A7E07C /* RecordsHub.swift in Sources */,
 				CD660C5494C947E483CB942C /* RecordsScreen.swift in Sources */,
 				FEF80F50F937945C0C3E1163 /* RootView.swift in Sources */,
 				AEE4F403267812B7838C93A8 /* SettingsScreen.swift in Sources */,
@@ -617,6 +632,7 @@
 				9F4ABB9BCACE8597A104E97E /* SpectrumRing.swift in Sources */,
 				7C0FC813AC70AFBD157D3EE6 /* SpectrumSnapshot.swift in Sources */,
 				E3D198F1EBA9FEEC590623B5 /* StoredLog.swift in Sources */,
+				A721706D81E437B137BD72C4 /* StudyGrouping.swift in Sources */,
 				34E06AB12A80C6C7C21BAEAA /* TimelineScreen.swift in Sources */,
 				1CC497134900E65EDCF56BA9 /* TrendChart.swift in Sources */,
 				65E7BB180C7D9AD4DE9152A4 /* WidgetRefresher.swift in Sources */,

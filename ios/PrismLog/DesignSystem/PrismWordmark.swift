@@ -18,7 +18,9 @@ struct PrismWordmark: View {
 struct PrismScreenHeader: View {
     let eyebrow: String
     let title: String
-    var accent: Color = PrismColor.text
+    /// Colors the eyebrow. Muted by default; record sections tint it with the
+    /// category accent, as the web does.
+    var accent: Color = PrismColor.textMuted
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -26,7 +28,7 @@ struct PrismScreenHeader: View {
                 .font(.prismMicro)
                 .tracking(1.4)
                 .textCase(.uppercase)
-                .prismMuted()
+                .foregroundStyle(accent)
 
             Text(title)
                 .font(.prismDisplay)

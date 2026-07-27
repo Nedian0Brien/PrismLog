@@ -128,4 +128,24 @@ struct WebParityTests {
         #expect(parseTagInput("자기계발, 소설") == ["자기계발", "소설"])
         #expect(parseTagInput("  ") == [])
     }
+
+    /// Google Books stores `http://` cover URLs. The web renders them; App
+    /// Transport Security drops them without a word, so the book shows a
+    /// placeholder while the same record looks fine in a browser.
+    @Test("평문 http 표지 주소는 https로 올려서 읽는다")
+    func plainHTTPCoversAreUpgraded() throws {
+        let googleBooks = "http://books.google.com/books/content?id=EUxrzgEACAAJ&img=1"
+        let upgraded = try #require(PrismMedia.url(for: googleBooks))
+
+        #expect(upgraded.scheme == "https")
+        #expect(upgraded.host == "books.google.com")
+        #expect(upgraded.query == "id=EUxrzgEACAAJ&img=1", "쿼리가 유실되면 표지가 아니라 오류가 온다")
+
+        // Already-secure and server-relative paths must be left alone.
+        #expect(PrismMedia.url(for: "https://example.invalid/c.jpg")?.scheme == "https")
+        #expect(
+            PrismMedia.url(for: "/uploads/reading/a.jpg")?.absoluteString
+                == "https://prism.lawdigest.kr/uploads/reading/a.jpg"
+        )
+    }
 }

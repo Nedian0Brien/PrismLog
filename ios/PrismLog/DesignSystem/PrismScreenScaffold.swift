@@ -10,6 +10,16 @@ struct PrismScreenScaffold<Content: View>: View {
     let eyebrow: String
     let title: String
     var focus: PrismAccent?
+    /// Set to show a "← <label>" pill above the header, the way the web's
+    /// record sections return to the hub. Purely in-place: it is not a
+    /// navigation pop, so the caller owns the state it flips.
+    var backLabel: String?
+    var onBack: (() -> Void)?
+    /// A small control parked on the title's baseline — the records hub's
+    /// column switcher. Type-erased because Swift can't default a generic
+    /// parameter, and one erased control per screen is cheaper than making
+    /// every existing call site name a placeholder type.
+    var headerAccessory: AnyView?
     var onRefresh: (@Sendable () async -> Void)?
     @ViewBuilder var content: Content
 
@@ -20,7 +30,36 @@ struct PrismScreenScaffold<Content: View>: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
-                        PrismScreenHeader(eyebrow: eyebrow, title: title)
+                        VStack(alignment: .leading, spacing: 10) {
+                            if let backLabel, let onBack {
+                                Button {
+                                    withAnimation(PrismMotion.screen) { onBack() }
+                                } label: {
+                                    Label(backLabel, systemImage: "chevron.left")
+                                        .font(.prismCaption)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 2)
+                                }
+                                .buttonStyle(.glass)
+                                .buttonBorderShape(.capsule)
+                                .tint(focus?.color ?? PrismColor.text)
+                                .accessibilityIdentifier("screen.back")
+                            }
+
+                            HStack(alignment: .bottom, spacing: 10) {
+                                PrismScreenHeader(
+                                    eyebrow: eyebrow,
+                                    title: title,
+                                    accent: backLabel == nil
+                                        ? PrismColor.textMuted
+                                        : (focus?.color ?? PrismColor.textMuted)
+                                )
+
+                                if let headerAccessory {
+                                    headerAccessory
+                                }
+                            }
+                        }
                         content
                     }
                     .padding(.horizontal, 18)

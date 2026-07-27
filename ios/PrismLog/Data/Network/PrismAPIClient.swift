@@ -187,7 +187,14 @@ enum PrismMedia {
     static let base = URL(string: "https://prism.lawdigest.kr")!
 
     static func url(for stored: String) -> URL? {
-        if stored.hasPrefix("http://") || stored.hasPrefix("https://") {
+        // Google Books hands back `http://` cover URLs and the web renders them
+        // fine, but App Transport Security drops them silently — the image just
+        // never appears. Upgrading the scheme is safe: every provider we read
+        // covers from serves the same path over TLS.
+        if stored.hasPrefix("http://") {
+            return URL(string: "https://" + stored.dropFirst("http://".count))
+        }
+        if stored.hasPrefix("https://") {
             return URL(string: stored)
         }
         return URL(string: stored, relativeTo: base)?.absoluteURL

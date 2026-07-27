@@ -20,7 +20,7 @@ final class AppShellUITests: XCTestCase {
         XCTAssertTrue(tabBar.waitForExistence(timeout: 10), "탭바가 나타나지 않음")
 
         for (tab, title) in [
-            ("기록", "기록"),
+            ("기록", "기록 허브"),
             ("타임라인", "타임라인"),
             ("설정", "설정"),
             ("홈", "기록 대시보드"),
@@ -66,17 +66,13 @@ final class AppShellUITests: XCTestCase {
     /// The shelf is the app's densest screen; a book must open from it.
     func testReadingShelfOpensADetailScreen() {
         app.tabBars.firstMatch.buttons["기록"].tap()
-        XCTAssertTrue(app.staticTexts["기록"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["기록 허브"].waitForExistence(timeout: 5))
 
-        // 독서 is the default section.
-        XCTAssertTrue(
-            app.buttons["records.section.reading"].waitForExistence(timeout: 5),
-            "카테고리 선택 칩이 없음"
-        )
+        let readingArea = app.buttons["records.area.reading"]
+        XCTAssertTrue(readingArea.waitForExistence(timeout: 8), "독서 영역 카드가 없음")
+        readingArea.tap()
 
-        let firstBook = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "퍼센트 읽음")
-        ).firstMatch
+        let firstBook = app.buttons["records.item"].firstMatch
 
         guard firstBook.waitForExistence(timeout: 8) else {
             // No reading records synced (offline, or an empty account) — the
@@ -94,16 +90,48 @@ final class AppShellUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["정보"].waitForExistence(timeout: 5), "상세 화면 본문이 없음")
     }
 
-    func testSwitchingRecordSectionsKeepsTheScreenAlive() {
+    /// Every shelf must be reachable from the hub, and the back pill must
+    /// return — the hub↔shelf move is state, not a navigation pop, so a broken
+    /// back button strands the user on one shelf.
+    func testEveryShelfOpensFromTheHubAndReturns() {
+        app.tabBars.firstMatch.buttons["기록"].tap()
+        XCTAssertTrue(app.staticTexts["기록 허브"].waitForExistence(timeout: 8))
+
+        for (section, label) in [
+            ("reading", "독서"),
+            ("study", "공부"),
+            ("movie", "영화"),
+            ("series", "시리즈"),
+            ("game", "게임"),
+        ] {
+            let card = app.buttons["records.area.\(section)"]
+            XCTAssertTrue(card.waitForExistence(timeout: 5), "\(section) 영역 카드가 없음")
+            card.tap()
+
+            XCTAssertTrue(
+                app.staticTexts["\(label) 기록"].waitForExistence(timeout: 5),
+                "\(label) 목록이 열리지 않음"
+            )
+
+            let back = app.buttons["screen.back"]
+            XCTAssertTrue(back.waitForExistence(timeout: 5), "\(label)에서 허브로 돌아가는 버튼이 없음")
+            back.tap()
+            XCTAssertTrue(app.staticTexts["기록 허브"].waitForExistence(timeout: 5), "허브로 복귀하지 못함")
+        }
+    }
+
+    /// The hub's column switcher rebuilds every card; a crash here would be
+    /// invisible until a user taps it.
+    func testHubColumnToggleSurvivesBothLayouts() {
         app.tabBars.firstMatch.buttons["기록"].tap()
 
-        for section in ["study", "movie", "series", "game", "reading"] {
-            let chip = app.buttons["records.section.\(section)"]
-            XCTAssertTrue(chip.waitForExistence(timeout: 5), "\(section) 칩이 없음")
-            chip.tap()
-        }
+        let twoUp = app.buttons["records.columns.2"]
+        XCTAssertTrue(twoUp.waitForExistence(timeout: 8), "2열 버튼이 없음")
+        twoUp.tap()
+        XCTAssertTrue(app.buttons["records.area.reading"].waitForExistence(timeout: 5), "2열에서 카드가 사라짐")
 
-        XCTAssertTrue(app.staticTexts["기록"].exists)
+        app.buttons["records.columns.1"].tap()
+        XCTAssertTrue(app.buttons["records.area.reading"].waitForExistence(timeout: 5), "1열에서 카드가 사라짐")
     }
 
     /// End-to-end through the live backend: the 네이버/카카오 keys live server

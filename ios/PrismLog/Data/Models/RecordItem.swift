@@ -49,6 +49,10 @@ struct ReadingNote: Identifiable, Hashable, Sendable {
 struct RecordItem: Identifiable, Hashable, Sendable {
     let id: UUID
     let entityID: UUID?
+    /// The entity's own title, kept separate from the log's. Study records group
+    /// by entity and label the group with this, exactly as the web does in
+    /// `groupStudiesByEntity` (`recordsPage.jsx:2400`).
+    let entityTitle: String?
     let category: LogCategory
     let cultureType: CultureType?
     let title: String
@@ -115,6 +119,7 @@ extension RecordItem {
 
         self.id = stored.id
         self.entityID = stored.entityID
+        self.entityTitle = stored.entityTitle
         self.category = category
         self.cultureType = cultureType
         self.title = stored.title ?? stored.entityTitle ?? combined.string("title") ?? "제목 없음"
