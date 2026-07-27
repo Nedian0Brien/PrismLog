@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <!--
-    White light arriving from off-canvas, ending flush on the prism's left face
-    at the same aperture the spectrum fans out of.
+    White light arriving from off-canvas. Its right edge is the entry aperture
+    itself — the same two points the spectrum fans out of — so the beam stops
+    exactly on the glass instead of overshooting it.
   -->
   <defs>
     <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
@@ -11,6 +12,6 @@
     </linearGradient>
   </defs>
   <g transform="rotate(-10 512 512)">
-    <path d="M-140 486 L338 505 L352 536 L-140 556 Z" fill="url(#beam)"/>
+    <path d="M-140 492 L352.6 505 L337.7 536 L-140 550 Z" fill="url(#beam)"/>
   </g>
 </svg>
