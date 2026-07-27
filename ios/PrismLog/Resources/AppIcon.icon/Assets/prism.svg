@@ -1,28 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <!--
     Glass, not a grey shape: a faint body with bright edges, sitting over the
-    spectrum so the colors show through it. Same principle as the app's bloom
-    background — glass only reads as glass when there is something behind it
-    to bend.
+    spectrum so the colors show through it.
+
+    Faces (used by beam.svg and spectrum.svg — keep these in sync):
+      left:  x = 310 - (y - 190) * 0.411765
+      right: x = 310 + (y - 190) * 0.411765
   -->
   <defs>
     <linearGradient id="body" x1="0.05" y1="0" x2="0.95" y2="1">
-      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.26"/>
-      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.13"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.07"/>
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.30"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.08"/>
     </linearGradient>
     <linearGradient id="lit" x1="0" y1="0" x2="0.35" y2="1">
       <stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.58"/>
     </linearGradient>
   </defs>
 
-  <g transform="rotate(-10 512 512)">
-    <path d="M512 175 L809 790 L215 790 Z" fill="url(#body)"/>
+  <path d="M310 190 L520 700 L100 700 Z" fill="url(#body)"/>
 
-    <!-- The lit face is the one light enters through. -->
-    <path d="M512 175 L215 790" stroke="url(#lit)" stroke-width="13" stroke-linejoin="round" fill="none"/>
-    <path d="M512 175 L809 790" stroke="#FFFFFF" stroke-opacity="0.52" stroke-width="10" fill="none"/>
-    <path d="M215 790 L809 790" stroke="#FFFFFF" stroke-opacity="0.38" stroke-width="10" fill="none"/>
-  </g>
+  <!-- The lit face is the one light enters through. -->
+  <path d="M310 190 L100 700" stroke="url(#lit)" stroke-width="13" stroke-linejoin="round" fill="none"/>
+  <path d="M310 190 L520 700" stroke="#FFFFFF" stroke-opacity="0.52" stroke-width="10" fill="none"/>
+  <path d="M100 700 L520 700" stroke="#FFFFFF" stroke-opacity="0.38" stroke-width="10" fill="none"/>
 </svg>

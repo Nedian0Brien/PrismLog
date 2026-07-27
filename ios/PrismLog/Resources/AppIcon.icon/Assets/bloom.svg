@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!--
+    Category-colored light spilling onto the dark field, the same device the app
+    uses behind its glass (`SpectrumBloomBackground`). Without it the icon is
+    mostly black; with it the dark areas carry the spectrum instead of merely
+    framing it.
+
+    Radii are deliberately larger than the canvas and the falloff starts at the
+    centre — tighter stops make each one read as a visible disc rather than as
+    light in the air.
+  -->
+  <defs>
+    <radialGradient id="g-teal" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#3FD4BF" stop-opacity="0.34"/>
+      <stop offset="0.4" stop-color="#2DB5A3" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#2DB5A3" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g-red" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#F25D69" stop-opacity="0.34"/>
+      <stop offset="0.4" stop-color="#E63946" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#E63946" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g-yellow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#F7DA5E" stop-opacity="0.26"/>
+      <stop offset="0.4" stop-color="#F0C930" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#F0C930" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Above the fan, where the icon would otherwise be flat black. -->
+  <circle cx="640" cy="120" r="620" fill="url(#g-teal)"/>
+  <!-- Under the prism, so the lower-left corner is lit rather than dead. -->
+  <circle cx="240" cy="880" r="640" fill="url(#g-red)"/>
+  <!-- A warm centre tying the two together. -->
+  <circle cx="560" cy="540" r="560" fill="url(#g-yellow)"/>
+</svg>

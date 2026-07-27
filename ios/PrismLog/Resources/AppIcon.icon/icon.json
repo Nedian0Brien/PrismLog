@@ -32,6 +32,14 @@
             "scale" : 1,
             "translation-in-points" : [0, 0]
           }
+        },
+        {
+          "image-name" : "bloom.svg",
+          "name" : "bloom",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [0, 0]
+          }
         }
       ],
       "shadow" : {

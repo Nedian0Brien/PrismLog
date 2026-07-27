@@ -1,29 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <!--
-    The beam actually bends. Inside the glass the three bands travel close
-    together and dimmed; at the exit face each one kinks outward and opens up.
-    That change of direction at the surface is what makes this read as
-    refraction rather than as stripes laid over a triangle.
+    The split beam carries most of the icon's color. Inside the glass the bands
+    run tight and dimmed; at the exit face each kinks outward — that change of
+    direction is what reads as refraction.
 
-    Every aperture point sits exactly on a face. The faces are
-      left:  x = 512 - (y - 175) * 297/615
-      right: x = 512 + (y - 175) * 297/615
-    so the entry segment leans *back* as it descends — getting that sign wrong
-    pushes the split outside the prism.
+    All aperture points sit exactly on a face:
+      left:  x = 310 - (y - 190) * 0.411765   (leans back as it descends)
+      right: x = 310 + (y - 190) * 0.411765
 
     Colors and order match the dashboard ring and the wordmark: 독서 · 공부 · 문화.
   -->
-  <g transform="rotate(-10 512 512)">
-    <!-- Inside the glass: tight fan, held back so the surface stays legible. -->
-    <g opacity="0.5">
-      <path d="M352.6 505 L621 400 L655 470 L347.7 515.3 Z" fill="#2DB5A3"/>
-      <path d="M347.7 515.3 L655 470 L688 540 L342.6 525.7 Z" fill="#F0C930"/>
-      <path d="M342.6 525.7 L688 540 L722 610 L337.7 536 Z" fill="#E63946"/>
-    </g>
-
-    <!-- Past the exit face: full strength, spreading wide, off the canvas. -->
-    <path d="M621 400 L1080 180 L1080 430 L655 470 Z" fill="#2DB5A3"/>
-    <path d="M655 470 L1080 430 L1080 680 L688 540 Z" fill="#F0C930"/>
-    <path d="M688 540 L1080 680 L1080 930 L722 610 Z" fill="#E63946"/>
+  <!-- Inside the glass. -->
+  <g opacity="0.5">
+    <path d="M227.6 390 L417.1 450 L439.7 505 L222.7 402 Z" fill="#2DB5A3"/>
+    <path d="M222.7 402 L439.7 505 L462.4 560 L217.8 414 Z" fill="#F0C930"/>
+    <path d="M217.8 414 L462.4 560 L485 615 L212.8 426 Z" fill="#E63946"/>
   </g>
+
+  <!-- Past the exit face: full strength, running off the canvas. -->
+  <path d="M417.1 450 L1120 170 L1120 450 L439.7 505 Z" fill="#2DB5A3"/>
+  <path d="M439.7 505 L1120 450 L1120 730 L462.4 560 Z" fill="#F0C930"/>
+  <path d="M462.4 560 L1120 730 L1120 1010 L485 615 Z" fill="#E63946"/>
 </svg>
