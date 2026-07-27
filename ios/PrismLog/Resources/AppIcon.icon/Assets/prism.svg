@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- The prism: apex up, sized to carry the icon's silhouette on its own. -->
+  <defs>
+    <linearGradient id="body" x1="0.12" y1="0" x2="0.88" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.98"/>
+      <stop offset="0.52" stop-color="#F5F0EB" stop-opacity="0.90"/>
+      <stop offset="1" stop-color="#D5CEC6" stop-opacity="0.84"/>
+    </linearGradient>
+  </defs>
+  <path d="M400 196 L624 704 L176 704 Z"
+        fill="url(#body)"
+        stroke="#FFFFFF"
+        stroke-opacity="0.55"
+        stroke-width="7"
+        stroke-linejoin="round"/>
+</svg>

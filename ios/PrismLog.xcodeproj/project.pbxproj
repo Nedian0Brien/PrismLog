@@ -29,6 +29,7 @@
 		55EBE291F0BEE1DC907B0FBC /* PrismTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93995DC3AD70921841B9EC6C /* PrismTab.swift */; };
 		5A8C667743B39EFC3816080B /* PrismWordmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B4BE3B421AC0CD21F26ADC /* PrismWordmark.swift */; };
 		5EF7EEEE647B226E97161C68 /* PrismComposerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA739992409587393A5BE18E /* PrismComposerButton.swift */; };
+		6107068124859BE66F0057A8 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 398C9DE5A24530799A96565C /* AppIcon.icon */; };
 		65E7BB180C7D9AD4DE9152A4 /* WidgetRefresher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B55AC8439ED4BF41E2E39BE /* WidgetRefresher.swift */; };
 		7C0FC813AC70AFBD157D3EE6 /* SpectrumSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C170F021CF139BC66B9AC88 /* SpectrumSnapshot.swift */; };
 		7C983A1B09F9A40C9B965FAA /* PrismTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 191A0B160303D5288BFABE39 /* PrismTypography.swift */; };
@@ -124,6 +125,7 @@
 		2E3AFA98A64E1E0BAADD6D36 /* NewCultureSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewCultureSheet.swift; sourceTree = "<group>"; };
 		37885200E9558756FAB5D916 /* CategoryDetailSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryDetailSections.swift; sourceTree = "<group>"; };
 		37C8B3ACA5A7083EDD6BEF12 /* ReadingEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingEditSheet.swift; sourceTree = "<group>"; };
+		398C9DE5A24530799A96565C /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		3B55AC8439ED4BF41E2E39BE /* WidgetRefresher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetRefresher.swift; sourceTree = "<group>"; };
 		42B4BE3B421AC0CD21F26ADC /* PrismWordmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismWordmark.swift; sourceTree = "<group>"; };
 		4420F18602ED6C61D97E01C5 /* PrismAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismAPIClient.swift; sourceTree = "<group>"; };
@@ -218,6 +220,7 @@
 			isa = PBXGroup;
 			children = (
 				262591B77BCD4AED1190E1CD /* Fonts */,
+				398C9DE5A24530799A96565C /* AppIcon.icon */,
 				04E77C280803F8389FEB130C /* Assets.xcassets */,
 			);
 			path = Resources;
@@ -521,6 +524,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6107068124859BE66F0057A8 /* AppIcon.icon in Resources */,
 				D40796FFA68099E52E621304 /* Assets.xcassets in Resources */,
 				980EF80FF8F99D7A705FAC96 /* Pretendard-Bold.otf in Resources */,
 				323CDB6A35DF39B263E1992A /* Pretendard-ExtraBold.otf in Resources */,

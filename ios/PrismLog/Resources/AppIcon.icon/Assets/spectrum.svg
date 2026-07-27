@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!--
+    Three beams leaving the right face, fanning as they travel. Colors and order
+    match the dashboard ring and the wordmark gradient: 독서 · 공부 · 문화.
+    They overlap at the prism so the split reads as one beam separating.
+  -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M516 466 L978 336" stroke="#2DB5A3" stroke-width="84"/>
+    <path d="M524 496 L978 570" stroke="#F0C930" stroke-width="84"/>
+    <path d="M532 526 L978 806" stroke="#E63946" stroke-width="84"/>
+  </g>
+</svg>

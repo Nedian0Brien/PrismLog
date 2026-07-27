@@ -27,6 +27,13 @@ targets:
     platform: iOS
     sources:
       - path: PrismLog
+        excludes:
+          - "Resources/AppIcon.icon"
+      # An Icon Composer document is a bundle, not a folder of loose SVGs —
+      # without `type: file` the generator adds each layer individually and
+      # actool never sees an icon.
+      - path: PrismLog/Resources/AppIcon.icon
+        type: file
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: kr.lawdigest.prismlog
