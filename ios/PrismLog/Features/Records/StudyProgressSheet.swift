@@ -30,7 +30,7 @@ struct StudyProgressSheet: View {
         let pageMode = (record.payload.string("progress_mode") ?? "page") == "page" && pagesTotal > 0
 
         self.isPageMode = pageMode
-        self.total = pageMode ? pagesTotal : PrismStore.studyChapterCount(record.payload)
+        self.total = pageMode ? pagesTotal : StudyGrouping.chapterCount(record.payload)
 
         let current = pageMode
             ? record.pagesRead

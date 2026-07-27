@@ -30,6 +30,9 @@ struct ReadingSession: Identifiable, Hashable, Sendable {
     let fromProgress: Int
     let toProgress: Int
     let durationMinutes: Int
+    /// What you wrote while reading. The timeline shows it as the entry's body,
+    /// so it has to survive the trip out of the payload.
+    let note: String
     let photos: [URL]
 }
 
@@ -163,6 +166,7 @@ extension RecordItem {
                 fromProgress: fields.int("from_progress") ?? 0,
                 toProgress: fields.int("to_progress") ?? 0,
                 durationMinutes: fields.int("duration_minutes") ?? 0,
+                note: fields.string("note") ?? "",
                 // Stored relative; resolved here so views never deal with paths.
                 photos: (fields.array("photos") ?? [])
                     .compactMap(\.stringValue)

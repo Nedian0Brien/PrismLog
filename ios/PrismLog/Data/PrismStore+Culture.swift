@@ -283,7 +283,7 @@ extension PrismStore {
             title = "\(pages)p까지 공부"
 
         case .chapters(let done):
-            let total = Self.studyChapterCount(payload)
+            let total = StudyGrouping.chapterCount(payload)
             // `completed` is what the web reads; `toc` is what this app's
             // table of contents reads. Writing only one leaves the two
             // screens disagreeing about the same subject.
@@ -322,10 +322,6 @@ extension PrismStore {
 
         saveAndRefresh(flash: .study)
         await sync()
-    }
-
-    static func studyChapterCount(_ payload: [String: JSONValue]) -> Int {
-        payload.array("chapters")?.count ?? payload.array("toc")?.count ?? 0
     }
 
     /// Marks the first `completedCount` top-level nodes done and the rest not.

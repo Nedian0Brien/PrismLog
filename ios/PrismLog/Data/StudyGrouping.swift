@@ -20,6 +20,13 @@ struct StudyGroup: Identifiable, Hashable, Sendable {
 }
 
 enum StudyGrouping {
+    /// How many chapters a subject has. `chapters` is the web's list and `toc`
+    /// is this app's tree; a subject created on either client has one of them,
+    /// and long-lived subjects have both.
+    static func chapterCount(_ payload: [String: JSONValue]) -> Int {
+        payload.array("chapters")?.count ?? payload.array("toc")?.count ?? 0
+    }
+
     /// Expects `records` already sorted newest-first; the first log seen for an
     /// entity becomes the group's representative, so group order is
     /// newest-activity-first without a second sort.

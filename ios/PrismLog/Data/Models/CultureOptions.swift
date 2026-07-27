@@ -139,6 +139,7 @@ struct GameSession: Identifiable, Hashable, Sendable {
     let playedAt: Date?
     let durationMinutes: Int
     let note: String
+    let photos: [URL]
 
     var durationLabel: String {
         durationMinutes >= 60
@@ -160,7 +161,10 @@ extension RecordItem {
                 playedAt: (fields.string("played_at") ?? fields.string("date"))
                     .flatMap(PrismDateCoding.parse),
                 durationMinutes: fields.int("duration_minutes") ?? 0,
-                note: fields.string("note") ?? ""
+                note: fields.string("note") ?? "",
+                photos: (fields.array("photos") ?? [])
+                    .compactMap(\.stringValue)
+                    .compactMap(PrismMedia.url(for:))
             )
         }
         .sorted { ($0.playedAt ?? .distantPast) > ($1.playedAt ?? .distantPast) }

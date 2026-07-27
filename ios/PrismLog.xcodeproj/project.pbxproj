@@ -24,6 +24,7 @@
 		3B44D6FF31968E790DBDEA4D /* DashboardMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C5409EB54C011E202B28E6B /* DashboardMetrics.swift */; };
 		3B8195855789119E131511B3 /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1E0405899FB9BEF8DFF9FE7 /* HomeScreen.swift */; };
 		3CEEB40DEE6C8E0C372001BA /* DistributionBars.swift in Sources */ = {isa = PBXBuildFile; fileRef = 177BBAD1C3AAD792B7CEFEA8 /* DistributionBars.swift */; };
+		4BA0527478D19E7980528117 /* TimelineBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6243573F72558C90669229DE /* TimelineBuilder.swift */; };
 		4E280803F133415DA28DCA0F /* CategoryEditSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE6817737610450B850922B /* CategoryEditSheets.swift */; };
 		556459F24BECAA9C4601E699 /* OfflineBehaviourTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51208707E83C2E6E04149802 /* OfflineBehaviourTests.swift */; };
 		55EBE291F0BEE1DC907B0FBC /* PrismTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93995DC3AD70921841B9EC6C /* PrismTab.swift */; };
@@ -39,6 +40,7 @@
 		81F403EDC62892FC453184AE /* RecordListCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5AE5EC93BC6B245782401A6 /* RecordListCards.swift */; };
 		84A0DDAF0D2B9E48C34CD9A9 /* NewCultureSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E3AFA98A64E1E0BAADD6D36 /* NewCultureSheet.swift */; };
 		84CCFFB5C564650E880CCA4B /* NewReadingSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B8283AA72D3A7782B9B46E6 /* NewReadingSheet.swift */; };
+		89C85EC97F12B3E897DFE49D /* TimelineBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20C5E8D43388B1DFFB98D56E /* TimelineBuilderTests.swift */; };
 		8A04A495F1442B561C831AA9 /* LiveAPIRoundTripTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 836B2A42E6075D004B01D889 /* LiveAPIRoundTripTests.swift */; };
 		931FCADE2948D69A5CC088D1 /* PhotoStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 741AC00831E0AA0F816F693C /* PhotoStrip.swift */; };
 		98065553C37B898DF8A7BD01 /* RecordDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E01FE663434F3A357BBC0D3F /* RecordDetailScreen.swift */; };
@@ -127,6 +129,7 @@
 		177BBAD1C3AAD792B7CEFEA8 /* DistributionBars.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistributionBars.swift; sourceTree = "<group>"; };
 		191A0B160303D5288BFABE39 /* PrismTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismTypography.swift; sourceTree = "<group>"; };
 		199DAE65F4402327298098BE /* PrismPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismPalette.swift; sourceTree = "<group>"; };
+		20C5E8D43388B1DFFB98D56E /* TimelineBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineBuilderTests.swift; sourceTree = "<group>"; };
 		2E3AFA98A64E1E0BAADD6D36 /* NewCultureSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewCultureSheet.swift; sourceTree = "<group>"; };
 		37885200E9558756FAB5D916 /* CategoryDetailSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryDetailSections.swift; sourceTree = "<group>"; };
 		37C8B3ACA5A7083EDD6BEF12 /* ReadingEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingEditSheet.swift; sourceTree = "<group>"; };
@@ -141,6 +144,7 @@
 		4E61BA97ED7A0BBAA0482735 /* PrismLogUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PrismLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		51208707E83C2E6E04149802 /* OfflineBehaviourTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineBehaviourTests.swift; sourceTree = "<group>"; };
 		5EDE5A3C88606ADBB49FCF54 /* AppShellUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppShellUITests.swift; sourceTree = "<group>"; };
+		6243573F72558C90669229DE /* TimelineBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineBuilder.swift; sourceTree = "<group>"; };
 		6AB021C882F3CDDA78A73B73 /* PayloadFidelityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayloadFidelityTests.swift; sourceTree = "<group>"; };
 		6B8283AA72D3A7782B9B46E6 /* NewReadingSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewReadingSheet.swift; sourceTree = "<group>"; };
 		6BA7FC1452574EEFD368A2A4 /* NewStudySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewStudySheet.swift; sourceTree = "<group>"; };
@@ -250,6 +254,7 @@
 		62C0D70DB8DB1D1DF1C0C497 /* Timeline */ = {
 			isa = PBXGroup;
 			children = (
+				6243573F72558C90669229DE /* TimelineBuilder.swift */,
 				0105A1081D2D974C5EC3FE3F /* TimelineScreen.swift */,
 			);
 			path = Timeline;
@@ -287,6 +292,7 @@
 				51208707E83C2E6E04149802 /* OfflineBehaviourTests.swift */,
 				6AB021C882F3CDDA78A73B73 /* PayloadFidelityTests.swift */,
 				92D1348F402F596720C35B30 /* RecordsHubTests.swift */,
+				20C5E8D43388B1DFFB98D56E /* TimelineBuilderTests.swift */,
 				C579DB9E8B60C0C313B5E950 /* WebParityTests.swift */,
 			);
 			path = PrismLogTests;
@@ -582,6 +588,7 @@
 				556459F24BECAA9C4601E699 /* OfflineBehaviourTests.swift in Sources */,
 				17080C15E36F49841017106F /* PayloadFidelityTests.swift in Sources */,
 				F5D4855679D449F460AA46DE /* RecordsHubTests.swift in Sources */,
+				89C85EC97F12B3E897DFE49D /* TimelineBuilderTests.swift in Sources */,
 				BCB5C0B1F063CCFD27DDAC6C /* WebParityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -637,6 +644,7 @@
 				E3D198F1EBA9FEEC590623B5 /* StoredLog.swift in Sources */,
 				A721706D81E437B137BD72C4 /* StudyGrouping.swift in Sources */,
 				625CC463C44DA864EAB64D31 /* StudyProgressSheet.swift in Sources */,
+				4BA0527478D19E7980528117 /* TimelineBuilder.swift in Sources */,
 				34E06AB12A80C6C7C21BAEAA /* TimelineScreen.swift in Sources */,
 				1CC497134900E65EDCF56BA9 /* TrendChart.swift in Sources */,
 				65E7BB180C7D9AD4DE9152A4 /* WidgetRefresher.swift in Sources */,

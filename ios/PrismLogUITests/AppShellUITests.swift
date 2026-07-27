@@ -134,6 +134,33 @@ final class AppShellUITests: XCTestCase {
         XCTAssertTrue(app.buttons["records.area.reading"].waitForExistence(timeout: 5), "1열에서 카드가 사라짐")
     }
 
+    /// The timeline rebuilds every entry when the mode flips, and the feed is
+    /// the app's deepest view hierarchy — a crash here is easy to miss because
+    /// the tab still opens.
+    func testTimelineSwitchesBetweenFeedAndCalendar() {
+        app.tabBars.firstMatch.buttons["타임라인"].tap()
+        XCTAssertTrue(app.staticTexts["타임라인"].waitForExistence(timeout: 8))
+
+        let firstEntry = app.buttons["timeline.item"].firstMatch
+        guard firstEntry.waitForExistence(timeout: 8) else {
+            XCTAssertTrue(app.staticTexts["기록이 없습니다"].exists, "항목도 없고 빈 상태도 없음")
+            return
+        }
+
+        app.buttons["timeline.mode.calendar"].tap()
+        XCTAssertTrue(
+            app.staticTexts["기록일 강조"].firstMatch.waitForExistence(timeout: 5),
+            "캘린더로 전환되지 않음"
+        )
+        XCTAssertFalse(app.buttons["timeline.item"].firstMatch.exists, "캘린더인데 피드 항목이 남아 있음")
+
+        app.buttons["timeline.mode.feed"].tap()
+        XCTAssertTrue(
+            app.buttons["timeline.item"].firstMatch.waitForExistence(timeout: 5),
+            "피드로 돌아오지 못함"
+        )
+    }
+
     /// End-to-end through the live backend: the 네이버/카카오 keys live server
     /// side, so this is the only way to know search actually works.
     func testComposerOpensBookSearchAndReturnsResults() {
