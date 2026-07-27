@@ -156,6 +156,23 @@ final class PrismStore {
                 continue
 
             case .createdLocally:
+                // The entity has to exist first — the web creates one for every
+                // record and links it, and the backend's uniqueness on
+                // (user_id, source_id) is what stops the same book being added
+                // twice from two clients.
+                if log.needsEntity, log.entityID == nil {
+                    let entity = try await api.createEntity(LogEntityCreateDTO(
+                        userId: log.userID,
+                        category: log.category,
+                        title: log.title ?? "제목 없음",
+                        sourceId: log.pendingEntitySourceID,
+                        entityMetadata: log.payload
+                    ))
+                    log.entityID = entity.id
+                    log.needsEntity = false
+                    try context.save()
+                }
+
                 let dto = try await api.createLog(LogCreateDTO(
                     userId: log.userID,
                     category: log.category,
@@ -272,31 +289,39 @@ final class PrismStore {
     // Payload keys mirror what the web writes (`src/App.jsx` addReadingProgress /
     // addReadingNote). Anything not named here is carried over untouched.
 
-    /// Creates a book record from a search result, optionally enriched with a
-    /// page count.
+    /// Creates a book record from a search result.
+    ///
+    /// The payload mirrors what the web writes field for field — a record
+    /// created here has to open cleanly in the web's edit sheet, which reads
+    /// `medium`, `reading_status`, `progress_mode` and friends.
     func createReadingRecord(
         from book: BookSearchItem,
         enrichment: BookEnrichment?,
-        pagesTotal: Int,
-        pagesRead: Int
+        draft: ReadingDraft
     ) async {
-        let total = max(pagesTotal, 0)
-        let read = min(max(pagesRead, 0), total > 0 ? total : pagesRead)
-        let progress = total > 0 ? Int((Double(read) / Double(total) * 100).rounded()) : 0
+        let total = max(draft.pagesTotal, 0)
+        let read = min(max(draft.pagesRead, 0), total > 0 ? total : draft.pagesRead)
 
         var payload: [String: JSONValue] = [
             "author": .string(book.authorLine),
             "pages_read": .int(read),
             "pages_total": .int(total),
-            "progress": .int(progress),
-            "rating": .int(0),
-            "review": .string(""),
+            "progress": .int(draft.progress),
+            "progress_mode": .string("page"),
+            "progress_value": .int(draft.progress),
+            "medium": .string(draft.medium.rawValue),
+            "reading_status": .string(draft.status.rawValue),
+            "rating": .int(draft.rating),
+            "review": .string(draft.review),
             "reading_sessions": .array([]),
             "reading_notes": .array([]),
             "source_provider": .string(book.sourceProvider),
             "source_id": .string(book.sourceId),
         ]
 
+        if let service = draft.ebookService, draft.medium == .ebook {
+            payload["ebook_service"] = .string(service.rawValue)
+        }
         if let publisher = book.publisher { payload["publisher"] = .string(publisher) }
         if let isbn = book.isbn { payload["isbn"] = .string(isbn) }
         if let isbn13 = book.isbn13 { payload["isbn13"] = .string(isbn13) }
@@ -310,12 +335,25 @@ final class PrismStore {
             }
         }
 
+        let memo = draft.memo.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !memo.isEmpty {
+            payload["reading_notes"] = .array([Self.note(text: memo, page: read, date: .now)])
+        }
+
+        // Same precedence the web uses when it creates the entity.
+        let entitySourceID = book.sourceId.isEmpty
+            ? (book.isbn13 ?? book.isbn)
+            : book.sourceId
+
         let log = StoredLog(
             id: UUID(),
             userID: userID,
             category: LogCategory.reading.rawValue,
             title: book.title,
+            tags: draft.tags,
             payloadData: StoredLog.encodeObject(payload),
+            pendingEntitySourceID: entitySourceID,
+            needsEntity: true,
             syncState: .createdLocally
         )
 

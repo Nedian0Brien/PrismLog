@@ -38,6 +38,13 @@ final class StoredLog {
     var entityTitle: String?
     var entityMetadataData: Data?
 
+    /// Set on locally-created records that still need a `LogEntity` on the
+    /// server. The web always creates one first and links `entity_id`; the
+    /// backend dedupes on `(user_id, source_id)`, so pushing this later gives
+    /// the same result as creating it up front — and works offline.
+    var pendingEntitySourceID: String?
+    var needsEntity: Bool = false
+
     var syncStateRaw: String
 
     init(
@@ -54,6 +61,8 @@ final class StoredLog {
         updatedAt: Date = .now,
         entityTitle: String? = nil,
         entityMetadataData: Data? = nil,
+        pendingEntitySourceID: String? = nil,
+        needsEntity: Bool = false,
         syncState: LogSyncState = .synced
     ) {
         self.id = id
@@ -69,6 +78,8 @@ final class StoredLog {
         self.updatedAt = updatedAt
         self.entityTitle = entityTitle
         self.entityMetadataData = entityMetadataData
+        self.pendingEntitySourceID = pendingEntitySourceID
+        self.needsEntity = needsEntity
         self.syncStateRaw = syncState.rawValue
     }
 
@@ -120,6 +131,8 @@ final class StoredLog {
         updatedAt = dto.updatedAt
         entityTitle = dto.entity?.title
         entityMetadataData = dto.entity.map { Self.encodeObject($0.entityMetadata) }
+        pendingEntitySourceID = nil
+        needsEntity = false
         syncState = .synced
     }
 

@@ -301,6 +301,34 @@ struct RatingStars: View {
     }
 }
 
+/// Tappable star rating.
+struct StarRatingPicker: View {
+    @Binding var rating: Int
+    var accent: PrismAccent = .study
+    var size: CGFloat = 22
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(1...5, id: \.self) { index in
+                Button {
+                    // Tapping the current rating clears it, so a mis-tap is
+                    // recoverable without a separate "지우기" control.
+                    rating = rating == index ? 0 : index
+                    PrismHaptics.selection()
+                } label: {
+                    Image(systemName: index <= rating ? "star.fill" : "star")
+                        .font(.system(size: size))
+                        .foregroundStyle(index <= rating ? accent.color : PrismColor.textMuted.opacity(0.5))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(index)점")
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityValue("\(rating)점")
+    }
+}
+
 /// Progress bar that fills with category light.
 struct ProgressMeter: View {
     let value: Double

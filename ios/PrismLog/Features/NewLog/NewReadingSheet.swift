@@ -17,6 +17,13 @@ struct NewReadingSheet: View {
     @State private var enrichment: BookEnrichment?
     @State private var pagesTotal = ""
     @State private var pagesRead = ""
+    @State private var medium: ReadingMedium = .paper
+    @State private var ebookService: EbookService?
+    @State private var status: ReadingStatus = .reading
+    @State private var rating = 0
+    @State private var review = ""
+    @State private var memo = ""
+    @State private var tagInput = ""
     @State private var saving = false
 
     private let api = PrismAPIClient.shared
@@ -209,6 +216,10 @@ struct NewReadingSheet: View {
                 }
                 .prismGlassCard()
 
+                mediumCard
+                statusAndRatingCard
+                notesCard
+
                 Button {
                     Task { await save() }
                 } label: {
@@ -240,6 +251,115 @@ struct NewReadingSheet: View {
         .scrollIndicators(.hidden)
     }
 
+    private var mediumCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("매체 유형")
+                .font(.prismHeadline)
+                .foregroundStyle(PrismColor.text)
+
+            Picker("매체 유형", selection: $medium) {
+                ForEach(ReadingMedium.allCases) { option in
+                    Text(option.label).tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            if medium == .ebook {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(EbookService.allCases) { service in
+                            chip(service.label, isOn: ebookService == service) {
+                                ebookService = ebookService == service ? nil : service
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 1)
+                }
+                .scrollIndicators(.hidden)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .prismGlassCard()
+    }
+
+    private var statusAndRatingCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("상태")
+                .font(.prismHeadline)
+                .foregroundStyle(PrismColor.text)
+
+            Picker("상태", selection: $status) {
+                ForEach(ReadingStatus.allCases) { option in
+                    Text(option.label).tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Divider().overlay(PrismColor.hairline)
+
+            HStack {
+                Text("별점")
+                    .font(.prismCallout)
+                    .prismMuted()
+                Spacer(minLength: 0)
+                StarRatingPicker(rating: $rating, accent: .reading)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .prismGlassCard()
+    }
+
+    private var notesCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            labeledField("한 줄 평", text: $review, placeholder: "이 책을 한 마디로…")
+            Divider().overlay(PrismColor.hairline)
+            labeledField("메모 · 필사", text: $memo, placeholder: "기억하고 싶은 문장이나 생각…", multiline: true)
+            Divider().overlay(PrismColor.hairline)
+            labeledField("태그", text: $tagInput, placeholder: "#자기계발 #소설")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .prismGlassCard()
+    }
+
+    private func labeledField(
+        _ label: String,
+        text: Binding<String>,
+        placeholder: String,
+        multiline: Bool = false
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.prismCaption)
+                .prismMuted()
+
+            TextField(placeholder, text: text, axis: multiline ? .vertical : .horizontal)
+                .lineLimit(multiline ? 3...6 : 1...1)
+                .font(.prismBody)
+                .foregroundStyle(PrismColor.text)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func chip(_ label: String, isOn: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.prismCaption)
+                .foregroundStyle(isOn ? PrismAccent.reading.color : PrismColor.textMuted)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background {
+                    Capsule().fill(PrismAccent.reading.color.opacity(isOn ? 0.16 : 0.04))
+                }
+                .overlay {
+                    Capsule().stroke(
+                        isOn ? PrismAccent.reading.color.opacity(0.55) : PrismColor.hairline,
+                        lineWidth: 1
+                    )
+                }
+        }
+        .buttonStyle(.plain)
+    }
+
     private func field(_ label: String, text: Binding<String>, placeholder: String) -> some View {
         HStack {
             Text(label)
@@ -264,8 +384,17 @@ struct NewReadingSheet: View {
         await store.createReadingRecord(
             from: selected,
             enrichment: enrichment,
-            pagesTotal: total,
-            pagesRead: Int(pagesRead) ?? 0
+            draft: ReadingDraft(
+                pagesTotal: total,
+                pagesRead: Int(pagesRead) ?? 0,
+                medium: medium,
+                ebookService: ebookService,
+                status: status,
+                rating: rating,
+                review: review.trimmingCharacters(in: .whitespacesAndNewlines),
+                memo: memo,
+                tags: parseTagInput(tagInput)
+            )
         )
 
         PrismHaptics.saved()
