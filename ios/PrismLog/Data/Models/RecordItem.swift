@@ -30,7 +30,7 @@ struct ReadingSession: Identifiable, Hashable, Sendable {
     let fromProgress: Int
     let toProgress: Int
     let durationMinutes: Int
-    let photos: [String]
+    let photos: [URL]
 }
 
 struct ReadingNote: Identifiable, Hashable, Sendable {
@@ -127,7 +127,7 @@ extension RecordItem {
         ]
         .compactMap { $0 }
         .first
-        .flatMap(URL.init(string:))
+        .flatMap(PrismMedia.url(for:))
         self.author = combined.string("author")
         self.progress = progress
         self.pagesRead = pagesRead
@@ -158,7 +158,10 @@ extension RecordItem {
                 fromProgress: fields.int("from_progress") ?? 0,
                 toProgress: fields.int("to_progress") ?? 0,
                 durationMinutes: fields.int("duration_minutes") ?? 0,
-                photos: (fields.array("photos") ?? []).compactMap(\.stringValue)
+                // Stored relative; resolved here so views never deal with paths.
+                photos: (fields.array("photos") ?? [])
+                    .compactMap(\.stringValue)
+                    .compactMap(PrismMedia.url(for:))
             )
         }
         .sorted { ($0.date ?? .distantPast) > ($1.date ?? .distantPast) }

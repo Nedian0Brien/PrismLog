@@ -86,6 +86,31 @@ actor PrismAPIClient {
         try await send(request("/api/v1/logs/entities/\(id.uuidString)", method: "PATCH", body: patch))
     }
 
+    // MARK: - Uploads
+
+    /// Uploads one photo and returns the stored path.
+    ///
+    /// The response `url` is **relative** (`/uploads/reading-sessions/…`) because
+    /// the web serves it from the same origin. It is stored as-is so both
+    /// clients agree; resolve it with `PrismMedia.url(for:)` when displaying.
+    func uploadPhoto(category: String, jpeg: Data) async throws -> String {
+        let boundary = "prismlog.\(UUID().uuidString)"
+        var request = URLRequest(url: url("/api/v1/uploads/\(category)"))
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+        body.append(Data("--\(boundary)\r\n".utf8))
+        body.append(Data("Content-Disposition: form-data; name=\"file\"; filename=\"photo.jpg\"\r\n".utf8))
+        body.append(Data("Content-Type: image/jpeg\r\n\r\n".utf8))
+        body.append(jpeg)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+        request.httpBody = body
+
+        let response: UploadResult = try await send(request)
+        return response.url
+    }
+
     // MARK: - Backups
 
     func createBackup(userID: String) async throws -> BackupResult {
@@ -149,6 +174,23 @@ actor PrismAPIClient {
         }
 
         return data
+    }
+}
+
+struct UploadResult: Codable, Sendable {
+    let url: String
+    let filename: String?
+}
+
+/// Resolves the relative media paths stored in payloads against the API host.
+enum PrismMedia {
+    static let base = URL(string: "https://prism.lawdigest.kr")!
+
+    static func url(for stored: String) -> URL? {
+        if stored.hasPrefix("http://") || stored.hasPrefix("https://") {
+            return URL(string: stored)
+        }
+        return URL(string: stored, relativeTo: base)?.absoluteURL
     }
 }
 

@@ -1,3 +1,4 @@
+import Charts
 import SwiftUI
 
 /// Detail for a single record. Pushed inside the tab's existing
@@ -8,6 +9,8 @@ struct RecordDetailScreen: View {
 
     @Environment(PrismStore.self) private var store
     @State private var loggingProgress = false
+    @State private var addingNote = false
+    @State private var editing = false
 
     private var record: RecordItem? { store.record(id: recordID) }
 
@@ -24,6 +27,10 @@ struct RecordDetailScreen: View {
                             VStack(spacing: 14) {
                                 if record.category == .reading {
                                     progressCard(record)
+
+                                    if record.readingSessions.count >= 2 {
+                                        trendCard(record)
+                                    }
                                 }
 
                                 if !record.review.isEmpty {
@@ -49,19 +56,32 @@ struct RecordDetailScreen: View {
                 .navigationTitle(record.title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    if record.category == .reading {
-                        ToolbarItem(placement: .primaryAction) {
-                            Button {
-                                loggingProgress = true
-                            } label: {
-                                Label("진도 기록", systemImage: "plus")
+                    ToolbarItem(placement: .primaryAction) {
+                        Menu {
+                            if record.category == .reading {
+                                Button("진도 기록", systemImage: "chart.line.uptrend.xyaxis") {
+                                    loggingProgress = true
+                                }
+                                Button("메모 추가", systemImage: "text.quote") {
+                                    addingNote = true
+                                }
+                                Divider()
                             }
-                            .accessibilityIdentifier("detail.addProgress")
+                            Button("편집", systemImage: "pencil") { editing = true }
+                        } label: {
+                            Label("작업", systemImage: "ellipsis")
                         }
+                        .accessibilityIdentifier("detail.actions")
                     }
                 }
                 .sheet(isPresented: $loggingProgress) {
                     ReadingProgressSheet(record: record)
+                }
+                .sheet(isPresented: $addingNote) {
+                    ReadingNoteSheet(record: record)
+                }
+                .sheet(isPresented: $editing) {
+                    ReadingEditSheet(record: record)
                 }
             } else {
                 PrismColor.background.ignoresSafeArea()
@@ -110,11 +130,90 @@ struct RecordDetailScreen: View {
                         .font(.prismCaption)
                         .prismMuted()
                 }
+
+                badges(record)
             }
 
             Spacer(minLength: 0)
         }
         .padding(.top, 4)
+    }
+
+    /// Publisher, publication date, medium and tags — the same chips the web
+    /// shows under a book's title.
+    @ViewBuilder
+    private func badges(_ record: RecordItem) -> some View {
+        let labels: [String] = [
+            record.publisher,
+            record.publishedDate,
+            record.medium?.label,
+            record.readingStatus?.label,
+        ].compactMap { $0 }.filter { !$0.isEmpty } + record.tags.map { "#\($0)" }
+
+        if !labels.isEmpty {
+            FlowLayout(spacing: 6) {
+                ForEach(labels, id: \.self) { label in
+                    Text(label)
+                        .font(.prismMicro)
+                        .foregroundStyle(record.accent.color)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background { Capsule().fill(record.accent.color.opacity(0.14)) }
+                }
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    private func trendCard(_ record: RecordItem) -> some View {
+        let points = record.readingSessions
+            .compactMap { session -> (Date, Int)? in
+                guard let date = session.date else { return nil }
+                return (date, session.toProgress)
+            }
+            .sorted { $0.0 < $1.0 }
+
+        return VStack(alignment: .leading, spacing: 10) {
+            cardTitle("진행 추세")
+
+            Chart {
+                ForEach(Array(points.enumerated()), id: \.offset) { _, point in
+                    LineMark(
+                        x: .value("날짜", point.0),
+                        y: .value("진도", point.1),
+                        series: .value("진도", "progress")
+                    )
+                    .foregroundStyle(record.accent.color)
+                    .interpolationMethod(.monotone)
+                    .lineStyle(StrokeStyle(lineWidth: 2.2, lineCap: .round))
+
+                    PointMark(
+                        x: .value("날짜", point.0),
+                        y: .value("진도", point.1)
+                    )
+                    .foregroundStyle(record.accent.color)
+                    .symbolSize(28)
+                }
+            }
+            .chartYScale(domain: 0...100)
+            .chartYAxis {
+                AxisMarks(position: .leading, values: [0, 50, 100]) {
+                    AxisValueLabel().font(.prismMicro).foregroundStyle(PrismColor.textMuted)
+                    AxisGridLine().foregroundStyle(PrismColor.hairline)
+                }
+            }
+            .chartXAxis {
+                AxisMarks { _ in
+                    AxisValueLabel(format: .dateTime.month(.defaultDigits).day())
+                        .font(.prismMicro)
+                        .foregroundStyle(PrismColor.textMuted)
+                    AxisGridLine().foregroundStyle(PrismColor.hairline)
+                }
+            }
+            .frame(height: 130)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .prismGlassCard()
     }
 
     // MARK: - Cards
@@ -226,6 +325,11 @@ struct RecordDetailScreen: View {
                             .monospacedDigit()
                             .prismMuted()
                     }
+                }
+
+                if !session.photos.isEmpty {
+                    PhotoStrip(photos: session.photos, accent: record.accent, height: 84)
+                        .padding(.leading, 19)
                 }
             }
         }

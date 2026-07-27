@@ -6,6 +6,7 @@ struct HomeScreen: View {
     @State private var trendCumulative = true
     @State private var trendRange: TrendRange = .year
     @State private var trendEnabled: Set<PrismAccent> = [.reading, .study, .movie]
+    @State private var distributionEnabled: Set<PrismAccent> = [.reading, .study, .movie]
     @State private var heatmapAccent: PrismAccent?
 
     var body: some View {
@@ -20,6 +21,7 @@ struct HomeScreen: View {
                     statusBanner
                     spectrumCard
                     trendCard
+                    distributionCard
                     heatmapCard
                     recentSection
                 }
@@ -105,6 +107,36 @@ struct HomeScreen: View {
                     range: trendRange
                 )
             }
+        }
+        .prismGlassCard()
+    }
+
+    // MARK: - Distribution
+
+    private var distributionCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("전체 분포")
+                    .font(.prismTitle)
+                    .foregroundStyle(PrismColor.text)
+
+                Spacer(minLength: 0)
+
+                Text("누적 기록 수")
+                    .font(.prismMicro)
+                    .prismMuted()
+            }
+
+            CategoryToggleChips(enabled: $distributionEnabled)
+
+            DistributionBars(
+                counts: [
+                    .reading: store.records(in: .reading).count,
+                    .study: store.records(in: .study).count,
+                    .movie: store.records(in: .culture).count,
+                ],
+                enabled: distributionEnabled
+            )
         }
         .prismGlassCard()
     }

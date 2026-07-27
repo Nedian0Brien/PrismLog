@@ -21,6 +21,7 @@ struct SettingsScreen: View {
             PrismGlassSection {
                 VStack(spacing: 14) {
                     syncCard
+                    compositionCard
                     accountCard
                     backupCard
                     aboutCard
@@ -97,6 +98,49 @@ struct SettingsScreen: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
             .background { Capsule().fill(accent.color.opacity(0.16)) }
+    }
+
+    /// Mirrors the web's 기록 구성 card, which breaks 문화 down by type — the
+    /// dashboard only ever shows it as one bucket.
+    private var compositionCard: some View {
+        let culture = store.records(in: .culture)
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("기록 구성")
+                .font(.prismHeadline)
+                .foregroundStyle(PrismColor.text)
+
+            compositionRow(.reading, count: store.records(in: .reading).count, unit: "권")
+            compositionRow(.study, count: store.records(in: .study).count, unit: "건")
+
+            Divider().overlay(PrismColor.hairline)
+
+            compositionRow(.movie, count: culture.filter { $0.cultureType == .movie }.count, unit: "편")
+            compositionRow(.series, count: culture.filter { $0.cultureType == .series }.count, unit: "편")
+            compositionRow(.game, count: culture.filter { $0.cultureType == .game }.count, unit: "개")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .prismGlassCard()
+    }
+
+    private func compositionRow(_ accent: PrismAccent, count: Int, unit: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: accent.symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(accent.color)
+                .frame(width: 20)
+
+            Text(accent.label)
+                .font(.prismCallout)
+                .foregroundStyle(PrismColor.text)
+
+            Spacer(minLength: 0)
+
+            Text("\(count)\(unit)")
+                .font(PrismFont.numeral(15, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(accent.color)
+        }
     }
 
     private var accountCard: some View {

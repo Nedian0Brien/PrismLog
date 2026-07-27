@@ -365,6 +365,61 @@ final class PrismStore {
         await sync()
     }
 
+    /// Edits the fields the web's `ReadingEditSheet` exposes. Title and tags
+    /// live on the log row; the rest live in the payload.
+    func updateReadingMeta(
+        id: UUID,
+        title: String,
+        author: String,
+        rating: Int,
+        review: String,
+        status: ReadingStatus,
+        medium: ReadingMedium,
+        ebookService: EbookService?,
+        tags: [String]
+    ) async {
+        guard let log = storedLog(id: id) else { return }
+
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedTitle.isEmpty { log.title = trimmedTitle }
+        log.tags = tags
+
+        var payload = log.payload
+        payload["author"] = .string(author)
+        payload["rating"] = .int(min(max(rating, 0), 5))
+        payload["review"] = .string(review)
+        payload["reading_status"] = .string(status.rawValue)
+        payload["medium"] = .string(medium.rawValue)
+        if medium == .ebook, let ebookService {
+            payload["ebook_service"] = .string(ebookService.rawValue)
+        } else {
+            payload["ebook_service"] = nil
+        }
+        log.payload = payload
+
+        log.updatedAt = .now
+        if log.syncState == .synced { log.syncState = .modifiedLocally }
+
+        try? context.save()
+        reload()
+        flashSaved(.reading)
+
+        await sync()
+    }
+
+    /// Compresses and uploads photos, returning the stored (relative) paths.
+    /// Failures are skipped rather than aborting the whole batch — losing one
+    /// photo should not lose the reading session it belongs to.
+    func uploadPhotos(_ images: [Data], category: String = "reading-sessions") async -> [String] {
+        var stored: [String] = []
+        for image in images {
+            if let path = try? await api.uploadPhoto(category: category, jpeg: image) {
+                stored.append(path)
+            }
+        }
+        return stored
+    }
+
     /// Records progress and appends a reading session, the way the web does —
     /// one session per day, extended rather than duplicated.
     func addReadingProgress(
@@ -372,6 +427,9 @@ final class PrismStore {
         currentPage: Int,
         totalPages: Int,
         note: String,
+        startedAt: Date? = nil,
+        endedAt: Date? = nil,
+        photoPaths: [String] = [],
         at date: Date = .now
     ) async {
         guard let existing = record(id: id) else { return }
@@ -387,23 +445,36 @@ final class PrismStore {
             payload["pages_total"] = .int(total)
             payload["progress"] = .int(progress)
 
-            let dayKey = ISO8601DateFormatter().string(from: date).prefix(10)
+            let ended = endedAt ?? date
+            let started = startedAt ?? ended
+            // Same derivation as the web: duration comes from the two stamps,
+            // never entered directly.
+            let minutes = max(0, Int(ended.timeIntervalSince(started) / 60))
+
+            let dayKey = ISO8601DateFormatter().string(from: ended).prefix(10)
             var sessions = payload["reading_sessions"]?.arrayValue ?? []
+            let existingSession = sessions.first {
+                $0["id"]?.stringValue == "reading-session-\(dayKey)"
+            }
+
+            // Extending today's session keeps the photos already on it.
+            let carriedPhotos = existingSession?["photos"]?.arrayValue ?? []
+            let photos = carriedPhotos + photoPaths.map { JSONValue.string($0) }
 
             let session: JSONValue = .object([
                 "id": .string("reading-session-\(dayKey)"),
-                "date": .string(Self.iso(date)),
-                "started_at": .string(Self.iso(date)),
-                "ended_at": .string(Self.iso(date)),
-                "from_pages": .int(fromPages),
+                "date": .string(Self.iso(ended)),
+                "started_at": .string(Self.iso(started)),
+                "ended_at": .string(Self.iso(ended)),
+                "from_pages": .int(existingSession?["from_pages"]?.intValue ?? fromPages),
                 "to_pages": .int(read),
                 "total_pages": .int(total),
-                "pages_read": .int(max(0, read - fromPages)),
-                "from_progress": .int(fromProgress),
+                "pages_read": .int(max(0, read - (existingSession?["from_pages"]?.intValue ?? fromPages))),
+                "from_progress": .int(existingSession?["from_progress"]?.intValue ?? fromProgress),
                 "to_progress": .int(progress),
-                "progress_delta": .int(max(0, progress - fromProgress)),
-                "duration_minutes": .int(0),
-                "photos": .array([]),
+                "progress_delta": .int(max(0, progress - (existingSession?["from_progress"]?.intValue ?? fromProgress))),
+                "duration_minutes": .int(minutes),
+                "photos": .array(photos),
             ])
 
             // Same-day sessions merge, matching `buildReadingSessionPatch`.

@@ -5,6 +5,7 @@ import SwiftUI
 struct RecordsScreen: View {
     @Environment(PrismStore.self) private var store
     @State private var section: PrismAccent = .reading
+    @State private var showsCovers = true
 
     var body: some View {
         PrismScreenScaffold(
@@ -14,7 +15,25 @@ struct RecordsScreen: View {
             onRefresh: { await store.sync() }
         ) {
             VStack(spacing: 16) {
-                sectionPicker
+                HStack(spacing: 10) {
+                    sectionPicker
+
+                    if section == .reading {
+                        Button {
+                            withAnimation(PrismMotion.snappy) { showsCovers.toggle() }
+                        } label: {
+                            Image(systemName: showsCovers ? "square.grid.2x2.fill" : "list.bullet")
+                                .font(.system(size: 14, weight: .semibold))
+                                .frame(width: 20, height: 20)
+                                .padding(9)
+                        }
+                        .buttonStyle(.glass)
+                        .buttonBorderShape(.circle)
+                        .tint(PrismAccent.reading.color)
+                        .accessibilityLabel(showsCovers ? "목록으로 보기" : "표지로 보기")
+                        .accessibilityIdentifier("records.viewToggle")
+                    }
+                }
 
                 if items.isEmpty {
                     PrismGlassSection {
@@ -24,7 +43,7 @@ struct RecordsScreen: View {
                             detail: "오른쪽 아래 + 버튼으로 새 기록을 남겨 보세요."
                         )
                     }
-                } else if section == .reading {
+                } else if section == .reading, showsCovers {
                     ReadingShelf(books: items)
                 } else {
                     PrismGlassSection {

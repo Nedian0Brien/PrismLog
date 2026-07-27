@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Testing
 
 @testable import PrismLog
@@ -14,6 +15,31 @@ import Testing
 @Suite(.disabled("실서버에 쓰기 때문에 기본 실행에서 제외 — 필요할 때 명시적으로 실행"))
 struct LiveAPIRoundTripTests {
     static let testUserID = "ios-selftest"
+
+    /// The store swallows upload failures so one bad photo can't lose a reading
+    /// session — which means a malformed multipart body would fail silently.
+    @Test("multipart 사진 업로드가 서버에 실제로 통한다")
+    func photoUploadIsAcceptedByTheServer() async throws {
+        let api = PrismAPIClient()
+
+        // Smallest thing UIImage will encode: a 4×4 red square.
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 4, height: 4))
+        let image = renderer.image { context in
+            UIColor.red.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+        }
+        let jpeg = try #require(image.jpegData(compressionQuality: 0.85))
+
+        let path = try await api.uploadPhoto(category: "reading-sessions", jpeg: jpeg)
+
+        #expect(path.hasPrefix("/uploads/reading-sessions/"), "예상과 다른 경로: \(path)")
+
+        // And the stored path has to resolve to something fetchable.
+        let resolved = try #require(PrismMedia.url(for: path))
+        let (data, response) = try await URLSession.shared.data(from: resolved)
+        #expect((response as? HTTPURLResponse)?.statusCode == 200)
+        #expect(!data.isEmpty)
+    }
 
     @Test("생성 → PATCH → 조회를 거쳐도 payload 키가 하나도 사라지지 않는다")
     func payloadSurvivesTheRealBackend() async throws {

@@ -1,4 +1,6 @@
+import PhotosUI
 import SwiftUI
+import UIKit
 
 /// Log today's reading: where you got to, and anything worth keeping.
 struct ReadingProgressSheet: View {
@@ -10,12 +12,24 @@ struct ReadingProgressSheet: View {
     @State private var currentPage: String
     @State private var totalPages: String
     @State private var note = ""
+    @State private var startedAt: Date
+    @State private var endedAt: Date
+    @State private var picked: [PhotosPickerItem] = []
+    @State private var pendingPhotos: [Data] = []
+    @State private var uploading = false
     @State private var saving = false
 
     init(record: RecordItem) {
         self.record = record
         _currentPage = State(initialValue: String(record.pagesRead))
         _totalPages = State(initialValue: String(max(record.pagesTotal, 0)))
+        let now = Date.now
+        _endedAt = State(initialValue: now)
+        _startedAt = State(initialValue: now.addingTimeInterval(-30 * 60))
+    }
+
+    private var durationMinutes: Int {
+        max(0, Int(endedAt.timeIntervalSince(startedAt) / 60))
     }
 
     private var resolvedTotal: Int { Int(totalPages) ?? 0 }
@@ -39,7 +53,9 @@ struct ReadingProgressSheet: View {
                     VStack(spacing: 16) {
                         preview
                         pageFields
+                        timeFields
                         noteField
+                        photoField
                     }
                     .padding(.horizontal, 18)
                     .padding(.vertical, 12)
@@ -133,6 +149,105 @@ struct ReadingProgressSheet: View {
         }
     }
 
+    /// Duration is derived from the two stamps rather than typed, matching the
+    /// web — it keeps `duration_minutes` consistent with `started_at`/`ended_at`.
+    private var timeFields: some View {
+        VStack(spacing: 10) {
+            DatePicker("시작", selection: $startedAt, displayedComponents: [.date, .hourAndMinute])
+                .font(.prismCallout)
+            Divider().overlay(PrismColor.hairline)
+            DatePicker("종료", selection: $endedAt, in: startedAt..., displayedComponents: [.date, .hourAndMinute])
+                .font(.prismCallout)
+
+            HStack {
+                Text("읽은 시간")
+                    .font(.prismCaption)
+                    .prismMuted()
+                Spacer(minLength: 0)
+                Text("\(durationMinutes)분")
+                    .font(PrismFont.numeral(15, weight: .bold))
+                    .monospacedDigit()
+                    .foregroundStyle(PrismAccent.reading.color)
+            }
+        }
+        .tint(PrismAccent.reading.color)
+        .prismGlassCard()
+    }
+
+    private var photoField: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("사진")
+                    .font(.prismHeadline)
+                    .foregroundStyle(PrismColor.text)
+
+                Spacer(minLength: 0)
+
+                PhotosPicker(selection: $picked, maxSelectionCount: 6, matching: .images) {
+                    Label("추가", systemImage: "photo.badge.plus")
+                        .font(.prismCaption)
+                }
+                .tint(PrismAccent.reading.color)
+            }
+
+            if uploading {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("사진 준비 중…").font(.prismCaption).prismMuted()
+                }
+            } else if pendingPhotos.isEmpty {
+                Text("독서 흔적을 남겨 보세요. 저장할 때 함께 업로드됩니다.")
+                    .font(.prismCaption)
+                    .prismMuted()
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(pendingPhotos.enumerated()), id: \.offset) { index, data in
+                            if let image = UIImage(data: data) {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 68, height: 84)
+                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                                    .overlay(alignment: .topTrailing) {
+                                        Button {
+                                            pendingPhotos.remove(at: index)
+                                        } label: {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .font(.system(size: 16))
+                                                .foregroundStyle(.white, .black.opacity(0.5))
+                                        }
+                                        .buttonStyle(.plain)
+                                        .padding(3)
+                                    }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 1)
+                }
+                .scrollIndicators(.hidden)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .prismGlassCard()
+        .onChange(of: picked) { _, items in
+            Task { await load(items) }
+        }
+    }
+
+    private func load(_ items: [PhotosPickerItem]) async {
+        guard !items.isEmpty else { return }
+        uploading = true
+        defer { uploading = false; picked = [] }
+
+        for item in items {
+            guard let data = try? await item.loadTransferable(type: Data.self),
+                  let compressed = ImageCompressor.jpeg(from: data) else { continue }
+            pendingPhotos.append(compressed)
+        }
+    }
+
     private var noteField: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("메모 · 필사")
@@ -153,11 +268,16 @@ struct ReadingProgressSheet: View {
         saving = true
         defer { saving = false }
 
+        let uploaded = pendingPhotos.isEmpty ? [] : await store.uploadPhotos(pendingPhotos)
+
         await store.addReadingProgress(
             to: record.id,
             currentPage: resolvedCurrent,
             totalPages: resolvedTotal,
-            note: note
+            note: note,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            photoPaths: uploaded
         )
 
         PrismHaptics.saved()
