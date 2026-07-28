@@ -78,13 +78,11 @@ struct ReadingProgressSheet: View {
 
     private var preview: some View {
         HStack(spacing: 14) {
-            ProgressWaterCover(
-                url: record.coverURL,
-                progress: projectedProgress,
-                accent: .reading,
-                width: 78
-            )
-            .id(projectedProgress) // re-animate the fill as the number changes
+            // The web's progress modal previews the cover as-is; the numbers
+            // beside it carry the change
+            // (`src/features/prismlog/pages/recordsPage.jsx:2126`).
+            CoverImage(url: record.coverURL, accent: .reading, cornerRadius: 14)
+                .frame(width: 78, height: 117)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(record.title)

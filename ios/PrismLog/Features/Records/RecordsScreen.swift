@@ -300,11 +300,10 @@ struct ReadingShelfCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ProgressWaterCover(
+            HalfDonutCoverChart(
                 url: book.coverURL,
                 progress: book.progress,
-                accent: .reading,
-                width: 140
+                accent: .reading
             )
             .frame(maxWidth: .infinity)
 
