@@ -26,10 +26,10 @@
 | 앱 단독 실행 (`simctl launch`) | **성공**. 동기화된 기록 39건(독서 9, 공부 16, 문화 14)이 대시보드에 표시된다 |
 | `test` (PrismLogTests + PrismLogUITests) | **실행 못 함**. 테스트 0건 실행 |
 
-테스트 실패 내용 (3회 반복, 같은 결과):
+테스트 실패 내용 (4회 반복, 같은 결과. 4회째는 Claude Code 셸 샌드박스 밖의 터미널에서 실행):
 - PrismLogTests: `The test runner hung before establishing connection.`
 - PrismLogUITests: `Early unexpected exit, operation never finished bootstrapping … Test crashed with signal term before establishing connection.`
-- xcodebuild 로그: 시뮬레이터를 `unknown class`로 인식하고 `com.apple.instruments.deviceservice.*`에 연결하지 못한다.
+- xcodebuild 로그: 시뮬레이터를 `unknown class`로 인식하고 `com.apple.instruments.deviceservice.*`에 연결하지 못한다. 오류는 `DTServiceHubClient failed to bless service hub for simulator`다.
 - 같은 시각에 `testmanagerd`(27.0)와 `dtdeviceinfod`가 `XPC_EXIT_REASON_SIGTERM_TIMEOUT`으로 종료된 기록이 `~/Library/Logs/DiagnosticReports`에 있다.
 
 판단: 앱은 정상으로 실행되고 테스트 러너만 앱에 연결하지 못한다. 그래서 원인은 v1 코드가 아니라 테스트 도구로 본다.
@@ -77,3 +77,4 @@ spec의 **[확인]** 항목을 Apple 문서로 확인하고 spec 본문에 반�
 - Xcode 27.1을 설치한 뒤: 배포 버전 27.1로 조정, `xcodegen generate`, iPhone Duo 시뮬레이터로 기준선 재측정.
 - Xcode 27.1에서 듀오 스킬을 내보내 §3 점검을 다시 한다.
 - **[빌드 확인]** 항목 3개: TabView 배경, `ScrollEdgeEffectStyle` 값 목록, 테이블탑 `ArrangementView` 분할.
+- 추적 이슈: https://github.com/Nedian0Brien/PrismLog/issues/17
