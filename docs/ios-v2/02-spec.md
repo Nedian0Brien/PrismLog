@@ -3,6 +3,7 @@
 - 작성: 2026-10-29
 - 선행 문서: [01-intent.md](./01-intent.md) · 후속 문서: [03-plan.md](./03-plan.md)
 - 표기: **[확인]**은 구현 전에 Apple 문서나 실기기로 검증해야 하는 항목이다. iOS 27/27.1 API는 모델 학습 이후에 나온 것이 많으므로 Apple 문서(Context7 MCP, developer.apple.com)로 시그니처를 확인하고 쓴다.
+- 2026-10-29 Phase 0: 문서로 확인한 항목은 **[확인됨]**으로 바꾸고 출처를 붙였다. 문서만으로 정할 수 없는 항목은 **[빌드 확인]**(27.1 SDK로 컴파일·시뮬레이터 확인) 또는 **[실기기]**로 남겼다. 출처는 §12에 모았다.
 
 ---
 
@@ -10,7 +11,7 @@
 
 | 항목 | 값 |
 |---|---|
-| Xcode | 27.1 이상 (iPhone Duo SDK·시뮬레이터 포함) |
+| Xcode | 27.1 이상 (iPhone Duo SDK·시뮬레이터 포함). 2026-10-29 기준 개발 Mac에는 27.0 베타(27A5218g)만 있다 |
 | SDK | iOS 27.1 — edge-to-edge와 세로 바 동작의 전제 조건 |
 | 최소 배포 버전 | iOS 27.1 (D4 기본값) |
 | 언어 | Swift 6.0, strict concurrency 유지 |
@@ -124,12 +125,18 @@ enum WallContext: Equatable {
   case still                // 설정: 정지
 }
 ```
-- 모드가 바뀌면 0.45초 크로스페이드로 전환한다. 상세 진입(`hero`)은 목록 셀의 표지에서 `matchedGeometryEffect`/`navigationTransition(.zoom)`으로 이어지게 한다. **[확인]** zoom 전환과 배경 히어로 동기화
+- 모드가 바뀌면 0.45초 크로스페이드로 전환한다. 상세 진입(`hero`)은 목록 셀의 표지에서 `navigationTransition(.zoom(sourceID:in:))`으로 이어지게 한다.
+  - **[확인됨]** `static func zoom(sourceID: some Hashable, in namespace: Namespace.ID) -> ZoomNavigationTransition` (iOS 18.0+). 출발 셀에 `matchedTransitionSource(id:in:)`를 붙이고, 도착 화면에 `.navigationTransition(.zoom(sourceID:in:))`를 붙인다. 두 곳은 같은 `id`와 같은 `@Namespace`를 쓴다.
+  - **[실기기]** zoom 전환과 벽의 `hero` 크로스페이드를 같은 타이밍으로 맞추는 방법은 문서에 없다. Phase 5에서 확인한다.
 - 흐름 시계는 `LibraryWallModel`이 하나만 갖는다. 탭을 바꿔도 위치가 튀지 않는다.
 
 ### 4.6 렌더링과 배치 위치
-- 우선안: 루트(`AppShell`)에 벽을 한 번만 깔고 탭 콘텐츠의 배경을 투명하게 한다. **[확인]** iOS 27에서 `TabView`/`NavigationStack` 콘텐츠 배경을 지우는 방법(`containerBackground(.clear, for:)` 계열, `scrollContentBackground(.hidden)` 등)
-- 대안: v1처럼 각 화면 스캐폴드 안에 벽을 두고, 공유 `LibraryWallModel`로 시계·배치를 이어 붙인다.
+- 우선안: 루트(`AppShell`)에 벽을 한 번만 깔고 탭 콘텐츠의 배경을 투명하게 한다.
+  - **[확인됨]** `ContainerBackgroundPlacement.navigation`은 iOS 18.0+에서 `NavigationStack`과 `NavigationSplitView` 안쪽 배경을 바꾼다. `containerBackground(_:for:)`에 `.clear`를 넘기는 방식으로 쓴다. `NavigationSplitView`는 `.navigationSplitView` 배치를 함께 쓴다.
+  - **[확인됨]** `ContainerBackgroundPlacement.tabView`는 문서에 watchOS 10.0만 적혀 있다. iOS에서는 쓸 수 있다고 가정하지 않는다.
+  - **[확인됨]** SwiftUI 업데이트 문서(2026년 6월·9월 항목)에 TabView 콘텐츠 배경 투명화 API는 없다.
+  - **[빌드 확인]** `.navigation` 배경만 지웠을 때 `TabView`가 그 아래에 불투명 배경을 칠하는지 Phase 3 첫 작업에서 27.1 SDK로 확인한다. 칠하면 대안으로 간다.
+- 대안: v1처럼 각 화면 스캐폴드 안에 벽을 두고, 공유 `LibraryWallModel`로 시계·배치를 이어 붙인다. v1 `PrismScreenScaffold`가 이 방식이다. 탭 컨테이너가 불투명 시스템 배경을 칠하기 때문에 v1은 이 방식을 골랐다.
 - 흐름은 `TimelineView(.animation)`이 구동하고, 행 하나를 `HStack` 두 벌로 이어 붙여 끊김 없이 순환시킨다. 표지 수가 많으면 `Canvas` + 미리 resolve한 이미지로 바꾼다.
 - 정지 조건: `scenePhase != .active`, 저전력 모드(`ProcessInfo.isLowPowerModeEnabled`), 동작 줄이기, 설정에서 끔.
 
@@ -151,8 +158,16 @@ enum WallContext: Equatable {
 
 - 새 토큰: `PrismGlassMetrics.lensCorner = 28`(히어로 렌즈 카드), 카드 최대 폭 `readableWidth = 640`(regular width에서 본문 카드의 최대 폭. 남는 양옆으로 벽이 드러난다).
 - 글래스 렌즈 카드: 라이브러리 상단 "지금 진행 중" 카드. 벽이 가장 잘 비치도록 `.clear` + 큰 모서리 + 최소한의 텍스트(제목, 진행률)만 둔다.
-- 스크롤 가장자리: 시스템 scroll edge effect를 쓴다. **[확인]** iOS 27 `scrollEdgeEffectStyle` 동작
-- iOS 27에서 Liquid Glass API가 바뀌었는지 먼저 확인한다. **[확인]**
+- 스크롤 가장자리: 시스템 scroll edge effect를 쓴다.
+  - **[확인됨]** `scrollEdgeEffectStyle(_ style: ScrollEdgeEffectStyle?, for edges: Edge.Set)` (iOS 26.0+). 기본은 자동 효과다. 문서 예제에는 `.hard`만 나온다. `scrollEdgeEffectHidden(_:for:)`로 숨길 수 있다.
+  - **[빌드 확인]** `ScrollEdgeEffectStyle`의 나머지 값은 문서 페이지에 없다. 자동 완성으로 확인한다.
+- Liquid Glass API의 iOS 27 변경:
+  - **[확인됨]** SwiftUI 업데이트 문서의 2026년 6월·9월 항목에 Liquid Glass 변경이 없다. Xcode 27.0의 Apple 스킬 `swiftui-whats-new-27`에도 Liquid Glass 항목이 없다.
+  - **[확인됨]** `Glass`의 멤버는 `regular`, `clear`, `identity`, `tint(_:)`, `interactive(_:)` 다섯 개다. `glassEffect(_ glass: Glass = .regular, in shape: some Shape = DefaultGlassEffectShape())`에 폐기 표시가 없다. iOS 26 규칙과 v1 코드를 그대로 쓴다.
+- iOS 27 SDK에서 v2에 영향을 주는 SwiftUI 변경 (Apple 스킬 `swiftui-whats-new-27`, Xcode 27.0):
+  - `@State`가 매크로로 바뀌었다. `_x = State(initialValue:)`로 초기화하는 v1 뷰는 컴파일 오류가 날 수 있다. 할당 순서를 바꾸는 수정은 틀린 수정이다. 선언의 초깃값을 지우고 `init`에서만 할당한다.
+  - `AsyncImage`가 iOS 27에서 HTTP 캐시를 기본으로 쓴다. `AsyncImage(request:)`와 `asyncImageURLSession(_:)`이 추가됐다. 표지 벽은 디코딩·다운샘플을 마친 이미지가 필요하므로 `CoverThumbnailCache`는 그대로 만든다.
+  - 툴바: `ToolbarItemPlacement.topBarPinnedTrailing`, `visibilityPriority(_:)`, `ToolbarOverflowMenu`, `toolbarMinimizeBehavior`가 추가됐다. 작성 `+` 버튼은 `topBarPinnedTrailing` 후보다.
 
 ## 6. 화면별 명세
 
@@ -189,6 +204,16 @@ enum WallContext: Equatable {
 - 진입: 독서 상세의 "읽기 시작" 버튼.
 - 기본 레이아웃: 위쪽에 표지와 경과 시간, 아래쪽에 쪽수 입력·메모·종료 버튼. 끝내면 기존 `ReadingProgressSheet` 흐름으로 세션을 저장한다.
 - 테이블탑 자세: `ArrangementView`로 위·아래 영역을 접힘선 기준으로 나눈다. 다른 자세에서도 같은 컨트롤과 계층을 유지한다(Apple 가이드: 기능을 자세별로 제한하지 않는다).
+- **[확인됨]** `ArrangementView` (iOS 27.1+):
+  ```swift
+  nonisolated struct ArrangementView<Primary, Secondary> where Primary : View, Secondary : View
+  init(primary: () -> Primary, secondary: () -> Secondary)
+  ```
+  - 스타일: `.arrangementViewStyle(.split)`, `.arrangementViewStyle(.overlay)`. 축 제한은 `.split.axes(_:)`, `.overlay.axes(_:)`에 `Axis.Set`을 넘긴다.
+  - 크기 조절: `splitArrangementLayoutRatio(_:)`, `splitArrangementLayoutSize(minWidth:idealWidth:maxWidth:minHeight:idealHeight:maxHeight:)`, `splitArrangementFixedLayoutSize(horizontal:vertical:)`, `overlayArrangementEdge(_:)`.
+  - 환경 값: `EnvironmentValues.splitArrangementAxis`, `EnvironmentValues.overlayArrangementZIndex`. `overlayArrangementZIndex`는 수식어가 아니라 환경 값이다.
+  - 배치 제약: `ArrangementView`를 `ScrollView`, `NavigationSplitView`, 그리드, `List` 안에 넣지 않는다. `ArrangementView` 안에 `NavigationSplitView`나 `TabView`를 넣지 않는다. 그래서 세션 모드 화면은 스크롤 없이 `ArrangementView`를 화면 최상위에 둔다. 메모 입력처럼 길어지는 영역은 primary 또는 secondary 안에서만 스크롤한다.
+  - 세션 모드 기본안: `ArrangementView { 표지·경과 시간 } secondary: { 쪽수·메모·종료 }` + `.arrangementViewStyle(.split.axes(.vertical))`. **[빌드 확인]** 테이블탑에서 접힘선 기준으로 위·아래가 나뉘는지 시뮬레이터로 확인한다.
 
 ## 7. 아이폰 듀오 대응
 
@@ -199,14 +224,38 @@ enum WallContext: Equatable {
 - 배경 이미지는 전체 폭으로 깔고 스크롤되는 전경만 inset해도 된다(Apple이 예로 든 패턴). 표지 벽이 이 패턴에 해당한다.
 
 ### 7.2 접힘선과 영역
-- `GeometryProxy.reservedRegions(kind: .division, options: .includeInactive)` / `UIView.reservedRegions(kind:)`로 접힘선 프레임을 얻는다. 완전히 펼치면 폭 0, 접힘 중에만 활성이다. **[확인]** 정확한 시그니처
+- `GeometryProxy.reservedRegions(kind: .division, options: .includeInactive)` / `UIView.reservedRegions(kind:options:)`로 접힘선 프레임을 얻는다. Apple 문서는 기기가 일부 접혔을 때 영역이 활성이고, 완전히 펼치면 비활성이라고 설명한다.
+- **[확인됨]** SwiftUI 시그니처 (iOS 27.1+):
+  ```swift
+  func reservedRegions(
+      kind: ReservedRegion.Kind,
+      options: ReservedRegion.QueryOptions = [],
+      layoutDirectionBehavior: LayoutDirectionBehavior = .mirrors
+  ) -> [ReservedRegion]
+  ```
+  - `ReservedRegion.Kind`: `.occlusion`(Dynamic Island, 카메라처럼 뷰를 가리는 영역), `.division`(접힘선처럼 뷰를 나누는 영역).
+  - `ReservedRegion.QueryOptions`: `.includeInactive`. 기본값 `[]`은 활성 영역만 돌려준다.
+  - `ReservedRegion` 멤버: `id: ReservedRegion.ID`(조회 사이에 유지), `kind`, `frame: CGRect`, `margins: EdgeInsets`, `isActive: Bool`.
+  - `frame`은 읽은 뷰의 왼쪽 위(leading-top) 기준 좌표이고, 이미 `margins`를 포함한다. 상호작용 요소는 `frame` 밖에 두면 된다.
+  - 커스텀 `Layout`에서 쓸 때 `placeSubviews(in:proposal:subviews:cache:)`의 `bounds.origin`은 (0, 0)이 아닐 수 있다. 계산은 (0, 0) 기준으로 하고 배치할 때만 `bounds.origin`을 더한다.
+- 사용 순서 (Apple 포럼 답변): 시스템 컨테이너 → `ArrangementView` → reserved region 직접 조회 순으로 고른다. 라이브러리 2열 배치는 직접 조회가 필요한 경우다.
 - 상호작용 요소(글래스 카드의 버튼, 렌즈 카드 캐러셀의 탭 영역)는 활성 접힘선 위에 두지 않는다.
 - 표지 벽과 스크롤 피드는 접힘선을 피하지 않는다.
 - 라이브러리 2열 배치는 접힘선이 있으면(비활성 포함) 짝수 열을 고르고, 접힘선 주변 간격을 넓힌다.
 - 시트·알림·메뉴·툴바 버튼은 시스템이 접힘선을 피해 준다. 커스텀 팝업을 만들지 않는다.
 
 ### 7.3 자세 감지
-- `onHingeChange { old, context in … }` — `context.hinge`(경첩 없는 기기는 nil), `hinge.status`(`.partiallyOpen` 등), `hinge.angle`. **[확인]** 나머지 status 케이스 이름
+- **[확인됨]** 시그니처 (iOS 27.1+):
+  ```swift
+  nonisolated func onHingeChange(
+      isEnabled: Bool = true,
+      _ action: @escaping (DeviceHingeContext, DeviceHingeContext) -> Void
+  ) -> some View
+  ```
+  - `DeviceHingeContext.hinge: DeviceHinge?` — 경첩 없는 기기는 nil.
+  - `DeviceHinge.angle: Angle`, `DeviceHinge.status: DeviceHinge.Status`. `Status`는 enum이 아니라 struct다. 값은 `.closed`, `.partiallyOpen`, `.fullyOpen` 세 개다(SwiftUI 업데이트 문서). `switch`에는 `default`를 둔다.
+  - 클로저 인자 순서는 문서에 명시되지 않았다. Apple 예제가 `{ _, newContext in … }`로 쓰므로 (이전, 새 값)으로 본다.
+  - `Angle`의 단위는 문서에 없다. `Angle`은 `.degrees`와 `.radians`를 둘 다 제공하므로 단위 변환 없이 쓴다.
 - 용도: 세션 모드의 테이블탑 전환 연출, 벽 흐름 속도 미세 조정 정도로 한정한다. 레이아웃 결정은 arrangement와 reserved region API로 한다(Apple 권장).
 
 ### 7.4 연속성 (접기·펼치기)
@@ -218,7 +267,14 @@ enum WallContext: Equatable {
 ### 7.5 세로 바와 시트
 - iOS 27.1 SDK에서 탭바·툴바가 세로로 바뀌는 상황을 전제로 한다. 폭이 넓은 툴바 항목(텍스트 버튼, 세그먼트)은 내비게이션 바에 남는다는 점을 고려해 툴바에는 아이콘 버튼만 둔다.
 - 세그먼트 컨트롤(예: 추세선 누적/일별)은 카드 안에 둔다.
-- 시트 툴바 버튼이 하나뿐인 작성 시트는 세로 바를 끄는 옵션을 검토한다. **[확인]** API 이름
+- **[확인됨]** 세로 바 끄기: `nonisolated func toolbarVerticalBehavior(_ behavior: ToolbarVerticalBehavior) -> some View` (iOS 27.1+). 값은 `.disabled` 하나다. UIKit은 `UIViewController.preferredVerticalBarBehavior`다.
+  - Apple은 전체 화면 동영상 플레이어나 계산기처럼 가로 바가 더 나은 화면에만 끄라고 안내한다. 탐색 중에 자주 바꾸지 말라고도 안내한다.
+  - 시트와 폼 안에서는 윈도나 프레젠테이션이 값을 정한다. `TabView`는 선택한 탭의 값을, `NavigationStack`은 맨 위 화면의 값을, `NavigationSplitView`는 가장 오른쪽 열의 값을 쓴다.
+  - 결정: 작성 시트는 세로 바를 끄지 않는다. 시스템 기본 동작을 따른다. 바깥 화면의 시트는 기본으로 세로 바를 쓴다.
+- **[확인됨]** 툴바 항목은 아이콘과 제목을 함께 준다. 세로 바는 아이콘을 쓰고 넘침 메뉴는 둘 다 쓴다. 제목만 있는 항목이나 커스텀 뷰 항목은 세로로 표시되지 않는다. v1 시트의 `Button("취소")`, `Button("저장")`은 `Button("취소", systemImage: "xmark")`처럼 바꾼다.
+- **[확인됨]** 관련 API: `EnvironmentValues.toolbarVerticalEdge: HorizontalEdge?`(세로 바가 놓일 쪽), `ToolbarContent.axisBehavior(_:)`(`.horizontalOnly`, `.verticalPreferred`), `toolbarVerticalCompressionBehavior(_:)`(`.prefersToolbarItems`, `.prefersTabBar`).
+- **[확인됨]** 세로 바 아래로 히어로·배경 이미지를 늘이려면 `backgroundExtensionEffect()`를 쓴다(iOS 26.0+). 상세 화면 히어로 표지에 쓴다. 표지 벽은 전체 폭으로 까는 배경이라 따로 필요하지 않다.
+- 세로 바 방향 규칙 (Apple 문서): 인스펙터는 가로. 분할 화면은 사이드바·콘텐츠 열이 가로, 상세 열이 세로. 바깥 화면 시트는 기본 세로. 안쪽 화면 시트는 가운데·leading 배치면 가로, trailing 배치면 세로.
 
 ### 7.6 멀티태스킹
 - iOS 27의 iPhone Split View에서 폭이 줄어도 compact 레이아웃으로 자연스럽게 내려간다.
@@ -251,4 +307,19 @@ enum WallContext: Equatable {
 - Tech talk: Design for iPhone Duo — https://developer.apple.com/videos/play/tech-talks/111466/
 - Tech talk: Strike a pose with adaptive layouts on iPhone Duo — https://developer.apple.com/videos/play/tech-talks/111463/ (`reservedRegions`, `ArrangementView`, `overlayArrangementZIndex`)
 - Tech talk: Leverage multiple displays and scenes on iPhone Duo — https://developer.apple.com/videos/play/tech-talks/111464/ (`onHingeChange`, `UIHingeInteraction`)
-- Xcode의 "get my app ready for iPhone Duo" 스킬 / `xcrun agent skills export` — 다른 코딩 에이전트에서도 쓸 수 있게 내보낼 수 있다.
+- Xcode의 "get my app ready for iPhone Duo" 스킬 / `xcrun agent skills export` — 다른 코딩 에이전트에서도 쓸 수 있게 내보낼 수 있다. Xcode 27.0(27A5218g)에서 내보낸 스킬 7개에는 듀오 스킬이 없다: `adopt-c-bounds-safety`, `audit-xcode-security-settings`, `device-interaction`, `modernize-tests`, `swiftui-specialist`, `swiftui-whats-new-27`, `uikit-app-modernization`.
+
+## 12. Phase 0 확인 출처 (2026-10-29 조회)
+- Preparing your app for iPhone Duo — https://developer.apple.com/documentation/technologyoverviews/preparing-your-app-for-iphone-duo (reserved region, `ArrangementView`, 세로 바, 시트 배치, 툴바 항목 규칙)
+- `GeometryProxy.reservedRegions(kind:options:layoutDirectionBehavior:)` — https://developer.apple.com/documentation/swiftui/geometryproxy/reservedregions(kind:options:layoutdirectionbehavior:)
+- `ReservedRegion` — https://developer.apple.com/documentation/swiftui/reservedregion
+- `ArrangementView` — https://developer.apple.com/documentation/swiftui/arrangementview
+- `View.onHingeChange(isEnabled:_:)` — https://developer.apple.com/documentation/swiftui/view/onhingechange(isenabled:_:)
+- `DeviceHingeContext`, `DeviceHinge` — https://developer.apple.com/documentation/swiftui/devicehingecontext, https://developer.apple.com/documentation/swiftui/devicehinge
+- `View.toolbarVerticalBehavior(_:)` — https://developer.apple.com/documentation/swiftui/view/toolbarverticalbehavior(_:)
+- SwiftUI updates (2026년 6월·9월 항목, `DeviceHinge.Status` 값) — https://developer.apple.com/documentation/updates/swiftui
+- `Glass`, `View.glassEffect(_:in:)` — https://developer.apple.com/documentation/swiftui/glass, https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)
+- `ContainerBackgroundPlacement` (`.navigation`, `.tabView`) — https://developer.apple.com/documentation/swiftui/containerbackgroundplacement
+- `View.scrollEdgeEffectStyle(_:for:)` — https://developer.apple.com/documentation/swiftui/view/scrolledgeeffectstyle(_:for:)
+- `NavigationTransition.zoom(sourceID:in:)` — https://developer.apple.com/documentation/swiftui/navigationtransition/zoom(sourceid:in:)
+- Apple 스킬 `swiftui-whats-new-27`, `uikit-app-modernization` — `xcrun agent skills export` (Xcode 27.0)

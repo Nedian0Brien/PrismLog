@@ -6,13 +6,13 @@
 - 각 Phase가 끝나면 이 문서의 체크박스와 "진행 기록"을 갱신한다.
 
 ## Phase 0 — 준비
-- [ ] 01-intent의 결정 사항 D1–D5를 사용자와 확정한다
-- [ ] Xcode 27.1과 iPhone Duo 시뮬레이터가 설치돼 있는지 확인한다 (`xcodebuild -version`, `xcrun simctl list devicetypes | grep -i duo`)
-- [ ] `git tag ios-v1-final` → `git switch -c ios-v2`
-- [ ] `docs/ios-v2/` 문서를 첫 커밋으로 올린다
-- [ ] `project.yml`: 배포 버전 27.1(D4), `xcodegen generate`, 기존 테스트 전체 통과를 기준선으로 기록한다
-- [ ] Xcode "get my app ready for iPhone Duo" 스킬(또는 `xcrun agent skills export`)로 v1 코드를 훑어 문제 패턴 목록을 얻는다
-- [ ] spec의 **[확인]** 항목 중 Liquid Glass·TabView 배경·reserved region·hinge API 시그니처를 Apple 문서로 확인하고 spec에 반영한다
+- [x] 01-intent의 결정 사항 D1–D5를 사용자와 확정한다 (2026-10-29, 모두 기본값)
+- [ ] Xcode 27.1과 iPhone Duo 시뮬레이터가 설치돼 있는지 확인한다 (`xcodebuild -version`, `xcrun simctl list devicetypes | grep -i duo`) — 확인 결과 Xcode 27.0만 있고 듀오 기기 유형이 없다. 설치 대기
+- [x] `git tag ios-v1-final` → `ios-v2` 브랜치 (`.worktree/ios-v2` 워크트리)
+- [x] `docs/ios-v2/` 문서를 첫 커밋으로 올린다
+- [ ] `project.yml`: 배포 버전 27.1(D4), `xcodegen generate`, 기존 테스트 전체 통과를 기준선으로 기록한다 — Xcode 27.0·배포 버전 26.0에서 빌드와 앱 실행은 성공했다. 테스트 러너가 앱에 연결하지 못해 테스트는 0건 실행됐다 ([04-phase0-audit.md](./04-phase0-audit.md) §2). 27.1 조정과 테스트 기준선은 설치 대기
+- [ ] Xcode "get my app ready for iPhone Duo" 스킬(또는 `xcrun agent skills export`)로 v1 코드를 훑어 문제 패턴 목록을 얻는다 — Xcode 27.0에는 듀오 스킬이 없어서 Apple `uikit-app-modernization` 스킬과 듀오 문서 규칙으로 대신 점검함 (04 §3). 27.1 스킬로 다시 점검
+- [x] spec의 **[확인]** 항목 중 Liquid Glass·TabView 배경·reserved region·hinge API 시그니처를 Apple 문서로 확인하고 spec에 반영한다
 - 완료 기준: 기준선 빌드·테스트 통과, [확인] 항목 정리 커밋
 
 ## Phase 1 — 표지 파이프라인
@@ -84,4 +84,5 @@
 ## 진행 기록
 | 날짜 | Phase | 내용 | 커밋 |
 |---|---|---|---|
-| 2026-10-29 | — | intent·spec·plan 초안 작성 (클라우드 세션) | (커밋 전) |
+| 2026-10-29 | — | intent·spec·plan 초안 작성 (클라우드 세션) | d79840c |
+| 2026-10-29 | 0 | D1–D5 기본값 확정, `ios-v1-final` 태그, Apple 문서로 [확인] 항목 정리, v1 문제 패턴 점검, Xcode 27.0 기준선 기록. Xcode 27.1 미설치로 D4 조정·듀오 검증 보류 | `docs(ios): Phase 0 점검` 커밋 |
