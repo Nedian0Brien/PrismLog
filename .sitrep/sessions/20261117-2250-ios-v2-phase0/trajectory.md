@@ -31,3 +31,17 @@
 ### 23:15 · 보고 · 구현 중 80%
 - 기준선 확보, 듀오 접힌 화면 UI 실패 7건은 Phase 3 셸 변경에서 해결
 - D1 듀오 스킬 확보 방법 결정 요청 (권장 A)
+
+### ~23:20 · T9 완료 · 커밋 23bc982 푸시, 이슈 #17 댓글
+
+### ~23:25 · D1 결정 · A (`xcode-select` 전환)
+- 결정: 사용자. 사용자가 `sudo xcode-select -s /Applications/Xcode.app`과 스킬 내보내기를 직접 실행
+- `xcode-select -p` → `/Applications/Xcode.app/Contents/Developer` (27.2) 확인
+
+### 23:22 · T8 완료 · `app-resizability` 스킬 점검
+- 사전 점검 3개 통과, 공유 상태 API 0건, 장면 수명 주기 이미 적용
+- safe area 결함 2건: `RootView.swift:55` `bottom 78`, `PrismScreenScaffold.swift:68`·`RecordDetailScreen.swift:89` `bottom 130` (P1·P2와 같음). 새 결함 없음
+- `04-phase0-audit.md` §6.4, `03-plan.md` 갱신
+
+### 23:22 · 보고 · 구현 중 90%
+- 남은 일: 듀오 펼친 화면·반쯤 펼친 자세 확인(시뮬레이터 패널 권한 또는 실기기 필요)

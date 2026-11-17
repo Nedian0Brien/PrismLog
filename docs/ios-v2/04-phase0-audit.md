@@ -76,7 +76,6 @@ spec의 **[확인]** 항목을 Apple 문서로 확인하고 spec 본문에 반�
 
 2026-11-17 갱신. 처리한 항목은 §6에 있다.
 
-- 듀오 스킬로 §3 점검을 다시 한다 (§6.4).
 - 듀오 펼친 화면과 반쯤 펼친 자세에서 v1 화면을 확인한다 (§6.3).
 - **[빌드 확인]** 남은 2개: TabView 불투명 배경(Phase 3 첫 작업), 테이블탑 `ArrangementView` 분할(세션 모드 Phase).
 - 추적 이슈: https://github.com/Nedian0Brien/PrismLog/issues/17
@@ -112,10 +111,42 @@ spec의 **[확인]** 항목을 Apple 문서로 확인하고 spec 본문에 반�
 - 접힌 화면(시뮬레이터 기본 자세, 바깥 화면 1398×2034): 탭 4개가 오른쪽 세로 바에 있다. 대시보드 카드는 세로 바를 피해 줄어든다. FAB `+`는 `bottom 78` 고정 여백 때문에 추세선 차트 위, 세로 바 왼쪽에 겹쳐 뜬다. §3의 P1·P2가 예측한 증상과 같다.
 - 펼친 화면과 반쯤 펼친 자세: 시뮬레이터 경첩 조작 권한을 받지 못해 확인하지 못했다. 실기기는 펼친 상태로 연결돼 있었지만 다른 앱을 사용 중이어서 화면을 확인하지 않았다.
 
-### 6.4 듀오 스킬
+### 6.4 듀오 스킬 점검 (`app-resizability`, Xcode 27.2)
 
-- `xcrun agent skills export --output-dir ~/.claude/skills`는 `xcode-select`가 가리키는 Xcode 27.0의 스킬 7개를 내보냈다: `audit-xcode-security-settings`, `uikit-app-modernization`, `swiftui-whats-new-27`, `device-interaction`, `modernize-tests`, `adopt-c-bounds-safety`, `swiftui-specialist`. 듀오 스킬은 없다.
-- 27.2의 스킬을 받으려면 `sudo xcode-select -s /Applications/Xcode.app`으로 바꾼 뒤 다시 내보낸다. 새 세션부터 로드된다.
+`sudo xcode-select -s /Applications/Xcode.app` 후 내보낸 Xcode 27.2 스킬 `app-resizability`("prepare for iPhone Duo")로 `ios/PrismLog`, `ios/PrismLogWidget`을 점검했다. 코드는 바꾸지 않았다. 처음 내보낸 27.0 스킬 7개에는 이 스킬이 없었다.
+
+사전 점검 (`Support/Info.plist`, `project.yml`):
+
+| 항목 | 결과 |
+|---|---|
+| 런치 화면 | `UILaunchScreen` 있음. 통과 |
+| iPad 방향 | `UISupportedInterfaceOrientations~ipad` 네 방향 모두. 통과. iPhone은 세로만 선언하며 스킬 기준으로 정상이다 |
+| 전체 화면 고정 | `UIRequiresFullScreen` 없음. 통과 |
+| 장면 수명 주기 | SwiftUI `App` + `UIApplicationSceneManifest`(`UIApplicationSupportsMultipleScenes` true). 이전 대상 아님 |
+
+작업별 결과:
+
+| 스킬 작업 | 결과 |
+|---|---|
+| `UIScreen.main` | 0건 |
+| `interfaceOrientation` | 0건 |
+| `userInterfaceIdiom` | 0건 |
+| 장면 수명 주기 | 이미 장면 기반 |
+| Safe area (SwiftUI 규칙 13) | 2건. 아래 표 |
+
+| # | 위치 | 스킬 규칙 | 판단 |
+|---|---|---|---|
+| S1 (=P1) | `App/RootView.swift:49-56` | 오버레이에 쌓은 컨트롤과 바를 피하려는 고정 여백(`.padding(.bottom, 78)`) | 결함. 고정 여백은 런타임에 생기는 세로 바를 따라가지 못한다. 스킬은 숫자를 지우고 `safeAreaBar(edge:)` 또는 `safeAreaInset(edge:)`로 공간을 예약하라고 한다. v2는 FAB를 툴바 `+`로 옮겨 없앤다(spec §3) |
+| S2 (=P2) | `DesignSystem/PrismScreenScaffold.swift:68`, `Features/Records/RecordDetailScreen.swift:89` | 바를 대신하는 고정 여백(`.padding(.bottom, 130)`) | 결함. `safeAreaPadding`으로 바꾸는 것도 해결이 아니다. 숫자를 지우고 탭바는 시스템 inset에 맡긴다. FAB를 없애면 남는 여백도 없다(Phase 3) |
+
+결함이 아닌 것으로 판단한 항목:
+- `ignoresSafeArea()` 7곳 가운데 6곳은 배경, 스크림, 저장 펄스다. 스킬은 전체 화면에 닿아야 하는 층에는 그대로 두라고 한다.
+- `Features/Records/PhotoStrip.swift:91`의 페이지 `TabView`는 사진을 띄우는 미디어 면이라 그대로 둔다. 닫기 버튼과 쪽 번호는 safe area를 따르는 바깥 `ZStack`의 오버레이에 있어서 세로 바 아래로 들어가지 않는다.
+- `GeometryReader` 5곳은 모두 `proxy.size`만 읽는다. 스킬은 inset을 읽어 레이아웃을 정하는 것만 금지한다.
+- `.padding(.horizontal, 18)` 15곳은 바를 대신하는 값이 아니라 디자인 여백이다. §6.3 스크린샷에서도 카드가 세로 바를 피해 줄어들었다.
+- 위젯은 해당 패턴이 없다.
+
+§3의 P3(제목만 있는 시트 툴바 버튼), P4(탭 콘텐츠에 가려지는 루트 배경), P6(버튼 레이블의 글래스)은 이 스킬의 점검 범위 밖이다. 듀오 문서 규칙에 따른 기존 판단을 유지한다.
 
 ### 6.5 SDK 선언으로 확정한 항목
 
