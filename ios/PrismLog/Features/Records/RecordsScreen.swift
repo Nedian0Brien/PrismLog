@@ -302,6 +302,7 @@ struct ReadingShelfCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HalfDonutCoverChart(
                 url: book.coverURL,
+                title: book.title,
                 progress: book.progress,
                 accent: .reading
             )

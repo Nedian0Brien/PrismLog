@@ -80,7 +80,7 @@ struct StudyProgressSheet: View {
 
     private var preview: some View {
         HStack(spacing: 14) {
-            CoverImage(url: record.coverURL, accent: .study, cornerRadius: 12)
+            CoverImage(url: record.coverURL, accent: .study, title: record.title, cornerRadius: 12)
                 .frame(width: 66, height: 96)
 
             VStack(alignment: .leading, spacing: 6) {

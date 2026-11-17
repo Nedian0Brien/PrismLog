@@ -8,11 +8,12 @@ import SwiftUI
 struct FeatureCard<Content: View>: View {
     let accent: PrismAccent
     let coverURL: URL?
+    let title: String
     @ViewBuilder var content: Content
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            CoverImage(url: coverURL, accent: accent, cornerRadius: 18)
+            CoverImage(url: coverURL, accent: accent, title: title, cornerRadius: 18)
                 .frame(width: 96, height: 144)
                 .shadow(color: .black.opacity(0.2), radius: 18, y: 12)
 
@@ -150,7 +151,7 @@ struct ReadingListCard: View {
     let onLogProgress: () -> Void
 
     var body: some View {
-        FeatureCard(accent: .reading, coverURL: book.coverURL) {
+        FeatureCard(accent: .reading, coverURL: book.coverURL, title: book.title) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(book.title)
@@ -222,7 +223,7 @@ struct StudyListCard: View {
     private var record: RecordItem { group.latest }
 
     var body: some View {
-        FeatureCard(accent: .study, coverURL: group.coverURL) {
+        FeatureCard(accent: .study, coverURL: group.coverURL, title: group.title) {
             HStack(alignment: .top, spacing: 12) {
                 StatusPill(text: "공부 중", accent: .study)
                 Spacer(minLength: 0)
@@ -306,7 +307,7 @@ struct CultureListCard: View {
     private var accent: PrismAccent { record.accent }
 
     var body: some View {
-        FeatureCard(accent: accent, coverURL: record.coverURL) {
+        FeatureCard(accent: accent, coverURL: record.coverURL, title: record.title) {
             HStack(alignment: .top, spacing: 12) {
                 if let status = record.status, !status.isEmpty {
                     StatusPill(text: status, accent: accent)

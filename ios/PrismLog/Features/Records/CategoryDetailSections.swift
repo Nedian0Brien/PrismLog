@@ -367,7 +367,7 @@ struct SeriesProgressToastView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            CoverImage(url: change.posterURL, accent: .series, cornerRadius: 10)
+            CoverImage(url: change.posterURL, accent: .series, title: change.title, cornerRadius: 10)
                 .frame(width: 46, height: 64)
 
             VStack(alignment: .leading, spacing: 5) {

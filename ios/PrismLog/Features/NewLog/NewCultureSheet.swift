@@ -100,7 +100,7 @@ struct NewCultureSheet: View {
 
     private func row(_ item: MediaSearchItem) -> some View {
         HStack(spacing: 12) {
-            CoverImage(url: item.posterURL, accent: accent)
+            CoverImage(url: item.posterURL, accent: accent, title: item.title)
                 .frame(width: 48, height: 70)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -177,7 +177,7 @@ struct NewCultureSheet: View {
         ScrollView {
             VStack(spacing: 16) {
                 HStack(alignment: .top, spacing: 14) {
-                    CoverImage(url: item.posterURL, accent: accent)
+                    CoverImage(url: item.posterURL, accent: accent, title: item.title)
                         .frame(width: 92, height: 134)
 
                     VStack(alignment: .leading, spacing: 6) {

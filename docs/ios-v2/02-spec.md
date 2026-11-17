@@ -87,14 +87,17 @@ ios/PrismLog/
 - `PrismStore.records`에서 `coverURL`이 있는 기록: 독서(책 표지), 영화·시리즈(포스터), 게임(커버).
 - 같은 엔티티(`entityID`)가 여러 기록에 나오면 한 번만 쓴다.
 - 표지가 없는 기록(주로 공부)은 `GeneratedCover`로 만든다: 카테고리 톤 그라디언트 + 제목(Pretendard ExtraBold) + 카테고리 심벌. `ImageRenderer`로 래스터화해서 같은 캐시에 넣는다. 그래야 벽은 모든 표지를 이미지 하나로 다룬다.
+  - 글자색은 흰색과 `PrismColor.background` 중 톤과의 WCAG 대비가 큰 쪽을 고른다. 다섯 톤 모두 어두운 글자가 이긴다(흰 글자는 공부 노랑에서 약 1.6:1).
+  - 비율은 2:3이다. 디자인을 바꾸면 `CoverKey.generatedDesignVersion`을 올려 디스크에 남은 이전 표지를 다시 그리게 한다.
 - 표지 수에 따른 처리:
   - 0장: `SpectrumBloomBackground`로 대체한다.
   - 1–11장: 반복 배치로 화면을 채운다. 같은 표지가 이웃하지 않도록 섞는다.
   - 12장 이상: 반복 없이 쓰고, 행이 화면 폭보다 짧으면 그 행만 반복한다.
 
 ### 4.2 썸네일 파이프라인 (`CoverThumbnailCache`, actor)
-- 다운로드 → ImageIO `CGImageSourceCreateThumbnailAtIndex`로 표시 크기의 2배(@3x 기기는 3배)까지 다운샘플한다.
-- 디스크: `Caches/covers/<sha256(url)>.heic`. 메모리: `NSCache`(비용 = 픽셀 수).
+- 다운로드 → ImageIO `CGImageSourceCreateThumbnailAtIndex`로 표시 크기 × 화면 배율까지 다운샘플한다. 크기는 128·256·512·1024px 단계로 올림해서 같은 표지가 크기마다 따로 쌓이지 않게 한다.
+- 디스크: `Caches/covers/<sha256(원천)>-<크기>.jpg`, JPEG(품질 0.85)로 저장한다. 디스크 쓰기는 전용 직렬 큐에서 하고, 표지는 메모리에 올라가면 디스크 저장을 기다리지 않고 바로 넘긴다.
+  - HEIC를 쓰지 않는 이유: iOS 27.2 일반 시뮬레이터 런타임의 HEVC 코덱이 인코딩과 디코딩 모두에서 돌아오지 않는다. 표지 읽기 십여 개가 Swift 협력 스레드를 모두 붙잡아 앱의 비동기 작업이 전부 멈췄다(2026-11-18 iPhone 17 Pro 시뮬레이터, `sample`로 확인). JPEG는 341×512 표지 기준 장당 약 57KB로 HEIC(약 36KB)의 1.6배이고, 표지 200장이면 약 11MB다. 메모리: `NSCache`(비용 = 디코딩된 바이트, 한도 80MB). 뷰는 메모리 캐시를 동기로 읽어서 캐시에 있는 표지를 첫 프레임에 그린다.
 - 벽에는 디코딩을 마친 이미지만 넘긴다. 벽 렌더링 중에는 `AsyncImage`를 쓰지 않는다.
 - 동시 다운로드 4개. 실패한 URL은 세션 동안 다시 시도하지 않고 `GeneratedCover`로 대체한다.
 - 기존 `CoverImage` 뷰도 이 캐시를 쓰도록 바꾼다(목록·상세 공용).

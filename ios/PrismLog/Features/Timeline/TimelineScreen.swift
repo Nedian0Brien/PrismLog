@@ -184,7 +184,7 @@ struct TimelineEntryCard: View {
 
             if item.posterURL != nil {
                 HStack(alignment: .top, spacing: 12) {
-                    CoverImage(url: item.posterURL, accent: item.accent, cornerRadius: 10)
+                    CoverImage(url: item.posterURL, accent: item.accent, title: item.title, cornerRadius: 10)
                         .frame(width: 58, height: 84)
                         .shadow(color: .black.opacity(0.3), radius: 9, y: 5)
 

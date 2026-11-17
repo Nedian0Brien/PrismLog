@@ -105,7 +105,7 @@ struct NewReadingSheet: View {
 
     private func resultRow(_ book: BookSearchItem) -> some View {
         HStack(spacing: 12) {
-            CoverImage(url: book.coverURL, accent: .reading)
+            CoverImage(url: book.coverURL, accent: .reading, title: book.title)
                 .frame(width: 48, height: 70)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -184,7 +184,7 @@ struct NewReadingSheet: View {
         ScrollView {
             VStack(spacing: 16) {
                 HStack(alignment: .top, spacing: 14) {
-                    CoverImage(url: book.coverURL, accent: .reading)
+                    CoverImage(url: book.coverURL, accent: .reading, title: book.title)
                         .frame(width: 92, height: 134)
 
                     VStack(alignment: .leading, spacing: 6) {

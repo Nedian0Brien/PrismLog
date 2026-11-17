@@ -1,5 +1,5 @@
-# 작업 트리: PrismLog iOS v2 Phase 0 준비
-갱신 2026-11-17 23:24 · 진행률 100%
+# 작업 트리: PrismLog iOS v2 Phase 0–1
+갱신 2026-11-18 00:07 · 진행률 100%
 
 - [x] T1 결정 사항 D1–D5 확정 (2026-10-29)
 - [x] T2 `ios-v1-final` 태그, `ios-v2` 브랜치·워크트리 (2026-10-29)
@@ -14,6 +14,12 @@
 - [x] T7 듀오 펼친 화면·반쯤 펼친 자세 확인 (시뮬레이터)
 - [x] T8 듀오 스킬(`app-resizability`)로 v1 재점검
 - [x] T9 문서 갱신, 커밋·푸시, 이슈 #17 갱신
+- [x] T10 Phase 1 표지 파이프라인
+  - [x] T10.1 `CoverThumbnailCache` (다운샘플, JPEG 디스크, NSCache, 동시 4개, 실패 URL)
+  - [x] T10.2 `GeneratedCover` (톤 그라디언트, 제목, 대비 기준 글자색)
+  - [x] T10.3 `CoverImage` 교체, 호출 13곳에 `title:` 전달
+  - [x] T10.4 단위 테스트 16개 (`CoverPipelineTests`)
+  - [x] T10.5 듀오 시뮬레이터 실데이터 확인, iPhone UI 회귀
 
 ## 열린 결정
 - 없음

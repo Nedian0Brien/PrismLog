@@ -16,11 +16,11 @@
 - 완료 기준: 기준선 빌드·테스트 통과, [확인] 항목 정리 커밋 — 2026-11-17 완료. 듀오 접힌 화면 UI 실패 7건은 Phase 3에서 셸과 함께 고친다. 남은 [빌드 확인] 2건은 Phase 3(TabView 배경)과 세션 모드(테이블탑 `ArrangementView`)에서 확인한다
 
 ## Phase 1 — 표지 파이프라인
-- [ ] `CoverThumbnailCache` (actor): 다운로드, ImageIO 다운샘플, 디스크 HEIC + `NSCache`, 동시 4개, 실패 URL 기록
-- [ ] `GeneratedCover`: 카테고리 톤 + 제목 타이포 → `ImageRenderer` 래스터화 → 같은 캐시
-- [ ] `CoverImage`를 캐시 기반으로 교체 (목록·상세 회귀 확인)
-- [ ] 단위 테스트: 캐시 키, 실패 대체, 생성 표지
-- 완료 기준: 실데이터로 모든 기록의 표지(또는 생성 표지)가 캐시에서 즉시 나온다
+- [x] `CoverThumbnailCache` (actor): 다운로드, ImageIO 다운샘플, 디스크 + `NSCache`, 동시 4개, 실패 URL 기록 — `ios/PrismLog/Library/CoverThumbnailCache.swift`. 디스크 형식은 HEIC 대신 JPEG다(spec §4.2, 시뮬레이터 HEVC 코덱 멈춤)
+- [x] `GeneratedCover`: 카테고리 톤 + 제목 타이포 → `ImageRenderer` 래스터화 → 같은 캐시 — `ios/PrismLog/Library/GeneratedCover.swift`
+- [x] `CoverImage`를 캐시 기반으로 교체 (목록·상세 회귀 확인) — 호출하는 13곳에 `title:`을 넘긴다
+- [x] 단위 테스트: 캐시 키, 실패 대체, 생성 표지 — `PrismLogTests/CoverPipelineTests.swift` 16개(디스크 쓰기가 멈춰도 표지가 나오는 회귀 테스트 포함)
+- 완료 기준: 실데이터로 모든 기록의 표지(또는 생성 표지)가 캐시에서 즉시 나온다 — 2026-11-18 완료. iPhone 17 Pro 시뮬레이터에서 빈 캐시로 UI 테스트 8개가 모두 통과했고(156초), 표지 47개가 JPEG로 캐시됐다. 실데이터는 모든 기록에 표지가 있어서 생성 표지는 렌더링 결과물로 확인했다
 
 ## Phase 2 — 표지 벽 시제품 (A·B 비교)
 - [ ] `LibraryWallModel`: 표지 목록 구성(엔티티 중복 제거, 반복·섞기), 맥락 모드, 단일 흐름 시계, 정지 조건
@@ -88,4 +88,5 @@
 | 2026-10-29 | 0 | D1–D5 기본값 확정, `ios-v1-final` 태그, Apple 문서로 [확인] 항목 정리, v1 문제 패턴 점검, Xcode 27.0 기준선 기록. Xcode 27.1 미설치로 D4 조정·듀오 검증 보류 | 4b82e81 |
 | 2026-11-17 | 0 | Xcode 27.2로 배포 버전 27.1 조정, 듀오 시뮬레이터·iPhone 17 Pro 기준선 측정, 실기기 설치·실행, SDK 선언으로 [빌드 확인] 2건 확정. 펼친 화면 확인은 남음 | 23bc982 |
 | 2026-11-17 | 0 | `app-resizability` 스킬(Xcode 27.2)로 v1 재점검. 새 결함 없음 | d4adcc4 |
-| 2026-11-17 | 0 | 듀오 시뮬레이터 접힘·반쯤 펼침·펼침 화면 확인. Phase 0 완료 | (이 커밋) |
+| 2026-11-17 | 0 | 듀오 시뮬레이터 접힘·반쯤 펼침·펼침 화면 확인. Phase 0 완료 | 9913696 |
+| 2026-11-18 | 1 | 표지 캐시, 생성 표지, `CoverImage` 교체, 단위 테스트 16개. HEIC 대신 JPEG 디스크 캐시. Phase 1 완료 | (이 커밋) |

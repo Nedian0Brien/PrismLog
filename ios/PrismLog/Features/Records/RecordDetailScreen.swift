@@ -182,7 +182,7 @@ struct RecordDetailScreen: View {
             // The web's detail hero shows the artwork untouched at 2:3 and
             // leaves progress to the meter below
             // (`src/features/prismlog/pages/recordsPage.jsx:700`).
-            CoverImage(url: record.coverURL, accent: record.accent, cornerRadius: 18)
+            CoverImage(url: record.coverURL, accent: record.accent, title: record.title, cornerRadius: 18)
                 .frame(width: 118, height: 177)
                 .shadow(color: .black.opacity(0.24), radius: 16, y: 10)
 
