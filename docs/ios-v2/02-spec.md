@@ -135,7 +135,8 @@ enum WallContext: Equatable {
   - **[확인됨]** `ContainerBackgroundPlacement.navigation`은 iOS 18.0+에서 `NavigationStack`과 `NavigationSplitView` 안쪽 배경을 바꾼다. `containerBackground(_:for:)`에 `.clear`를 넘기는 방식으로 쓴다. `NavigationSplitView`는 `.navigationSplitView` 배치를 함께 쓴다.
   - **[확인됨]** `ContainerBackgroundPlacement.tabView`는 문서에 watchOS 10.0만 적혀 있다. iOS에서는 쓸 수 있다고 가정하지 않는다.
   - **[확인됨]** SwiftUI 업데이트 문서(2026년 6월·9월 항목)에 TabView 콘텐츠 배경 투명화 API는 없다.
-  - **[빌드 확인]** `.navigation` 배경만 지웠을 때 `TabView`가 그 아래에 불투명 배경을 칠하는지 Phase 3 첫 작업에서 27.1 SDK로 확인한다. 칠하면 대안으로 간다.
+  - **[확인됨]** iOS 27.2 SDK(Xcode 27.2) `SwiftUI.swiftinterface`에서도 `.tabView`는 `@available(iOS, unavailable)`이다. `.navigation`과 `.navigationSplitView`만 iOS 18.0+로 열려 있다.
+  - **[빌드 확인]** `.navigation` 배경만 지웠을 때 `TabView`가 그 아래에 불투명 배경을 칠하는지는 선언으로 알 수 없다. Phase 3 첫 작업에서 듀오 시뮬레이터로 확인한다. 칠하면 대안으로 간다.
 - 대안: v1처럼 각 화면 스캐폴드 안에 벽을 두고, 공유 `LibraryWallModel`로 시계·배치를 이어 붙인다. v1 `PrismScreenScaffold`가 이 방식이다. 탭 컨테이너가 불투명 시스템 배경을 칠하기 때문에 v1은 이 방식을 골랐다.
 - 흐름은 `TimelineView(.animation)`이 구동하고, 행 하나를 `HStack` 두 벌로 이어 붙여 끊김 없이 순환시킨다. 표지 수가 많으면 `Canvas` + 미리 resolve한 이미지로 바꾼다.
 - 정지 조건: `scenePhase != .active`, 저전력 모드(`ProcessInfo.isLowPowerModeEnabled`), 동작 줄이기, 설정에서 끔.
@@ -160,7 +161,7 @@ enum WallContext: Equatable {
 - 글래스 렌즈 카드: 라이브러리 상단 "지금 진행 중" 카드. 벽이 가장 잘 비치도록 `.clear` + 큰 모서리 + 최소한의 텍스트(제목, 진행률)만 둔다.
 - 스크롤 가장자리: 시스템 scroll edge effect를 쓴다.
   - **[확인됨]** `scrollEdgeEffectStyle(_ style: ScrollEdgeEffectStyle?, for edges: Edge.Set)` (iOS 26.0+). 기본은 자동 효과다. 문서 예제에는 `.hard`만 나온다. `scrollEdgeEffectHidden(_:for:)`로 숨길 수 있다.
-  - **[빌드 확인]** `ScrollEdgeEffectStyle`의 나머지 값은 문서 페이지에 없다. 자동 완성으로 확인한다.
+  - **[확인됨]** `ScrollEdgeEffectStyle`의 값은 `.automatic`, `.hard`, `.soft` 세 개다(iOS 27.2 SDK `SwiftUI.swiftinterface`).
 - Liquid Glass API의 iOS 27 변경:
   - **[확인됨]** SwiftUI 업데이트 문서의 2026년 6월·9월 항목에 Liquid Glass 변경이 없다. Xcode 27.0의 Apple 스킬 `swiftui-whats-new-27`에도 Liquid Glass 항목이 없다.
   - **[확인됨]** `Glass`의 멤버는 `regular`, `clear`, `identity`, `tint(_:)`, `interactive(_:)` 다섯 개다. `glassEffect(_ glass: Glass = .regular, in shape: some Shape = DefaultGlassEffectShape())`에 폐기 표시가 없다. iOS 26 규칙과 v1 코드를 그대로 쓴다.
@@ -254,7 +255,7 @@ enum WallContext: Equatable {
   ```
   - `DeviceHingeContext.hinge: DeviceHinge?` — 경첩 없는 기기는 nil.
   - `DeviceHinge.angle: Angle`, `DeviceHinge.status: DeviceHinge.Status`. `Status`는 enum이 아니라 struct다. 값은 `.closed`, `.partiallyOpen`, `.fullyOpen` 세 개다(SwiftUI 업데이트 문서). `switch`에는 `default`를 둔다.
-  - 클로저 인자 순서는 문서에 명시되지 않았다. Apple 예제가 `{ _, newContext in … }`로 쓰므로 (이전, 새 값)으로 본다.
+  - **[확인됨]** 클로저 인자는 `(_ oldContext: DeviceHingeContext, _ newContext: DeviceHingeContext)` 순서다(iOS 27.2 SDK `SwiftUICore.swiftinterface`, `@available(anyAppleOS 27.1, *)`).
   - `Angle`의 단위는 문서에 없다. `Angle`은 `.degrees`와 `.radians`를 둘 다 제공하므로 단위 변환 없이 쓴다.
 - 용도: 세션 모드의 테이블탑 전환 연출, 벽 흐름 속도 미세 조정 정도로 한정한다. 레이아웃 결정은 arrangement와 reserved region API로 한다(Apple 권장).
 
@@ -267,7 +268,7 @@ enum WallContext: Equatable {
 ### 7.5 세로 바와 시트
 - iOS 27.1 SDK에서 탭바·툴바가 세로로 바뀌는 상황을 전제로 한다. 폭이 넓은 툴바 항목(텍스트 버튼, 세그먼트)은 내비게이션 바에 남는다는 점을 고려해 툴바에는 아이콘 버튼만 둔다.
 - 세그먼트 컨트롤(예: 추세선 누적/일별)은 카드 안에 둔다.
-- **[확인됨]** 세로 바 끄기: `nonisolated func toolbarVerticalBehavior(_ behavior: ToolbarVerticalBehavior) -> some View` (iOS 27.1+). 값은 `.disabled` 하나다. UIKit은 `UIViewController.preferredVerticalBarBehavior`다.
+- **[확인됨]** 세로 바 끄기: `nonisolated func toolbarVerticalBehavior(_ behavior: ToolbarVerticalBehavior) -> some View` (iOS 27.1+). 값은 `.automatic`(기본)과 `.disabled` 두 개다(iOS 27.2 SDK `SwiftUI.swiftinterface`). UIKit은 `UIViewController.preferredVerticalBarBehavior`다.
   - Apple은 전체 화면 동영상 플레이어나 계산기처럼 가로 바가 더 나은 화면에만 끄라고 안내한다. 탐색 중에 자주 바꾸지 말라고도 안내한다.
   - 시트와 폼 안에서는 윈도나 프레젠테이션이 값을 정한다. `TabView`는 선택한 탭의 값을, `NavigationStack`은 맨 위 화면의 값을, `NavigationSplitView`는 가장 오른쪽 열의 값을 쓴다.
   - 결정: 작성 시트는 세로 바를 끄지 않는다. 시스템 기본 동작을 따른다. 바깥 화면의 시트는 기본으로 세로 바를 쓴다.
@@ -323,3 +324,4 @@ enum WallContext: Equatable {
 - `View.scrollEdgeEffectStyle(_:for:)` — https://developer.apple.com/documentation/swiftui/view/scrolledgeeffectstyle(_:for:)
 - `NavigationTransition.zoom(sourceID:in:)` — https://developer.apple.com/documentation/swiftui/navigationtransition/zoom(sourceid:in:)
 - Apple 스킬 `swiftui-whats-new-27`, `uikit-app-modernization` — `xcrun agent skills export` (Xcode 27.0)
+- iOS 27.2 SDK 선언 (2026-11-17, Xcode 27.2 27B52) — `iPhoneOS.sdk/System/Library/Frameworks/SwiftUI.framework/Modules/SwiftUI.swiftmodule/arm64e-apple-ios.swiftinterface` (`ScrollEdgeEffectStyle`, `ContainerBackgroundPlacement`, `ToolbarVerticalBehavior`), `SwiftUICore.framework/.../arm64e-apple-ios.swiftinterface` (`onHingeChange`, `DeviceHinge`, `ArrangementView`, `ReservedRegion`)

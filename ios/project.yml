@@ -3,7 +3,7 @@ name: PrismLog
 options:
   bundleIdPrefix: kr.lawdigest
   deploymentTarget:
-    iOS: "26.0"
+    iOS: "27.1"
   createIntermediateGroups: true
   groupSortPosition: top
   generateEmptyDirectories: true
@@ -15,7 +15,7 @@ settings:
     CURRENT_PROJECT_VERSION: 1
     MARKETING_VERSION: "1.0"
     SWIFT_VERSION: "6.0"
-    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "27.1"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: L64524W7S7
     ENABLE_USER_SCRIPT_SANDBOXING: YES

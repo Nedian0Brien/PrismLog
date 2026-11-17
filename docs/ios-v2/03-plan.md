@@ -7,11 +7,11 @@
 
 ## Phase 0 — 준비
 - [x] 01-intent의 결정 사항 D1–D5를 사용자와 확정한다 (2026-10-29, 모두 기본값)
-- [ ] Xcode 27.1과 iPhone Duo 시뮬레이터가 설치돼 있는지 확인한다 (`xcodebuild -version`, `xcrun simctl list devicetypes | grep -i duo`) — 확인 결과 Xcode 27.0만 있고 듀오 기기 유형이 없다. 설치 대기
+- [x] Xcode 27.1과 iPhone Duo 시뮬레이터가 설치돼 있는지 확인한다 (`xcodebuild -version`, `xcrun simctl list devicetypes | grep -i duo`) — 2026-11-17: `/Applications/Xcode.app` 27.2(27B52), iPhone Duo 기기 유형, iOS 27.2 런타임, 실기기 iPhone Duo(iPhone19,4) 연결 확인. `xcode-select`는 27.0 베타를 가리키므로 명령마다 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`를 붙인다
 - [x] `git tag ios-v1-final` → `ios-v2` 브랜치 (`.worktree/ios-v2` 워크트리)
 - [x] `docs/ios-v2/` 문서를 첫 커밋으로 올린다
-- [ ] `project.yml`: 배포 버전 27.1(D4), `xcodegen generate`, 기존 테스트 전체 통과를 기준선으로 기록한다 — Xcode 27.0·배포 버전 26.0에서 빌드와 앱 실행은 성공했다. 테스트 러너가 앱에 연결하지 못해 테스트는 0건 실행됐다 ([04-phase0-audit.md](./04-phase0-audit.md) §2). 27.1 조정과 테스트 기준선은 설치 대기
-- [ ] Xcode "get my app ready for iPhone Duo" 스킬(또는 `xcrun agent skills export`)로 v1 코드를 훑어 문제 패턴 목록을 얻는다 — Xcode 27.0에는 듀오 스킬이 없어서 Apple `uikit-app-modernization` 스킬과 듀오 문서 규칙으로 대신 점검함 (04 §3). 27.1 스킬로 다시 점검
+- [x] `project.yml`: 배포 버전 27.1(D4), `xcodegen generate`, 기존 테스트 전체 통과를 기준선으로 기록한다 — 2026-11-17 Xcode 27.2 기준선 ([04-phase0-audit.md](./04-phase0-audit.md) §6): 단위 44개 통과(라이브 API 2개 건너뜀). UI 8개는 iPhone 17 Pro에서 모두 통과, 듀오 접힌 화면에서 7개 실패(세로 탭바를 `TabBar`로 찾지 못함, P1). 실기기 빌드·설치·실행 성공
+- [ ] Xcode "get my app ready for iPhone Duo" 스킬(또는 `xcrun agent skills export`)로 v1 코드를 훑어 문제 패턴 목록을 얻는다 — Xcode 27.0에는 듀오 스킬이 없어서 Apple `uikit-app-modernization` 스킬과 듀오 문서 규칙으로 대신 점검함 (04 §3). 2026-11-17 `xcrun agent skills export`도 `xcode-select`가 가리키는 27.0 스킬 7개를 내보내 듀오 스킬이 없었다. `xcode-select`를 27.2로 바꾼 뒤 다시 내보내 점검한다 (04 §6.4)
 - [x] spec의 **[확인]** 항목 중 Liquid Glass·TabView 배경·reserved region·hinge API 시그니처를 Apple 문서로 확인하고 spec에 반영한다
 - 완료 기준: 기준선 빌드·테스트 통과, [확인] 항목 정리 커밋
 
@@ -86,3 +86,4 @@
 |---|---|---|---|
 | 2026-10-29 | — | intent·spec·plan 초안 작성 (클라우드 세션) | d79840c |
 | 2026-10-29 | 0 | D1–D5 기본값 확정, `ios-v1-final` 태그, Apple 문서로 [확인] 항목 정리, v1 문제 패턴 점검, Xcode 27.0 기준선 기록. Xcode 27.1 미설치로 D4 조정·듀오 검증 보류 | 4b82e81 |
+| 2026-11-17 | 0 | Xcode 27.2로 배포 버전 27.1 조정, 듀오 시뮬레이터·iPhone 17 Pro 기준선 측정, 실기기 설치·실행, SDK 선언으로 [빌드 확인] 2건 확정. 듀오 스킬 점검과 펼친 화면 확인은 남음 | (이 커밋) |

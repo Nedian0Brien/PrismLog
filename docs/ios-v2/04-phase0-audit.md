@@ -1,6 +1,6 @@
 # PrismLog iOS v2 — Phase 0 점검 기록
 
-- 작성: 2026-10-29
+- 작성: 2026-10-29 · 갱신: 2026-11-17 (§6)
 - 관련 문서: [01-intent.md](./01-intent.md), [02-spec.md](./02-spec.md), [03-plan.md](./03-plan.md)
 
 ## 1. 환경
@@ -74,7 +74,56 @@ spec의 **[확인]** 항목을 Apple 문서로 확인하고 spec 본문에 반�
 
 ## 5. 남은 일
 
-- Xcode 27.1을 설치한 뒤: 배포 버전 27.1로 조정, `xcodegen generate`, iPhone Duo 시뮬레이터로 기준선 재측정.
-- Xcode 27.1에서 듀오 스킬을 내보내 §3 점검을 다시 한다.
-- **[빌드 확인]** 항목 3개: TabView 배경, `ScrollEdgeEffectStyle` 값 목록, 테이블탑 `ArrangementView` 분할.
+2026-11-17 갱신. 처리한 항목은 §6에 있다.
+
+- 듀오 스킬로 §3 점검을 다시 한다 (§6.4).
+- 듀오 펼친 화면과 반쯤 펼친 자세에서 v1 화면을 확인한다 (§6.3).
+- **[빌드 확인]** 남은 2개: TabView 불투명 배경(Phase 3 첫 작업), 테이블탑 `ArrangementView` 분할(세션 모드 Phase).
 - 추적 이슈: https://github.com/Nedian0Brien/PrismLog/issues/17
+
+## 6. Xcode 27.2 재측정 (2026-11-17)
+
+### 6.1 환경
+
+| 항목 | 값 |
+|---|---|
+| Xcode | `/Applications/Xcode.app` 27.2 (27B52), iOS 27.2 SDK. `xcode-select`는 여전히 `/Applications/Xcode-beta.app`(27.0)을 가리킨다. 빌드·테스트 명령마다 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`를 붙였다 |
+| 시뮬레이터 | 전용 `PrismLog-v2-duo` (iPhone Duo iPhone19,4, iOS 27.2 24B91016s), 비교용 `PrismLog-v2-iphone` (iPhone 17 Pro, iOS 27.2 24B8117) |
+| 실기기 | iPhone Duo (iPhone19,4), `devicectl`로 연결 확인 |
+| 배포 버전 | `project.yml` 26.0 → 27.1 (D4). `xcodegen generate` 후 `project.pbxproj` 변경은 배포 버전 2줄뿐이다 |
+
+### 6.2 기준선
+
+| 단계 | 결과 |
+|---|---|
+| 시뮬레이터 빌드 | 성공. 앱·위젯 경고 0건. P7(`@State` 매크로) 컴파일 오류 없음 |
+| 실기기 빌드 (`-allowProvisioningUpdates`) | 성공. 경고 0건 |
+| 실기기 설치·실행 (`devicectl device install app`, `process launch`) | 성공. 앱과 위젯 프로세스가 실행된다 |
+| 단위 테스트 (듀오 시뮬레이터) | 44개 중 42개 통과, `LiveAPIRoundTripTests` 2개 건너뜀(라이브 API 전용, 기존과 같음). 실패 0 |
+| UI 테스트 (iPhone 17 Pro) | 8개 모두 통과 |
+| UI 테스트 (듀오, 접힌 화면) | 8개 중 1개 통과, 7개 실패 |
+| UI 테스트 컴파일 경고 | 171건, 모두 `PrismLogUITests`. SDK 27에서 `XCUIElement` 멤버가 main actor로 격리돼 동기 비격리 테스트 메서드에서 부르면 경고가 난다 |
+
+- 10월에 테스트 러너가 앱에 연결하지 못한 문제는 Xcode 27.2에서 재현되지 않았다. 원인은 Xcode 27.0 베타와 macOS 27.2의 조합으로 본다.
+- 듀오 UI 실패 7건의 원인은 모두 같다. `app.tabBars.buttons[...]`가 `TabBar` 요소를 찾지 못한다. 접힌 화면에서 탭바가 오른쪽 세로 바로 바뀌어 접근성 트리에 `TabBar` 유형으로 나오지 않는다. 일반 iPhone에서는 같은 테스트가 통과하므로 테스트와 앱 셸이 가로 탭바를 전제한 것이 원인이다. 앱 셸을 바꾸는 Phase 3에서 테스트의 탭 찾기를 요소 유형에 묶지 않는 방식으로 고친다.
+
+### 6.3 듀오 화면 확인
+
+- 접힌 화면(시뮬레이터 기본 자세, 바깥 화면 1398×2034): 탭 4개가 오른쪽 세로 바에 있다. 대시보드 카드는 세로 바를 피해 줄어든다. FAB `+`는 `bottom 78` 고정 여백 때문에 추세선 차트 위, 세로 바 왼쪽에 겹쳐 뜬다. §3의 P1·P2가 예측한 증상과 같다.
+- 펼친 화면과 반쯤 펼친 자세: 시뮬레이터 경첩 조작 권한을 받지 못해 확인하지 못했다. 실기기는 펼친 상태로 연결돼 있었지만 다른 앱을 사용 중이어서 화면을 확인하지 않았다.
+
+### 6.4 듀오 스킬
+
+- `xcrun agent skills export --output-dir ~/.claude/skills`는 `xcode-select`가 가리키는 Xcode 27.0의 스킬 7개를 내보냈다: `audit-xcode-security-settings`, `uikit-app-modernization`, `swiftui-whats-new-27`, `device-interaction`, `modernize-tests`, `adopt-c-bounds-safety`, `swiftui-specialist`. 듀오 스킬은 없다.
+- 27.2의 스킬을 받으려면 `sudo xcode-select -s /Applications/Xcode.app`으로 바꾼 뒤 다시 내보낸다. 새 세션부터 로드된다.
+
+### 6.5 SDK 선언으로 확정한 항목
+
+iOS 27.2 SDK의 `SwiftUI.swiftinterface`와 `SwiftUICore.swiftinterface`로 확인하고 spec에 반영했다.
+
+| 항목 | 결과 | spec 위치 |
+|---|---|---|
+| `ScrollEdgeEffectStyle` 값 | `.automatic`, `.hard`, `.soft` | §5 |
+| `ContainerBackgroundPlacement.tabView` | iOS에서 `unavailable`. TabView가 불투명 배경을 칠하는지는 런타임에서 확인한다 | §4.6 |
+| `onHingeChange` 클로저 인자 | `(oldContext, newContext)` 순서 | §7.3 |
+| `ToolbarVerticalBehavior` 값 | `.automatic`, `.disabled` | §7.5 |
