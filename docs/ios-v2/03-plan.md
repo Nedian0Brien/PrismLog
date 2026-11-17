@@ -13,7 +13,7 @@
 - [x] `project.yml`: 배포 버전 27.1(D4), `xcodegen generate`, 기존 테스트 전체 통과를 기준선으로 기록한다 — 2026-11-17 Xcode 27.2 기준선 ([04-phase0-audit.md](./04-phase0-audit.md) §6): 단위 44개 통과(라이브 API 2개 건너뜀). UI 8개는 iPhone 17 Pro에서 모두 통과, 듀오 접힌 화면에서 7개 실패(세로 탭바를 `TabBar`로 찾지 못함, P1). 실기기 빌드·설치·실행 성공
 - [x] Xcode "get my app ready for iPhone Duo" 스킬(또는 `xcrun agent skills export`)로 v1 코드를 훑어 문제 패턴 목록을 얻는다 — 2026-11-17 `xcode-select`를 27.2로 바꾼 뒤 `app-resizability` 스킬로 점검. 사전 점검 모두 통과, 공유 상태 API 0건, safe area 결함 2건(P1·P2와 같음). 새 결함 없음 (04 §6.4)
 - [x] spec의 **[확인]** 항목 중 Liquid Glass·TabView 배경·reserved region·hinge API 시그니처를 Apple 문서로 확인하고 spec에 반영한다
-- 완료 기준: 기준선 빌드·테스트 통과, [확인] 항목 정리 커밋
+- 완료 기준: 기준선 빌드·테스트 통과, [확인] 항목 정리 커밋 — 2026-11-17 완료. 듀오 접힌 화면 UI 실패 7건은 Phase 3에서 셸과 함께 고친다. 남은 [빌드 확인] 2건은 Phase 3(TabView 배경)과 세션 모드(테이블탑 `ArrangementView`)에서 확인한다
 
 ## Phase 1 — 표지 파이프라인
 - [ ] `CoverThumbnailCache` (actor): 다운로드, ImageIO 다운샘플, 디스크 HEIC + `NSCache`, 동시 4개, 실패 URL 기록
@@ -87,4 +87,5 @@
 | 2026-10-29 | — | intent·spec·plan 초안 작성 (클라우드 세션) | d79840c |
 | 2026-10-29 | 0 | D1–D5 기본값 확정, `ios-v1-final` 태그, Apple 문서로 [확인] 항목 정리, v1 문제 패턴 점검, Xcode 27.0 기준선 기록. Xcode 27.1 미설치로 D4 조정·듀오 검증 보류 | 4b82e81 |
 | 2026-11-17 | 0 | Xcode 27.2로 배포 버전 27.1 조정, 듀오 시뮬레이터·iPhone 17 Pro 기준선 측정, 실기기 설치·실행, SDK 선언으로 [빌드 확인] 2건 확정. 펼친 화면 확인은 남음 | 23bc982 |
-| 2026-11-17 | 0 | `app-resizability` 스킬(Xcode 27.2)로 v1 재점검. 새 결함 없음 | (이 커밋) |
+| 2026-11-17 | 0 | `app-resizability` 스킬(Xcode 27.2)로 v1 재점검. 새 결함 없음 | d4adcc4 |
+| 2026-11-17 | 0 | 듀오 시뮬레이터 접힘·반쯤 펼침·펼침 화면 확인. Phase 0 완료 | (이 커밋) |
