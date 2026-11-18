@@ -83,27 +83,28 @@ struct LibraryWallView: View {
                     .modifier(WallLegibilityLayer(mode: .hero, dimmingOverride: dimmingOverride))
             } else {
                 let _ = model.focusSettles
-                TimelineView(.animation(paused: model.isPaused && !model.focus.isMoving(at: .now))) { timeline in
+                TimelineView(.animation(paused: model.isPaused && !model.focus.isMoving(at: .now) && !(model.shift?.isMoving(at: .now) ?? false))) { timeline in
                     let date = timeline.date
                     let elapsed = model.elapsed(at: date) * model.speedScale
                     let focus = model.focus
                     let dim = focus.dim(at: date)
                     let heroes = stageHeroes(focus: focus, date: date)
                     let hidden = Dictionary(
-                        heroes.compactMap { item in item.hero.row.flatMap { row in item.hero.position.map { (row, $0) } } },
-                        uniquingKeysWith: { first, _ in first }
+                        heroes.compactMap { item in item.hero.row.flatMap { row in item.hero.position.map { (row, Set([$0])) } } },
+                        uniquingKeysWith: { $0.union($1) }
                     )
                     ZStack {
                         // Every poster lit from behind: a blurred copy of
                         // the wall underneath spills each cover's colour
                         // into the dark around it.
                         ZStack {
-                            flowing(covers: covers, elapsed: elapsed, date: date, hidden: hidden)
-                                .blur(radius: WallTheater.glowRadius)
-                                .saturation(1.4)
-                                .opacity(WallTheater.glowOpacity)
-                                .allowsHitTesting(false)
-                            flowing(covers: covers, elapsed: elapsed, date: date, hidden: hidden)
+                            if let shift = model.shift, shift.isMoving(at: date) {
+                                // Changing context: the old rows pull out, the new pull in.
+                                train(shift.departing, context: shift.departingContext, elapsed: elapsed, date: date, as: .leaving(shift, date))
+                                train(covers, context: model.context, elapsed: elapsed, date: date, as: .arriving(shift, date), hidden: hidden)
+                            } else {
+                                train(covers, context: model.context, elapsed: elapsed, date: date, as: nil, hidden: hidden)
+                            }
                         }
                         // The covers around the stage step back.
                         .brightness(-WallTheater.stageDimming * dim)
@@ -180,9 +181,19 @@ struct LibraryWallView: View {
             (focus.outgoing, focus.outgoingGrowth(at: date)),
             (focus.incoming, focus.incomingGrowth(at: date)),
         ]
-        return candidates.compactMap { hero, growth in
+        let exit = focus.outgoingExit(at: date)
+        return candidates.enumerated().compactMap { index, candidate in
+            let (hero, growth) = candidate
             guard let hero, growth > 0, let cover = model.covers.first(where: { $0.id == hero.id }) else { return nil }
-            return StageHero(hero: hero, cover: cover, growth: growth, from: rowRect(of: hero, geometry: geometry, date: date) ?? to.insetBy(dx: width * 0.35, dy: height * 0.35), to: to)
+            var from = rowRect(of: hero, geometry: geometry, date: date) ?? to.insetBy(dx: width * 0.35, dy: height * 0.35)
+            var stage = to
+            // The outgoing cover slides off the way the pager moved.
+            if index == 0, focus.exiting {
+                let travel = (size.width + width) / 2 + 24
+                stage = to.offsetBy(dx: CGFloat(focus.exitDirection * exit) * travel, dy: 0)
+                from = from.offsetBy(dx: CGFloat(focus.exitDirection * exit) * travel, dy: 0)
+            }
+            return StageHero(hero: hero, cover: cover, growth: growth, from: from, to: stage)
         }
     }
 
@@ -204,8 +215,21 @@ struct LibraryWallView: View {
         return CGRect(x: x - m.coverWidth / 2, y: y - m.coverHeight / 2, width: m.coverWidth, height: m.coverHeight)
     }
 
+    /// One wall of rows, lit from behind: a blurred copy underneath spills
+    /// each cover's colour into the dark around it.
+    private func train(_ covers: [WallCover], context: WallContext, elapsed: TimeInterval, date: Date, as train: WallTrain?, hidden: [Int: Set<Int>] = [:]) -> some View {
+        ZStack {
+            flowing(covers: covers, context: context, elapsed: elapsed, date: date, hidden: hidden, train: train)
+                .blur(radius: WallTheater.glowRadius)
+                .saturation(1.4)
+                .opacity(WallTheater.glowOpacity)
+                .allowsHitTesting(false)
+            flowing(covers: covers, context: context, elapsed: elapsed, date: date, hidden: hidden, train: train)
+        }
+    }
+
     @ViewBuilder
-    private func flowing(covers: [WallCover], elapsed: TimeInterval, date: Date = .now, hidden: [Int: Int] = [:]) -> some View {
+    private func flowing(covers: [WallCover], context: WallContext, elapsed: TimeInterval, date: Date = .now, hidden: [Int: Set<Int>] = [:], train: WallTrain? = nil) -> some View {
         let parallax = Double(scrollOffset * Self.parallaxFactor)
         switch model.layout {
         case .rows:
@@ -218,7 +242,9 @@ struct LibraryWallView: View {
                 nudges: model.nudges,
                 date: date,
                 hidden: hidden,
-                placed: placedCovers,
+                // Covers set for the stage belong to the library's wall alone.
+                placed: context == .all ? placedCovers : [:],
+                train: train,
                 onSelect: model.revealed ? onSelect : nil,
                 onDrag: model.revealed ? { row, translation in model.dragRow(row, by: translation) } : nil,
                 onRelease: { row, velocity in model.releaseRow(row, velocity: velocity) }
@@ -260,9 +286,11 @@ private struct WallRows: View {
     var date = Date()
     /// Strip positions lifted onto the stage, by pattern row: their place
     /// stays empty while they're up.
-    var hidden: [Int: Int] = [:]
+    var hidden: [Int: Set<Int>] = [:]
     /// Covers set into rows for the stage, by pattern row and strip position.
     var placed: [Int: [Int: WallCover]] = [:]
+    /// Set while the wall changes context: these rows are pulling out or in.
+    var train: WallTrain?
     var onSelect: ((WallCover) -> Void)?
     /// Set while the library is pulled down: a sideways drag pushes a row.
     var onDrag: ((Int, Double) -> Void)?
@@ -290,16 +318,23 @@ private struct WallRows: View {
                     ZStack(alignment: .topLeading) {
                         ForEach(0..<visibleSlots, id: \.self) { slot in
                             let position = horizontal.shift + slot
-                            let cover = placed[rowIndex]?[position] ?? row[horizontal.index(forSlot: slot, itemCount: row.count)]
                             let x = CGFloat(slot) * metrics.pitchX - CGFloat(horizontal.remainder) - metrics.pitchX / 2
-                            let lifted = hidden[rowIndex] == position
-                            WallTile(image: images[cover.id], accent: cover.accent, metrics: metrics)
+                            let cover = placed[rowIndex]?[position] ?? row[horizontal.index(forSlot: slot, itemCount: row.count)]
+                            let lifted = hidden[rowIndex]?.contains(position) ?? false
+                            WallTile(image: images[cover.id], accent: cover.accent, metrics: metrics, isFiller: cover.isFiller)
                                 .opacity(lifted ? 0 : 1)
                                 .onTapGesture { onSelect?(cover) }
                                 .offset(x: x)
                         }
                     }
                     .frame(width: size.width, height: metrics.coverHeight, alignment: .topLeading)
+                    // Through a context change the whole row slides, in its
+                    // own direction of flow — out past the edge, or in from
+                    // the far side.
+                    .offset(x: train.map { train in
+                        let direction: CGFloat = WallSpeed.row(rowIndex) < 0 ? 1 : -1
+                        return direction * CGFloat(train.travel(slot: rowSlot)) * (size.width + metrics.pitchX)
+                    } ?? 0)
                     .contentShape(.rect)
                     .gesture(rowDrag(rowIndex), isEnabled: onDrag != nil)
                     .offset(y: y)
@@ -388,6 +423,9 @@ private struct WallTile: View {
     let image: UIImage?
     let accent: PrismAccent
     let metrics: WallMetrics
+    /// A cover from outside the context, filling a sparse wall: dark and
+    /// muted, so the ones that belong stand out.
+    var isFiller = false
 
     var body: some View {
         Group {
@@ -403,6 +441,8 @@ private struct WallTile: View {
         }
         .frame(width: metrics.coverWidth, height: metrics.coverHeight)
         .clipShape(.rect(cornerRadius: metrics.corner, style: .continuous))
+        .saturation(isFiller ? WallTheater.fillerSaturation : 1)
+        .brightness(isFiller ? -WallTheater.fillerDimming : 0)
     }
 }
 

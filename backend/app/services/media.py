@@ -75,6 +75,179 @@ def search_media(
     return items[:limit]
 
 
+_FEATURED_LOCK = threading.Lock()
+_FEATURED_CACHE: dict[str, tuple[float, list[MediaSearchItem]]] = {}
+FEATURED_TTL_SECONDS = 12 * 60 * 60
+
+
+def featured_media(settings: Settings, limit: int = 40) -> list[MediaSearchItem]:
+    """This week's films and series on TMDB and recent popular games on IGDB.
+
+    Fills the library wall for people with few or no records (2026-11-19).
+    Each source is optional: a missing key or a failing provider leaves its
+    share out rather than failing the whole list. Cached for 12 hours.
+    """
+    now = time.time()
+    with _FEATURED_LOCK:
+        entry = _FEATURED_CACHE.get("all")
+        if entry and entry[0] > now:
+            return entry[1][:limit]
+
+    sources: list[list[MediaSearchItem]] = []
+    errors: list[str] = []
+    if settings.tmdb_api_key:
+        for loader in (_trending_tmdb_movies, _trending_tmdb_tv):
+            try:
+                sources.append(loader(settings))
+            except MediaSearchError as error:
+                errors.append(str(error))
+    if settings.igdb_client_id and settings.igdb_client_secret:
+        try:
+            sources.append(_recent_igdb_games(settings))
+        except MediaSearchError as error:
+            errors.append(str(error))
+
+    if not sources:
+        if errors:
+            raise MediaSearchError("; ".join(errors))
+        raise MediaSearchConfigError("TMDB·IGDB 자격 증명이 설정되지 않았습니다.")
+
+    # Interleave the sources so films, series and games mix evenly.
+    items: list[MediaSearchItem] = []
+    seen: set[str] = set()
+    for index in range(max(len(source) for source in sources)):
+        for source in sources:
+            if index < len(source):
+                item = source[index]
+                if item.poster_url and item.source_id not in seen:
+                    seen.add(item.source_id)
+                    items.append(item)
+
+    with _FEATURED_LOCK:
+        _FEATURED_CACHE["all"] = (now + FEATURED_TTL_SECONDS, items)
+    return items[:limit]
+
+
+def _trending_tmdb(kind: str, settings: Settings) -> list[MediaSearchItem]:
+    # https://developer.themoviedb.org/reference/trending-movies
+    # https://developer.themoviedb.org/reference/trending-tv
+    payload = _request_json(
+        f"{TMDB_API_BASE}/trending/{kind}/week",
+        {"language": "ko-KR", "api_key": settings.tmdb_api_key},
+        {},
+        settings.media_search_timeout_seconds,
+    )
+    media_type = "movie" if kind == "movie" else "series"
+    items = []
+    for r in payload.get("results", []):
+        tmdb_id = r.get("id")
+        title = (r.get("title") or r.get("name") or "").strip()
+        if not tmdb_id or not title or not r.get("poster_path"):
+            continue
+        items.append(MediaSearchItem(
+            source_provider="tmdb",
+            source_id=f"tmdb:{media_type}:{tmdb_id}",
+            tmdb_id=tmdb_id,
+            type=media_type,
+            title=title,
+            original_title=(r.get("original_title") or r.get("original_name") or "").strip() or None,
+            poster_url=f"{TMDB_IMAGE_BASE}{r['poster_path']}",
+            release_date=_format_date(r.get("release_date") or r.get("first_air_date")),
+            overview=(r.get("overview") or "").strip() or None,
+        ))
+    return items
+
+
+def _trending_tmdb_movies(settings: Settings) -> list[MediaSearchItem]:
+    return _trending_tmdb("movie", settings)
+
+
+def _trending_tmdb_tv(settings: Settings) -> list[MediaSearchItem]:
+    return _trending_tmdb("tv", settings)
+
+
+def _recent_igdb_games(settings: Settings) -> list[MediaSearchItem]:
+    """Games released in the last six months, most anticipated first.
+
+    `hypes` and `total_rating_count` aren't confirmed against IGDB's own
+    docs (api-docs.igdb.com refuses automated reads), only third-party type
+    definitions; if IGDB rejects the query, fall back to the newest releases
+    with a cover, using only fields the search already relies on.
+    """
+    since = int(time.time()) - 183 * 24 * 60 * 60
+    until = int(time.time())
+    ranked = (
+        "fields name, cover.image_id, first_release_date, summary, alternative_names.name; "
+        f"where first_release_date > {since} & first_release_date < {until} & cover != null; "
+        "sort hypes desc; limit 20;"
+    )
+    plain = (
+        "fields name, cover.image_id, first_release_date, summary, alternative_names.name; "
+        f"where first_release_date > {since} & first_release_date < {until} & cover != null; "
+        "sort first_release_date desc; limit 20;"
+    )
+    try:
+        results = _igdb_query(ranked, settings)
+    except MediaSearchError:
+        results = _igdb_query(plain, settings)
+    return _igdb_items(results)
+
+
+def _igdb_query(body: str, settings: Settings) -> list[dict]:
+    token = _get_igdb_token(settings)
+    request = Request(
+        f"{IGDB_API_BASE}/games",
+        data=body.encode("utf-8"),
+        headers={
+            "Client-ID": settings.igdb_client_id,
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "text/plain",
+        },
+    )
+    try:
+        with urlopen(request, timeout=settings.media_search_timeout_seconds) as resp:
+            results = json.load(resp)
+    except (HTTPError, URLError, TimeoutError) as error:
+        raise MediaSearchError(f"IGDB 조회 실패: {error}") from error
+    return results if isinstance(results, list) else []
+
+
+def _igdb_items(results: list[dict]) -> list[MediaSearchItem]:
+    import datetime
+
+    items = []
+    for r in results:
+        igdb_id = r.get("id")
+        raw_name = (r.get("name") or "").strip()
+        cover = r.get("cover") or {}
+        image_id = cover.get("image_id") if isinstance(cover, dict) else None
+        if not igdb_id or not raw_name or not image_id:
+            continue
+        title = raw_name
+        if not _is_korean(raw_name):
+            for alt in r.get("alternative_names", []) or []:
+                alt_name = (alt.get("name") or "").strip()
+                if _is_korean(alt_name):
+                    title = alt_name
+                    break
+        release_ts = r.get("first_release_date")
+        release_date = None
+        if isinstance(release_ts, int):
+            release_date = datetime.datetime.fromtimestamp(release_ts, datetime.timezone.utc).strftime("%Y-%m-%d")
+        items.append(MediaSearchItem(
+            source_provider="igdb",
+            source_id=f"igdb:game:{igdb_id}",
+            igdb_id=igdb_id,
+            type="game",
+            title=title,
+            original_title=raw_name if title != raw_name else None,
+            poster_url=f"{IGDB_IMAGE_BASE}/{image_id}.jpg",
+            release_date=release_date,
+            overview=(r.get("summary") or "").strip() or None,
+        ))
+    return items
+
+
 def enrich_media_by_tmdb_id(tmdb_id: int, media_type: str, settings: Settings) -> MediaEnrichResponse:
     if not settings.tmdb_api_key:
         raise MediaSearchConfigError("TMDB API 키가 설정되지 않았습니다.")

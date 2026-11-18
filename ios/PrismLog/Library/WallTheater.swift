@@ -15,6 +15,9 @@ enum WallTheater {
     /// How far the covers around the stage step back.
     static let stageDimming = 0.22
     static let stageBlur: CGFloat = 1.5
+    /// Covers from outside a sparse context, filling the wall behind it.
+    static let fillerDimming = 0.4
+    static let fillerSaturation = 0.35
 }
 
 /// A "now in progress" cover on the library's stage: it rises out of its

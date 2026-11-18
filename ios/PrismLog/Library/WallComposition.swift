@@ -15,6 +15,9 @@ struct WallCover: Identifiable, Hashable, Sendable {
     var activities: [Date] = []
     /// The entity's newest record — what tapping its cover opens.
     var recordID: UUID?
+    /// From outside the wall's context, there only to fill a sparse wall:
+    /// drawn dark, behind the covers that belong.
+    var isFiller = false
 
     var source: CoverKey.Source {
         if let coverURL { return .remote(coverURL) }
@@ -101,18 +104,23 @@ enum WallComposition {
         }
     }
 
+    /// How many cover slots a row needs before it reads as a row of
+    /// posters rather than one poster repeated: a little more than the
+    /// widest screen shows.
+    static let fullRowLength = 8
+
     /// Covers for each row of layout A, `rowCount` rows long.
     ///
-    /// With several categories present, row `i` takes the `i`-th category in
-    /// `rowOrder` that has covers, wrapping around. With one category — a
-    /// category context, or a library of only books — every row draws from
-    /// it, each starting at a different point so stacked rows don't line up.
-    static func rows(from covers: [WallCover], count rowCount: Int) -> [[WallCover]] {
+    /// A category with enough covers to fill a row gets rows of its own, in
+    /// `rowOrder`. Categories too small for that share one mixed row, so a
+    /// lone film doesn't fill its row with itself (2026-11-19).
+    static func rows(from covers: [WallCover], count rowCount: Int, minimumLength: Int = fullRowLength) -> [[WallCover]] {
         guard !covers.isEmpty, rowCount > 0 else { return [] }
 
-        let groups = rowOrder
-            .map { accent in covers.filter { $0.accent == accent } }
-            .filter { !$0.isEmpty }
+        let byCategory = rowOrder.map { accent in covers.filter { $0.accent == accent } }
+        var groups = byCategory.filter { $0.count >= minimumLength }
+        let small = byCategory.filter { !$0.isEmpty && $0.count < minimumLength }.flatMap { $0 }
+        if !small.isEmpty { groups.append(small) }
 
         return (0..<rowCount).map { row in
             let group = groups[row % groups.count]
@@ -120,6 +128,64 @@ enum WallComposition {
             let lap = row / groups.count
             return arranged(group, seed: UInt64(row), rotation: lap * max(1, group.count / 2 + 1))
         }
+    }
+
+    /// Covers from outside the person's records — this week's films, series
+    /// and games — mixed into the wall (user decision, 2026-11-19):
+    ///
+    /// - With no records at all, they are the wall, at full brightness.
+    /// - With few, they fill it to two screens' worth, dark.
+    /// - With plenty, about one cover in seven is one of them, dark.
+    ///
+    /// A shelf takes only its own category's; a record's hero takes none.
+    static func mixingIn(_ discovery: [WallCover], with wall: [WallCover], ownedCount: Int, context: WallContext) -> [WallCover] {
+        let pool: [WallCover]
+        switch context {
+        case .hero:
+            return wall
+        case .category(let accent):
+            pool = discovery.filter { $0.accent == accent }
+        case .all, .still, .period:
+            pool = discovery
+        }
+        guard !pool.isEmpty else { return wall }
+
+        if ownedCount == 0 {
+            return pool
+        }
+        let wanted = max(fullRowLength * 2 - wall.count, Int((Double(wall.count) * discoveryShare).rounded(.up)))
+        let mixed = pool.prefix(max(wanted, 0)).map { cover -> WallCover in
+            var dark = cover
+            dark.isFiller = true
+            return dark
+        }
+        return wall + mixed
+    }
+
+    /// The share of a full wall given to covers outside the person's records.
+    static let discoveryShare = 0.15
+
+    /// The covers a context draws, topped up when there are too few to
+    /// fill the screen: a timeline week with three records would otherwise
+    /// repeat those three across every row. The rest come from outside the
+    /// context, most recent first, marked as filler so the wall draws them
+    /// dark (user decision, 2026-11-19).
+    static func filled(_ inContext: [WallCover], from all: [WallCover], context: WallContext, target: Int = fullRowLength) -> [WallCover] {
+        switch context {
+        case .period, .category: break
+        default: return inContext
+        }
+        guard !inContext.isEmpty, inContext.count < target else { return inContext }
+        let present = Set(inContext.map(\.id))
+        let fillers = all
+            .filter { !present.contains($0.id) }
+            .prefix(target - inContext.count)
+            .map { cover -> WallCover in
+                var filler = cover
+                filler.isFiller = true
+                return filler
+            }
+        return inContext + fillers
     }
 
     /// The cover sequence for layout B, read off column by column.
@@ -283,10 +349,21 @@ struct WallFocus: Equatable, Sendable {
     static let glide: TimeInterval = 0.6
     static let grow: TimeInterval = 0.5
     static let dimming: TimeInterval = 0.3
+    /// One cover on stage handing over to the next (user decision,
+    /// 2026-11-19): the first slides away the way the pager moved while the
+    /// row races at once, and the next rises a little sooner.
+    static let exit: TimeInterval = 0.5
+    static let swapGlide: TimeInterval = 0.45
+    static let swapGrow: TimeInterval = 0.4
 
     private(set) var outgoing: Hero?
-    /// How big the outgoing cover was when it started back.
+    /// How big the outgoing cover was when it started to leave.
     private(set) var outgoingFrom = 0.0
+    /// The outgoing cover slides off at full size instead of sinking back.
+    private(set) var exiting = false
+    private(set) var exitStart = Date.distantPast
+    /// −1 off to the left (the pager moved forward), +1 off to the right.
+    private(set) var exitDirection = -1.0
     private(set) var incoming: Hero?
     private(set) var start = Date.distantPast
     private(set) var dimFrom = 0.0
@@ -295,32 +372,47 @@ struct WallFocus: Equatable, Sendable {
 
     var target: String? { incoming?.id }
 
-    var shrinkTime: TimeInterval { outgoing == nil ? 0 : Self.shrink * outgoingFrom * pace }
+    var shrinkTime: TimeInterval { outgoing == nil || exiting ? 0 : Self.shrink * outgoingFrom * pace }
+    var exitTime: TimeInterval { Self.exit * pace }
     var glideStart: Date { start.addingTimeInterval(shrinkTime) }
-    var glideTime: TimeInterval { incoming?.row == nil ? 0 : Self.glide * pace }
+    var glideTime: TimeInterval { incoming?.row == nil ? 0 : (exiting ? Self.swapGlide : Self.glide) * pace }
     var growStart: Date { glideStart.addingTimeInterval(glideTime) }
+    var growTime: TimeInterval { (exiting ? Self.swapGrow : Self.grow) * pace }
     var end: Date {
         let dimEnd = start.addingTimeInterval(Self.dimming * pace)
-        guard incoming != nil else { return max(glideStart, dimEnd) }
-        return max(growStart.addingTimeInterval(Self.grow * pace), dimEnd)
+        let exitEnd = exiting ? exitStart.addingTimeInterval(exitTime) : start
+        guard incoming != nil else { return max(glideStart, dimEnd, exitEnd) }
+        return max(growStart.addingTimeInterval(growTime), dimEnd, exitEnd)
     }
 
     func isMoving(at date: Date) -> Bool { date < end }
 
-    /// The outgoing cover's size, 1 on stage to 0 back in its row.
+    /// The outgoing cover's size, 1 on stage to 0 back in its row. A cover
+    /// sliding away keeps its size until it's off screen.
     func outgoingGrowth(at date: Date) -> Double {
         guard outgoing != nil, outgoingFrom > 0 else { return 0 }
+        if exiting {
+            return date < exitStart.addingTimeInterval(exitTime) ? outgoingFrom : 0
+        }
         guard shrinkTime > 0 else { return 0 }
         let t = Self.unit(date.timeIntervalSince(start) / shrinkTime)
         return outgoingFrom * (1 - Self.easeInOut(t))
     }
 
+    /// How far a sliding cover has gone, 0 in place to 1 off screen —
+    /// gathering speed as it goes.
+    func outgoingExit(at date: Date) -> Double {
+        guard exiting else { return 0 }
+        guard exitTime > 0 else { return 1 }
+        let t = Self.unit(date.timeIntervalSince(exitStart) / exitTime)
+        return t * t
+    }
+
     /// The incoming cover's size, 0 in its row to 1 on stage.
     func incomingGrowth(at date: Date) -> Double {
         guard incoming != nil else { return 0 }
-        let time = Self.grow * pace
-        guard time > 0 else { return date >= growStart ? 1 : 0 }
-        return Self.easeOut(Self.unit(date.timeIntervalSince(growStart) / time))
+        guard growTime > 0 else { return date >= growStart ? 1 : 0 }
+        return Self.easeOut(Self.unit(date.timeIntervalSince(growStart) / growTime))
     }
 
     /// How far the covers around the stage have stepped back, 0–1. They
@@ -329,34 +421,44 @@ struct WallFocus: Equatable, Sendable {
     func dim(at date: Date) -> Double {
         let goal = incoming == nil ? 0.0 : 1.0
         let begin = incoming == nil ? start : growStart
-        let time = (incoming == nil ? max(shrinkTime, Self.dimming * pace) : Self.grow * pace)
+        let time = (incoming == nil ? max(shrinkTime, Self.dimming * pace) : growTime)
         guard time > 0 else { return date >= begin ? goal : dimFrom }
         let t = Self.unit(date.timeIntervalSince(begin) / time)
         return dimFrom + (goal - dimFrom) * Self.easeInOut(t)
     }
 
-    /// When a row would start racing if the stage were retargeted at `date`:
-    /// after whatever cover is showing has sunk back.
+    /// When a row would start racing if the stage were handed to another
+    /// cover at `date`.
     func glideStart(retargetingAt date: Date) -> Date {
         var copy = self
         copy.retarget(to: Hero(id: "", row: nil), at: date, instant: pace == 0)
         return copy.glideStart
     }
 
-    /// Sends `hero` on stage (or clears it) from wherever things stand now:
-    /// whichever cover is showing goes back first, from the size it has.
-    mutating func retarget(to hero: Hero?, at date: Date, instant: Bool = false) {
+    /// Sends `hero` on stage (or clears it) from wherever things stand now.
+    /// Handing over to another cover, the one showing slides away in
+    /// `direction`; clearing the stage, it sinks back into its row.
+    mutating func retarget(to hero: Hero?, at date: Date, instant: Bool = false, direction: Double = -1) {
         let incomingNow = incomingGrowth(at: date)
         let outgoingNow = outgoingGrowth(at: date)
+        let alreadyLeaving = exiting && outgoingNow > 0
         dimFrom = dim(at: date)
         if let incoming, incomingNow > 0 {
             outgoing = incoming
             outgoingFrom = incomingNow
+            exiting = hero != nil
+            exitStart = date
+            exitDirection = direction
         } else if outgoingNow > 0 {
+            // Still on its way out: it carries on as it was.
             outgoingFrom = outgoingNow
+            if !alreadyLeaving {
+                exiting = false
+            }
         } else {
             outgoing = nil
             outgoingFrom = 0
+            exiting = false
         }
         incoming = hero
         start = date
@@ -366,6 +468,59 @@ struct WallFocus: Equatable, Sendable {
     static func unit(_ value: Double) -> Double { min(max(value, 0), 1) }
     static func easeInOut(_ t: Double) -> Double { t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2 }
     static func easeOut(_ t: Double) -> Double { 1 - pow(1 - t, 3) }
+}
+
+/// The wall changing context like trains at a platform (user design,
+/// 2026-11-19): each row of the old wall pulls away in its direction of
+/// flow, gathering speed, a beat after the row above; the new wall's rows
+/// pull in from the other side and brake to their usual drift.
+struct WallShift: Equatable, Sendable {
+    /// What the wall showed before, for the rows that leave.
+    let departing: [WallCover]
+    let departingContext: WallContext
+    let start: Date
+
+    static let leave: TimeInterval = 0.45
+    static let arriveDelay: TimeInterval = 0.3
+    static let arrive: TimeInterval = 0.55
+    /// Each row starts this much after the row above.
+    static let stagger: TimeInterval = 0.04
+    /// Enough rows for the tallest screen, for the end time.
+    static let maximumRows = 10
+
+    var end: Date {
+        start.addingTimeInterval(Self.arriveDelay + Self.arrive + Self.stagger * Double(Self.maximumRows))
+    }
+
+    func isMoving(at date: Date) -> Bool { date < end }
+
+    /// How far a leaving row has gone along its way out, 0 at rest to 1
+    /// fully off screen — slow to start, quick to go.
+    func leaving(slot: Int, at date: Date) -> Double {
+        let t = WallFocus.unit((date.timeIntervalSince(start) - Self.stagger * Double(max(slot, 0))) / Self.leave)
+        return t * t
+    }
+
+    /// How far an arriving row still has to come, 1 off screen to 0 in
+    /// place — quick to come in, braking at the end.
+    func arriving(slot: Int, at date: Date) -> Double {
+        let t = WallFocus.unit((date.timeIntervalSince(start) - Self.arriveDelay - Self.stagger * Double(max(slot, 0))) / Self.arrive)
+        return 1 - WallFocus.easeOut(t)
+    }
+}
+
+/// Which way a row is moving through a context change.
+enum WallTrain: Equatable, Sendable {
+    case leaving(WallShift, Date)
+    case arriving(WallShift, Date)
+
+    /// The row's sideways offset, in screen widths, along its flow.
+    func travel(slot: Int) -> Double {
+        switch self {
+        case .leaving(let shift, let date): shift.leaving(slot: slot, at: date)
+        case .arriving(let shift, let date): -shift.arriving(slot: slot, at: date)
+        }
+    }
 }
 
 /// Where layout A puts rows and covers on screen — shared by the wall that

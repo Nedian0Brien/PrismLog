@@ -20,6 +20,8 @@ struct AppShell: View {
 
     #if DEBUG
     @State private var showsWallLab = WallLabScreen.opensOnLaunch
+    /// A wall context change waiting for the timeline's scroll to settle.
+    @State private var contextChange: Task<Void, Never>?
     #endif
 
     var body: some View {
@@ -49,13 +51,27 @@ struct AppShell: View {
         .fullScreenCover(isPresented: $showsWallLab) { WallLabScreen() }
         #endif
         .task { await store.sync() }
+        .task { await wall.loadDiscovery() }
         .onAppear(perform: restore)
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             Task { await store.sync() }
         }
         .onChange(of: store.records, initial: true) { wall.update(records: store.records) }
-        .onChange(of: wallContext, initial: true) { wall.context = wallContext }
+        .onChange(of: wallContext, initial: true) { old, new in
+            contextChange?.cancel()
+            // Scrolling the timeline changes its period continuously; the
+            // wall changes trains only once the scroll has settled.
+            if case .period = old, case .period = new {
+                contextChange = Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(400))
+                    guard !Task.isCancelled else { return }
+                    wall.context = new
+                }
+            } else {
+                wall.context = new
+            }
+        }
         .onChange(of: libraryFeature, initial: true) { wall.feature = libraryFeature }
         .onChange(of: libraryFeatureActive, initial: true) { wall.featureActive = libraryFeatureActive }
         .onChange(of: libraryRevealed, initial: true) { wall.revealed = libraryRevealed }

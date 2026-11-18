@@ -22,8 +22,14 @@ final class LibraryWallModel {
     }
     /// Which "now in progress" card the pager is on.
     var featureIndex = 0 {
-        didSet { if featureIndex != oldValue { refocus() } }
+        didSet {
+            guard featureIndex != oldValue else { return }
+            // Forward through the cards sends the cover on stage off left.
+            handOverDirection = featureIndex > oldValue ? -1 : 1
+            refocus()
+        }
     }
+    @ObservationIgnored private var handOverDirection = -1.0
     /// Where on screen, top to bottom, the big cover may hang: below the
     /// top bar, above where the lowered pager rests.
     var posterArea: ClosedRange<CGFloat>?
@@ -103,12 +109,12 @@ final class LibraryWallModel {
             )
             hero.position = landing.position
             placements[row, default: [:]][landing.position] = target
-            focus.retarget(to: hero, at: date, instant: instant)
+            focus.retarget(to: hero, at: date, instant: instant, direction: handOverDirection)
             var nudge = nudges[row] ?? RowNudge()
             nudge.glide(to: landing.distance - flow, start: focus.glideStart, duration: focus.glideTime)
             nudges[row] = nudge
         } else {
-            focus.retarget(to: hero, at: date, instant: instant)
+            focus.retarget(to: hero, at: date, instant: instant, direction: handOverDirection)
         }
         scheduleSettle(at: focus.end) {}
     }
@@ -161,7 +167,27 @@ final class LibraryWallModel {
     }
 
     var context: WallContext = .all {
-        didSet { setPaused(context == .still, for: .stillContext) }
+        didSet {
+            setPaused(context == .still, for: .stillContext)
+            guard context != oldValue, Self.drawsRows(oldValue), Self.drawsRows(context),
+                  !pauseReasons.contains(.reduceMotion) else { return }
+            let departing = covers(for: oldValue)
+            guard !departing.isEmpty else { return }
+            let shift = WallShift(departing: departing, departingContext: oldValue, start: .now)
+            self.shift = shift
+            scheduleSettle(at: shift.end) { [weak self] in
+                if self?.shift == shift { self?.shift = nil }
+            }
+        }
+    }
+
+    /// The wall changing context: the old rows pulling out, the new pulling in.
+    private(set) var shift: WallShift?
+
+    /// Contexts drawn as flowing rows, rather than one record's cover.
+    static func drawsRows(_ context: WallContext) -> Bool {
+        if case .hero = context { return false }
+        return true
     }
 
     /// Multiplies the spec's flow speeds. The debug lab tunes it; the app
@@ -195,8 +221,62 @@ final class LibraryWallModel {
         clock.start(at: .now)
     }
 
-    var visibleCovers: [WallCover] {
-        WallComposition.covers(covers, in: context)
+    var visibleCovers: [WallCover] { covers(for: context) }
+
+    /// The covers a context puts on the wall: its own, topped up from the
+    /// person's other records, with outside covers mixed in.
+    func covers(for context: WallContext) -> [WallCover] {
+        let own = WallComposition.filled(WallComposition.covers(covers, in: context), from: covers, context: context)
+        return WallComposition.mixingIn(discovery, with: own, ownedCount: covers.count, context: context)
+    }
+
+    // MARK: Discovery
+
+    /// This week's films and series and recent games, from the backend:
+    /// the wall for someone with no records yet, and a dark scattering among
+    /// everyone else's.
+    private(set) var discovery: [WallCover] = [] {
+        didSet { if discovery != oldValue { loadImages() } }
+    }
+
+    private static var discoveryFile: URL {
+        URL.cachesDirectory.appending(path: "featured-media.json")
+    }
+    private static let discoveryLifetime: TimeInterval = 12 * 60 * 60
+
+    /// Shows the last list straight away, then fetches a fresh one when it
+    /// is more than half a day old. A failed fetch keeps what's there.
+    func loadDiscovery(api: PrismAPIClient = .shared) async {
+        let file = Self.discoveryFile
+        let saved = try? Data(contentsOf: file)
+        if let saved, let items = try? JSONDecoder().decode([MediaSearchItem].self, from: saved) {
+            discovery = items.compactMap(Self.wallCover(from:))
+        }
+        let age = (try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)
+            .map { Date.now.timeIntervalSince($0) } ?? .infinity
+        guard saved == nil || age > Self.discoveryLifetime else { return }
+
+        guard let items = try? await api.featuredMedia() else { return }
+        discovery = items.compactMap(Self.wallCover(from:))
+        if let data = try? JSONEncoder().encode(items) {
+            try? data.write(to: file, options: .atomic)
+        }
+    }
+
+    static func wallCover(from item: MediaSearchItem) -> WallCover? {
+        guard let url = item.posterURL else { return nil }
+        let accent: PrismAccent = switch item.cultureType {
+        case .series: .series
+        case .game: .game
+        default: .movie
+        }
+        return WallCover(
+            id: "featured:\(item.sourceId)",
+            accent: accent,
+            title: item.title,
+            coverURL: url,
+            lastActivity: .distantPast
+        )
     }
 
     var isPaused: Bool { !pauseReasons.isEmpty }
@@ -220,7 +300,7 @@ final class LibraryWallModel {
         guard isFixture || next != covers else { return }
         isFixture = false
         covers = next
-        images = images.filter { id, _ in next.contains { $0.id == id } }
+        images = images.filter { id, _ in next.contains { $0.id == id } || discovery.contains { $0.id == id } }
         loadImages()
     }
 
@@ -251,7 +331,7 @@ final class LibraryWallModel {
     private func loadImages() {
         guard !isFixture else { return }
         loadTask?.cancel()
-        let pending = covers.filter { images[$0.id] == nil }
+        let pending = (covers + discovery).filter { images[$0.id] == nil }
         let bucket = imagePixelBucket
         let cache = cache
 

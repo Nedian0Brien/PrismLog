@@ -110,6 +110,16 @@ extension PrismAPIClient {
         return response.items
     }
 
+    /// This week's films and series and recent games, for filling the
+    /// library wall (`GET /api/v1/media/featured`).
+    func featuredMedia(limit: Int = 40) async throws -> [MediaSearchItem] {
+        let response: MediaSearchResponse = try await get(
+            "/api/v1/media/featured",
+            query: [URLQueryItem(name: "limit", value: String(min(limit, 60)))]
+        )
+        return response.items
+    }
+
     /// Season and episode structure — only movies and series; games have none.
     func enrichMedia(tmdbID: Int, type: String) async throws -> MediaEnrichment {
         try await get(

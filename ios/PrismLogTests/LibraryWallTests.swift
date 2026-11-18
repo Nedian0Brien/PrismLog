@@ -137,7 +137,8 @@ struct LibraryWallTests {
 
     @Test("배치 A의 행은 독서 → 영화 → 게임 → 시리즈 → 공부 순서로 돈다")
     func rowsFollowTheCategoryOrder() {
-        let rows = WallComposition.rows(from: Self.mixed, count: 10)
+        // Every category treated as full, to pin the order itself.
+        let rows = WallComposition.rows(from: Self.mixed, count: 10, minimumLength: 1)
         #expect(rows.count == 10)
         let accents = rows.map { Set($0.map(\.accent)) }
         let expected: [PrismAccent] = [.reading, .movie, .game, .series, .study]
@@ -149,12 +150,71 @@ struct LibraryWallTests {
     @Test("빠진 카테고리는 건너뛰고, 카테고리 하나뿐이면 모든 행을 그 카테고리로 채운다")
     func rowsSkipMissingCategories() {
         let noGames = Self.mixed.filter { $0.accent != .game }
-        let accents = WallComposition.rows(from: noGames, count: 4).map { $0[0].accent }
+        let accents = WallComposition.rows(from: noGames, count: 4, minimumLength: 1).map { $0[0].accent }
         #expect(accents == [.reading, .movie, .series, .study])
 
         let books = Self.mixed.filter { $0.accent == .reading }
-        let rows = WallComposition.rows(from: books, count: 3)
+        let rows = WallComposition.rows(from: books, count: 3, minimumLength: 1)
         #expect(rows.allSatisfy { Set($0.map(\.id)) == ["book-1", "book-2"] })
+    }
+
+    @Test("표지가 적은 맥락은 맥락 밖 표지로 채우고, 채운 표지에 표시를 남긴다")
+    func sparseContextsAreFilledFromOutside() {
+        let few = Array(Self.mixed.prefix(3))
+        let filled = WallComposition.filled(few, from: Self.mixed, context: .category(.reading))
+        #expect(filled.prefix(3).map(\.id) == few.map(\.id))
+        #expect(filled.prefix(3).allSatisfy { !$0.isFiller })
+        #expect(filled.dropFirst(3).allSatisfy { $0.isFiller })
+        #expect(filled.count == min(WallComposition.fullRowLength, Self.mixed.count))
+        #expect(Set(filled.map(\.id)).count == filled.count)
+        // The whole library, and an empty context, are left as they are.
+        #expect(WallComposition.filled(few, from: Self.mixed, context: .all) == few)
+        #expect(WallComposition.filled([], from: Self.mixed, context: .category(.game)).isEmpty)
+    }
+
+    @Test("기록이 없으면 외부 표지가 벽이 되고, 기록이 있으면 어둡게 섞인다")
+    func discoveryFillsOrScattersDark() {
+        let discovery = (0..<30).map { Self.cover("featured:\($0)", $0.isMultiple(of: 2) ? .movie : .series) }
+
+        let empty = WallComposition.mixingIn(discovery, with: [], ownedCount: 0, context: .all)
+        #expect(empty.count == discovery.count)
+        #expect(empty.allSatisfy { !$0.isFiller })
+
+        let few = Array(Self.mixed.prefix(3))
+        let topped = WallComposition.mixingIn(discovery, with: few, ownedCount: 3, context: .all)
+        #expect(topped.count == WallComposition.fullRowLength * 2)
+        #expect(topped.prefix(3).allSatisfy { !$0.isFiller })
+        #expect(topped.dropFirst(3).allSatisfy { $0.isFiller })
+
+        let many = (0..<40).map { Self.cover("own-\($0)", .reading) }
+        let scattered = WallComposition.mixingIn(discovery, with: many, ownedCount: 40, context: .all)
+        #expect(scattered.count == 40 + 6)
+
+        // A shelf takes only its own category's; a record's hero takes none.
+        let shelf = WallComposition.mixingIn(discovery, with: few, ownedCount: 3, context: .category(.movie))
+        #expect(shelf.dropFirst(3).allSatisfy { $0.accent == .movie })
+        #expect(WallComposition.mixingIn(discovery, with: few, ownedCount: 3, context: .hero("x")) == few)
+    }
+
+    @Test("섞인 행은 빈칸 없이 표지를 번갈아 놓아, 같은 표지가 나란히 서지 않는다")
+    func mixedRowsNeverPutACoverBesideItself() {
+        let few = Array(Self.mixed.prefix(3))
+        for row in WallComposition.rows(from: few, count: 10) {
+            #expect(row.count == few.count)
+            for index in row.indices where row.count > 1 {
+                #expect(row[index].id != row[(index + 1) % row.count].id)
+            }
+        }
+    }
+
+    @Test("한 화면을 채우는 카테고리는 제 행을 갖고, 작은 카테고리는 한 행에 모인다")
+    func fullCategoriesKeepTheirRows() {
+        let books = (0..<9).map { Self.cover("b\($0)", .reading, daysAgo: Double($0)) }
+        let film = Self.cover("film", .movie, daysAgo: 1)
+        let game = Self.cover("game", .game, daysAgo: 2)
+        let rows = WallComposition.rows(from: books + [film, game], count: 4)
+        #expect(Set(rows[0].map(\.accent)) == [.reading])
+        #expect(Set(rows[1].map(\.id)) == ["film", "game"])
     }
 
     @Test func rowsAreStableAcrossCalls() {
@@ -242,12 +302,19 @@ struct LibraryWallTests {
         #expect(abs(focus.dim(at: shown) - 1) < 1e-9)
         #expect(!focus.isMoving(at: shown))
 
-        // The next cover waits for the first to sink back into its row.
-        focus.retarget(to: .init(id: "b", row: 2, position: 12), at: shown)
+        // Handing over: the first slides away at full size while the row
+        // races at once, and the next rises sooner.
+        focus.retarget(to: .init(id: "b", row: 2, position: 12), at: shown, direction: -1)
         #expect(focus.outgoing?.id == "a")
-        #expect(abs(focus.glideStart.timeIntervalSince(shown) - WallFocus.shrink) < 1e-9)
-        #expect(focus.outgoingGrowth(at: shown.addingTimeInterval(WallFocus.shrink)) == 0)
-        #expect(focus.incomingGrowth(at: shown.addingTimeInterval(WallFocus.shrink + WallFocus.glide)) == 0)
+        #expect(focus.exiting)
+        #expect(focus.glideStart == shown)
+        #expect(focus.outgoingGrowth(at: shown.addingTimeInterval(WallFocus.exit * 0.9)) == 1)
+        #expect(focus.outgoingExit(at: shown.addingTimeInterval(WallFocus.exit)) == 1)
+        #expect(focus.outgoingGrowth(at: shown.addingTimeInterval(WallFocus.exit + 0.01)) == 0)
+        let next = shown.addingTimeInterval(WallFocus.swapGlide + WallFocus.swapGrow + 0.01)
+        #expect(focus.incomingGrowth(at: next) == 1)
+        #expect(abs(focus.dim(at: next) - 1) < 1e-9)
+        #expect(!focus.isMoving(at: next.addingTimeInterval(0.2)))
     }
 
     @Test func focusTurnsBackFromWhereItIs() {
@@ -257,6 +324,8 @@ struct LibraryWallTests {
         let midway = focus.growStart.addingTimeInterval(WallFocus.grow / 2)
         let reached = focus.incomingGrowth(at: midway)
         focus.retarget(to: nil, at: midway)
+        // Clearing the stage sinks the cover back rather than sliding it off.
+        #expect(!focus.exiting)
         #expect(abs(focus.outgoingGrowth(at: midway) - reached) < 1e-9)
         #expect(focus.outgoingGrowth(at: midway.addingTimeInterval(WallFocus.shrink)) == 0)
         #expect(focus.target == nil)
