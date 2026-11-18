@@ -6,6 +6,7 @@ import SwiftUI
 struct LibraryScreen: View {
     @Environment(PrismStore.self) private var store
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var trendCumulative = true
     @State private var trendRange: TrendRange = .year
@@ -24,7 +25,8 @@ struct LibraryScreen: View {
                 VStack(spacing: 14) {
                     statusBanner
 
-                    if horizontalSizeClass == .regular {
+                    // Spec §8: accessibility text sizes get one column.
+                    if horizontalSizeClass == .regular, !dynamicTypeSize.isAccessibilitySize {
                         // Spec §6.1: on a wide screen the sections pair up in
                         // two columns that meet at the fold, if there is one.
                         FoldAwareColumns {
@@ -98,7 +100,12 @@ struct LibraryScreen: View {
     // MARK: - Spectrum
 
     private var spectrumCard: some View {
-        HStack(spacing: 16) {
+        // Ring beside the counts, or above them at accessibility sizes —
+        // side by side, the counts wrapped a character per line at AX5.
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 16))
+            : AnyLayout(HStackLayout(spacing: 16))
+        return layout {
             SpectrumRing(slices: slices, diameter: 150, lineWidth: 13)
 
             VStack(spacing: 0) {
@@ -388,6 +395,8 @@ struct LibraryScreen: View {
 struct LensCard: View {
     let item: LibraryMetrics.InProgress
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             CoverImage(url: item.record.coverURL, accent: item.accent, title: item.title, cornerRadius: 10)
@@ -398,7 +407,7 @@ struct LensCard: View {
                 Text(item.title)
                     .font(.prismTitle)
                     .foregroundStyle(PrismColor.text)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
 
                 Spacer(minLength: 0)
 
@@ -416,7 +425,10 @@ struct LensCard: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(width: 268, height: 96)
+        // Height grows with the text; at accessibility sizes a fixed 96pt cut
+        // the title to its first word.
+        .frame(width: dynamicTypeSize.isAccessibilitySize ? 320 : 268)
+        .frame(minHeight: 96)
         .prismLensCard()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.title), \(item.accent.label), \(item.detail)")
