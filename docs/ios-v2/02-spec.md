@@ -147,6 +147,11 @@ enum WallContext: Equatable {
 - 흐름은 `TimelineView(.animation)`이 구동하고, 행 하나를 `HStack` 두 벌로 이어 붙여 끊김 없이 순환시킨다. 표지 수가 많으면 `Canvas` + 미리 resolve한 이미지로 바꾼다.
 - 정지 조건: `scenePhase != .active`, 저전력 모드(`ProcessInfo.isLowPowerModeEnabled`), 동작 줄이기, 설정에서 끔.
 
+### 4.6.1 가장자리 점진 블러 (`WallEdgeBlur`, 2026-11-18 사용자 요청)
+- 흐르는 벽의 가운데는 선명하게 두고, 위·아래 끝으로 갈수록 강하게 흐린다. 좌우에는 걸지 않는다(네 변 모두에 건 안은 사용자가 반려). 히어로 맥락은 이미 전체가 흐려서 적용하지 않는다.
+- SwiftUI에 가변 블러가 없어서 벽을 블러 반경별로 다시 그리고, 위·아래 끝에서 안쪽으로 사라지는 그라디언트로 가린다. 단계는 (반경 6, 높이의 30%), (16, 21%), (32, 12%)다.
+- 듀오 시뮬레이터 실험실(합성 200장): 정상 상태 hitch 0.0ms/s, 60fps. 벽을 네 번 그리므로 실기기 측정(이슈 #20) 대상이다.
+
 ### 4.7 가독성 층 (`WallLegibilityLayer`)
 - 벽 위, 전경 아래에 깐다: 위→아래 검정 그라디언트(0.30 → 0.55) + 채도 0.85.
 - 투명도 줄이기 켜짐: 디밍을 0.75로 올리고 흐름을 멈춘다.
@@ -167,6 +172,7 @@ enum WallContext: Equatable {
   - 측정(듀오 펼침, 상세 화면, 흰 표지 히어로 배경): clear만 쓰면 본문 2.2–2.5:1, 보조 1.0–1.2:1. 35% tint를 넣으면 본문 4.7–4.8:1, 보조 1.9:1. 보조 글자는 여전히 4.5:1에 못 미친다(이슈 #19).
 - 새 토큰: `PrismGlassMetrics.lensCorner = 28`(히어로 렌즈 카드), 카드 최대 폭 `readableWidth = 640`(regular width에서 본문 카드의 최대 폭. 남는 양옆으로 벽이 드러난다).
 - 글래스 렌즈 카드: 라이브러리 상단 "지금 진행 중" 카드. 다른 카드와 같은 재질에 큰 모서리(28)와 최소한의 텍스트(제목, 진행률)만 둔다.
+  - 2026-11-18: 다음 카드가 열 경계에서 잘려 보이던 문제를 고쳤다. 카드 폭을 열 폭과 같게 하고(`containerRelativeFrame`), 카드 간격을 화면 여백보다 넓게 해서 멈춰 있을 때는 한 장만 보인다. 캐러셀은 화면 여백(18pt)까지 넓혀 그 끝에서 자르고, 넘어가는 카드는 `scrollTransition`으로 흐려지며 약간 작아진다. 글래스는 `mask`를 무시하고 `clipped()`만 따르므로 페이드 마스크는 쓰지 않는다.
 - 스크롤 가장자리: 시스템 scroll edge effect를 쓴다.
   - **[확인됨]** `scrollEdgeEffectStyle(_ style: ScrollEdgeEffectStyle?, for edges: Edge.Set)` (iOS 26.0+). 기본은 자동 효과다. 문서 예제에는 `.hard`만 나온다. `scrollEdgeEffectHidden(_:for:)`로 숨길 수 있다.
   - **[확인됨]** `ScrollEdgeEffectStyle`의 값은 `.automatic`, `.hard`, `.soft` 세 개다(iOS 27.2 SDK `SwiftUI.swiftinterface`).

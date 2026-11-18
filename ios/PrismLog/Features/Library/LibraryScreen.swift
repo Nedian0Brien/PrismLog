@@ -75,27 +75,49 @@ struct LibraryScreen: View {
                     // show past the column and under iPhone Duo's vertical
                     // bar (Phase 7).
                     GlassEffectContainer(spacing: 12) {
-                        LazyHStack(spacing: 12) {
+                        // Gaps wider than the margin the carousel reaches
+                        // into, so at rest the next card sits wholly off
+                        // screen instead of peeking in cut off.
+                        LazyHStack(spacing: Self.carouselMargin + 8) {
                             ForEach(items) { item in
                                 NavigationLink(value: item.record.id) {
                                     LensCard(item: item)
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("library.inProgress")
+                                // One card per page, as wide as the column.
+                                .containerRelativeFrame(.horizontal)
+                                // A card on its way out fades and settles
+                                // back, so the clip at the margin never
+                                // cuts through a card at full strength.
+                                .scrollTransition(.interactive, axis: .horizontal) { card, phase in
+                                    card
+                                        .opacity(1 - min(abs(phase.value), 1) * 0.7)
+                                        .scaleEffect(1 - min(abs(phase.value), 1) * 0.06)
+                                }
                             }
                         }
                         .scrollTargetLayout()
                     }
                 }
-                .clipped()
                 .scrollTargetBehavior(.viewAligned)
                 .scrollIndicators(.hidden)
-                // Clipped, not `scrollClipDisabled()`: unclipped cards ran
+                // The carousel reaches into the screen margin on each side,
+                // so a card is clipped at the margin, not at the column, and
+                // the first card still lines up with the column at rest.
+                // Clipped, not masked: glass ignores a mask but honours a
+                // clip. Not `scrollClipDisabled()`: unclipped cards ran
                 // under iPhone Duo's vertical bar and its `+` (spec §7.2).
+                .contentMargins(.horizontal, Self.carouselMargin, for: .scrollContent)
+                .clipped()
+                .padding(.horizontal, -Self.carouselMargin)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
+
+    /// The screen margin (`PrismScreenScaffold`), which the carousel reaches into.
+    private static let carouselMargin: CGFloat = 18
 
     // MARK: - Spectrum
 
@@ -427,7 +449,7 @@ struct LensCard: View {
         }
         // Height grows with the text; at accessibility sizes a fixed 96pt cut
         // the title to its first word.
-        .frame(width: dynamicTypeSize.isAccessibilitySize ? 320 : 268)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .frame(minHeight: 96)
         .prismLensCard()
         .accessibilityElement(children: .combine)

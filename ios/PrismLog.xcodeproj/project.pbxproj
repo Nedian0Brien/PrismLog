@@ -41,6 +41,7 @@
 		6107068124859BE66F0057A8 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 398C9DE5A24530799A96565C /* AppIcon.icon */; };
 		625CC463C44DA864EAB64D31 /* StudyProgressSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D77F5D42B7DAA285B58B674 /* StudyProgressSheet.swift */; };
 		65E7BB180C7D9AD4DE9152A4 /* WidgetRefresher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B55AC8439ED4BF41E2E39BE /* WidgetRefresher.swift */; };
+		7443AE161261F9128AC21DBE /* WallEdgeBlur.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2BEEF6D826C5790F9A4F952 /* WallEdgeBlur.swift */; };
 		7C0FC813AC70AFBD157D3EE6 /* SpectrumSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C170F021CF139BC66B9AC88 /* SpectrumSnapshot.swift */; };
 		7C983A1B09F9A40C9B965FAA /* PrismTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 191A0B160303D5288BFABE39 /* PrismTypography.swift */; };
 		7CB22EFDD6133478EA002EA4 /* PrismPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199DAE65F4402327298098BE /* PrismPalette.swift */; };
@@ -212,6 +213,7 @@
 		DC900A430933AEF58CA2AEE6 /* StoredLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoredLog.swift; sourceTree = "<group>"; };
 		DDA7DB1275DA302B04D3004F /* PrismGlass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismGlass.swift; sourceTree = "<group>"; };
 		E01FE663434F3A357BBC0D3F /* RecordDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordDetailScreen.swift; sourceTree = "<group>"; };
+		E2BEEF6D826C5790F9A4F952 /* WallEdgeBlur.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallEdgeBlur.swift; sourceTree = "<group>"; };
 		E4D57E7AB4730940A425513B /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
 		E5AE5EC93BC6B245782401A6 /* RecordListCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordListCards.swift; sourceTree = "<group>"; };
 		E743B59B7B3BE4C1FBA25112 /* LibraryWallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryWallView.swift; sourceTree = "<group>"; };
@@ -299,6 +301,7 @@
 				3587A4560FFFFF1C181D4B5F /* LibraryWallModel.swift */,
 				E743B59B7B3BE4C1FBA25112 /* LibraryWallView.swift */,
 				170918D50FAAC4E8BFF6F11C /* WallComposition.swift */,
+				E2BEEF6D826C5790F9A4F952 /* WallEdgeBlur.swift */,
 				29528522624AE72835D46B2D /* WallFixtures.swift */,
 				59B41A5F579041C2081FCD4C /* WallFrameMeter.swift */,
 				6E24A518B9459337C2F6CA93 /* WallLegibilityLayer.swift */,
@@ -731,6 +734,7 @@
 				34E06AB12A80C6C7C21BAEAA /* TimelineScreen.swift in Sources */,
 				1CC497134900E65EDCF56BA9 /* TrendChart.swift in Sources */,
 				5CD0139641A612E73A00EB94 /* WallComposition.swift in Sources */,
+				7443AE161261F9128AC21DBE /* WallEdgeBlur.swift in Sources */,
 				FAA2E5EA34E83A3EDD8DE8E5 /* WallFixtures.swift in Sources */,
 				7E1D1C76E45707BC44A8F8C9 /* WallFrameMeter.swift in Sources */,
 				57CEC5870E03C88EA26F923D /* WallLabScreen.swift in Sources */,

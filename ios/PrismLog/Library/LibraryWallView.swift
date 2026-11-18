@@ -72,6 +72,7 @@ struct LibraryWallView: View {
                 TimelineView(.animation(paused: model.isPaused)) { timeline in
                     let elapsed = model.elapsed(at: timeline.date) * model.speedScale
                     flowing(covers: covers, elapsed: elapsed)
+                        .modifier(WallEdgeBlur())
                 }
                 .modifier(WallLegibilityLayer(mode: .standard, dimmingOverride: dimmingOverride))
             }
