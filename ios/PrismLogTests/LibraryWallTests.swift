@@ -229,42 +229,59 @@ struct LibraryWallTests {
 
     // MARK: Big cover hand-over
 
-    @Test func stageRunsFromWallToCoverAndSettles() {
+    @Test func focusShrinksRacesThenGrows() {
         let start = Date(timeIntervalSinceReferenceDate: 1_000)
-        var stage = WallStage()
-        #expect(stage.progress(at: start) == 0)
-        stage.move(to: 1, at: start)
-        #expect(stage.progress(at: start) == 0)
-        #expect(stage.isMoving(at: start.addingTimeInterval(0.1)))
-        #expect(abs(stage.progress(at: start.addingTimeInterval(WallStage.duration / 2)) - 0.5) < 1e-9)
-        #expect(stage.progress(at: start.addingTimeInterval(WallStage.duration + 1)) == 1)
-        #expect(!stage.isMoving(at: start.addingTimeInterval(WallStage.duration + 1)))
+        var focus = WallFocus()
+        focus.retarget(to: .init(id: "a", row: 2, position: 7), at: start)
+        // Nothing is showing yet, so the row races at once, then the cover grows.
+        #expect(focus.glideStart == start)
+        #expect(focus.incomingGrowth(at: start.addingTimeInterval(WallFocus.glide * 0.9)) == 0)
+        #expect(focus.dim(at: start.addingTimeInterval(WallFocus.glide * 0.9)) == 0)
+        let shown = start.addingTimeInterval(WallFocus.glide + WallFocus.grow + 0.01)
+        #expect(focus.incomingGrowth(at: shown) == 1)
+        #expect(abs(focus.dim(at: shown) - 1) < 1e-9)
+        #expect(!focus.isMoving(at: shown))
+
+        // The next cover waits for the first to sink back into its row.
+        focus.retarget(to: .init(id: "b", row: 2, position: 12), at: shown)
+        #expect(focus.outgoing?.id == "a")
+        #expect(abs(focus.glideStart.timeIntervalSince(shown) - WallFocus.shrink) < 1e-9)
+        #expect(focus.outgoingGrowth(at: shown.addingTimeInterval(WallFocus.shrink)) == 0)
+        #expect(focus.incomingGrowth(at: shown.addingTimeInterval(WallFocus.shrink + WallFocus.glide)) == 0)
     }
 
-    @Test func stageTurnsBackFromWhereItIs() {
+    @Test func focusTurnsBackFromWhereItIs() {
         let start = Date(timeIntervalSinceReferenceDate: 1_000)
-        var stage = WallStage()
-        stage.move(to: 1, at: start)
-        let midway = start.addingTimeInterval(WallStage.duration / 2)
-        let reached = stage.progress(at: midway)
-        stage.move(to: 0, at: midway)
-        #expect(stage.progress(at: midway) == reached)
-        #expect(stage.progress(at: midway.addingTimeInterval(WallStage.duration)) == 0)
+        var focus = WallFocus()
+        focus.retarget(to: .init(id: "a", row: nil), at: start)
+        let midway = focus.growStart.addingTimeInterval(WallFocus.grow / 2)
+        let reached = focus.incomingGrowth(at: midway)
+        focus.retarget(to: nil, at: midway)
+        #expect(abs(focus.outgoingGrowth(at: midway) - reached) < 1e-9)
+        #expect(focus.outgoingGrowth(at: midway.addingTimeInterval(WallFocus.shrink)) == 0)
+        #expect(focus.target == nil)
     }
 
-    @Test @MainActor func onlyTheActiveFlagMovesTheStage() {
+    @Test @MainActor func aRowCanBringAnyPositionDeadCentre() {
+        let geometry = WallRowGeometry(rows: [], metrics: .compact, size: CGSize(width: 402, height: 874), parallax: 0)
+        for direction in [1.0, -1.0] {
+            let landing = geometry.positionToCentre(from: 123.4, direction: direction, minimum: 480)
+            #expect(abs(geometry.centreX(ofPosition: landing.position, distance: landing.distance) - 201) < 1e-6)
+            #expect((landing.distance - 123.4) * direction >= 480)
+        }
+    }
+
+    @Test @MainActor func onlyTheActiveFlagPutsACoverOnStage() {
         let model = LibraryWallModel()
         model.feature = ["a", "b"]
-        #expect(model.stage.progress(at: .distantFuture) == 0)
+        #expect(model.focus.target == nil)
         model.featureActive = true
-        #expect(model.stage.progress(at: .distantFuture) == 1)
-        let moved = model.stage
-        model.featureActive = true
-        model.feature = ["b"]
-        #expect(model.stage == moved)
+        #expect(model.focus.target == "a")
+        #expect(model.pauseReasons.contains(.focused))
+        model.featureIndex = 1
+        #expect(model.focus.target == "b")
         model.featureActive = false
-        #expect(model.stage.progress(at: .distantFuture) == 0)
-        #expect(model.lastFeature == ["b"])
+        #expect(model.focus.target == nil)
     }
 
     @Test @MainActor func revealingTheWallSlowsItWithoutAJump() {

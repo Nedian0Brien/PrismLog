@@ -206,6 +206,8 @@ enum WallPauseReason: Hashable, Sendable, CaseIterable {
     case reduceTransparency
     case disabledInSettings
     case stillContext
+    /// A cover is on the library's stage: the rows hold still around it.
+    case focused
 }
 
 /// How far the person has pushed one wall row by hand, on top of its flow.
@@ -219,7 +221,17 @@ struct RowNudge: Equatable, Sendable {
     static let decay: TimeInterval = 0.32
     static let maximumSpeed: Double = 5_000
 
+    /// A row racing a cover to the middle: from here to `settled`.
+    private(set) var glideFrom: Double?
+    private(set) var glideStart = Date.distantPast
+    private(set) var glideTime: TimeInterval = 0
+
     func offset(at date: Date) -> Double {
+        if let glideFrom, date < glideStart.addingTimeInterval(glideTime) {
+            guard date > glideStart, glideTime > 0 else { return glideFrom }
+            let t = date.timeIntervalSince(glideStart) / glideTime
+            return glideFrom + (settled - glideFrom) * WallFocus.easeInOut(t)
+        }
         let t = max(0, date.timeIntervalSince(released))
         return settled + velocity * Self.decay * (1 - exp(-t / Self.decay))
     }
@@ -228,11 +240,22 @@ struct RowNudge: Equatable, Sendable {
     mutating func grab(at date: Date) {
         settled = offset(at: date)
         velocity = 0
+        glideFrom = nil
+    }
+
+    /// Races the row from where it is at `start` to `target`.
+    mutating func glide(to target: Double, start: Date, duration: TimeInterval) {
+        glideFrom = offset(at: start)
+        settled = target
+        velocity = 0
+        glideStart = start
+        glideTime = duration
     }
 
     mutating func move(to offset: Double) {
         settled = offset
         velocity = 0
+        glideFrom = nil
     }
 
     /// Lets go with the finger's speed, in points per second along the flow.
@@ -242,40 +265,166 @@ struct RowNudge: Equatable, Sendable {
     }
 }
 
-/// The wall handing over to the library's big cover and back: 0 is the
-/// flowing wall, 1 the cover. A clock rather than an animation, because the
+/// The library's big cover taking the stage and leaving it: the cover on
+/// stage shrinks back into its row, the next one's row scrolls until that
+/// cover reaches the middle, and it rises out of the row to full size
+/// (2026-11-19, user design). A clock rather than animations, because the
 /// wall draws from a `TimelineView` that already redraws every frame.
-struct WallStage: Equatable, Sendable {
-    /// The wall's cross-fade to the big poster and back.
-    static let duration: TimeInterval = 0.55
+struct WallFocus: Equatable, Sendable {
+    /// A cover on stage, the pattern row it rises from, and where along
+    /// that row (an absolute strip position) it was set.
+    struct Hero: Equatable, Sendable {
+        let id: String
+        let row: Int?
+        var position: Int? = nil
+    }
 
-    private(set) var from = 0.0
-    private(set) var to = 0.0
+    static let shrink: TimeInterval = 0.35
+    static let glide: TimeInterval = 0.6
+    static let grow: TimeInterval = 0.5
+    static let dimming: TimeInterval = 0.3
+
+    private(set) var outgoing: Hero?
+    /// How big the outgoing cover was when it started back.
+    private(set) var outgoingFrom = 0.0
+    private(set) var incoming: Hero?
     private(set) var start = Date.distantPast
-    private(set) var duration: TimeInterval = 0
+    private(set) var dimFrom = 0.0
+    /// 1 normally, 0 to jump straight to the end (Reduce Motion).
+    private(set) var pace = 1.0
 
-    func progress(at date: Date) -> Double {
-        // Exactly the target once the run is over: the wall checks for 0
-        // and 1 to decide what to draw.
-        guard duration > 0 else { return to }
-        // Linear; the wall eases the fade itself.
-        let t = min(max(date.timeIntervalSince(start) / duration, 0), 1)
-        // Date arithmetic leaves the last frame a hair short of 1.
-        guard t < 0.999_999 else { return to }
-        return from + (to - from) * t
+    var target: String? { incoming?.id }
+
+    var shrinkTime: TimeInterval { outgoing == nil ? 0 : Self.shrink * outgoingFrom * pace }
+    var glideStart: Date { start.addingTimeInterval(shrinkTime) }
+    var glideTime: TimeInterval { incoming?.row == nil ? 0 : Self.glide * pace }
+    var growStart: Date { glideStart.addingTimeInterval(glideTime) }
+    var end: Date {
+        let dimEnd = start.addingTimeInterval(Self.dimming * pace)
+        guard incoming != nil else { return max(glideStart, dimEnd) }
+        return max(growStart.addingTimeInterval(Self.grow * pace), dimEnd)
     }
 
-    func isMoving(at date: Date) -> Bool {
-        duration > 0 && date.timeIntervalSince(start) < duration
+    func isMoving(at date: Date) -> Bool { date < end }
+
+    /// The outgoing cover's size, 1 on stage to 0 back in its row.
+    func outgoingGrowth(at date: Date) -> Double {
+        guard outgoing != nil, outgoingFrom > 0 else { return 0 }
+        guard shrinkTime > 0 else { return 0 }
+        let t = Self.unit(date.timeIntervalSince(start) / shrinkTime)
+        return outgoingFrom * (1 - Self.easeInOut(t))
     }
 
-    /// Heads for `target` from wherever the stage is now, so turning back
-    /// mid-way never jumps.
-    mutating func move(to target: Double, at date: Date, duration: TimeInterval = WallStage.duration) {
-        from = progress(at: date)
-        to = target
+    /// The incoming cover's size, 0 in its row to 1 on stage.
+    func incomingGrowth(at date: Date) -> Double {
+        guard incoming != nil else { return 0 }
+        let time = Self.grow * pace
+        guard time > 0 else { return date >= growStart ? 1 : 0 }
+        return Self.easeOut(Self.unit(date.timeIntervalSince(growStart) / time))
+    }
+
+    /// How far the covers around the stage have stepped back, 0–1. They
+    /// stay put while the row races, so the race shows, and step back as
+    /// the cover rises; on the way out they come forward as it sinks.
+    func dim(at date: Date) -> Double {
+        let goal = incoming == nil ? 0.0 : 1.0
+        let begin = incoming == nil ? start : growStart
+        let time = (incoming == nil ? max(shrinkTime, Self.dimming * pace) : Self.grow * pace)
+        guard time > 0 else { return date >= begin ? goal : dimFrom }
+        let t = Self.unit(date.timeIntervalSince(begin) / time)
+        return dimFrom + (goal - dimFrom) * Self.easeInOut(t)
+    }
+
+    /// When a row would start racing if the stage were retargeted at `date`:
+    /// after whatever cover is showing has sunk back.
+    func glideStart(retargetingAt date: Date) -> Date {
+        var copy = self
+        copy.retarget(to: Hero(id: "", row: nil), at: date, instant: pace == 0)
+        return copy.glideStart
+    }
+
+    /// Sends `hero` on stage (or clears it) from wherever things stand now:
+    /// whichever cover is showing goes back first, from the size it has.
+    mutating func retarget(to hero: Hero?, at date: Date, instant: Bool = false) {
+        let incomingNow = incomingGrowth(at: date)
+        let outgoingNow = outgoingGrowth(at: date)
+        dimFrom = dim(at: date)
+        if let incoming, incomingNow > 0 {
+            outgoing = incoming
+            outgoingFrom = incomingNow
+        } else if outgoingNow > 0 {
+            outgoingFrom = outgoingNow
+        } else {
+            outgoing = nil
+            outgoingFrom = 0
+        }
+        incoming = hero
         start = date
-        self.duration = duration
+        pace = instant ? 0 : 1
+    }
+
+    static func unit(_ value: Double) -> Double { min(max(value, 0), 1) }
+    static func easeInOut(_ t: Double) -> Double { t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2 }
+    static func easeOut(_ t: Double) -> Double { 1 - pow(1 - t, 3) }
+}
+
+/// Where layout A puts rows and covers on screen — shared by the wall that
+/// draws them and the model that picks which row brings a cover on stage.
+struct WallRowGeometry {
+    let rows: [[WallCover]]
+    let metrics: WallMetrics
+    let size: CGSize
+    let parallax: Double
+
+    var vertical: WallStrip { WallStrip(distance: parallax, pitch: Double(metrics.pitchY)) }
+    var visibleRows: Int { Int((size.height / metrics.pitchY).rounded(.up)) + 2 }
+
+    func rowIndex(forSlot slot: Int) -> Int {
+        vertical.index(forSlot: slot, itemCount: rows.count)
+    }
+
+    /// A row slot's vertical centre on screen.
+    func centreY(ofSlot slot: Int) -> CGFloat {
+        CGFloat(slot) * metrics.pitchY - CGFloat(vertical.remainder) - metrics.pitchY / 2 + metrics.coverHeight / 2
+    }
+
+    /// The pattern row holding `id` whose on-screen slot is nearest `y`.
+    /// The pattern row whose on-screen slot is nearest `y`.
+    func row(near y: CGFloat) -> Int? {
+        guard !rows.isEmpty else { return nil }
+        return (0..<visibleRows)
+            .min { abs(centreY(ofSlot: $0) - y) < abs(centreY(ofSlot: $1) - y) }
+            .map(rowIndex(forSlot:))
+    }
+
+    /// The slot showing pattern row `row` nearest `y`.
+    func slot(showing row: Int, near y: CGFloat) -> Int? {
+        (0..<visibleRows)
+            .filter { rowIndex(forSlot: $0) == row }
+            .min { abs(centreY(ofSlot: $0) - y) < abs(centreY(ofSlot: $1) - y) }
+    }
+
+    /// Where on a row's strip (`a·pitch − distance`) a cover sits dead
+    /// centre.
+    private var centring: Double {
+        Double(metrics.pitchX) / 2 - Double(metrics.coverWidth) / 2 + Double(size.width) / 2
+    }
+
+    /// The horizontal centre of strip position `position`, with the row
+    /// moved `distance` along its flow.
+    func centreX(ofPosition position: Int, distance: Double) -> CGFloat {
+        CGFloat(Double(position) * Double(metrics.pitchX) - distance) - metrics.pitchX / 2 + metrics.coverWidth / 2
+    }
+
+    /// The first strip position at least `minimum` points along the row's
+    /// flow from `distance` that can be brought dead centre — so the row
+    /// visibly races there — and the distance that centres it.
+    func positionToCentre(from distance: Double, direction: Double, minimum: Double) -> (position: Int, distance: Double) {
+        let p = Double(metrics.pitchX)
+        let forward = direction >= 0
+        let goal = (distance + (forward ? minimum : -minimum) + centring) / p
+        let position = Int(forward ? goal.rounded(.up) : goal.rounded(.down))
+        return (position, Double(position) * p - centring)
     }
 }
 

@@ -12,37 +12,115 @@ final class LibraryWallModel {
     var layout: WallLayout = .rows
 
     /// The library's "now in progress" covers, in pager order, while the
-    /// library is on screen. The big posters draw from them.
+    /// library is on screen.
     var feature: [WallCover.ID]? {
-        didSet { if let feature { lastFeature = feature } }
+        didSet { if feature != oldValue { refocus() } }
     }
-    /// The pager has moved onto the "now in progress" cards: the rows leave
-    /// and the big posters take the stage.
+    /// The pager has moved onto the "now in progress" cards.
     var featureActive = false {
-        didSet {
-            guard featureActive != oldValue else { return }
-            let instant = pauseReasons.contains(.reduceMotion)
-            let duration = instant ? 0 : WallStage.duration
-            stage.move(to: featureActive ? 1 : 0, at: .now, duration: duration)
-            // A paused wall's timeline runs only while the stage moves; this
-            // tick redraws it once the move is over so it can stop again.
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(duration + 0.05))
-                self?.stageSettles &+= 1
-            }
-        }
+        didSet { if featureActive != oldValue { refocus() } }
     }
-    /// Changes when a stage move has finished.
-    private(set) var stageSettles = 0
-    /// Where on screen, top to bottom, the big poster may hang: below the
+    /// Which "now in progress" card the pager is on.
+    var featureIndex = 0 {
+        didSet { if featureIndex != oldValue { refocus() } }
+    }
+    /// Where on screen, top to bottom, the big cover may hang: below the
     /// top bar, above where the lowered pager rests.
     var posterArea: ClosedRange<CGFloat>?
-    /// Which big poster is centred, fractional while the pager moves: 0 is
-    /// the first, −1 puts it a page to the right (the spectrum card is up).
-    var featurePosition: Double = -1
-    /// The covers last featured, kept while they leave.
-    private(set) var lastFeature: [WallCover.ID] = []
-    private(set) var stage = WallStage()
+
+    /// The cover on the library's stage, coming or going.
+    private(set) var focus = WallFocus()
+    /// Covers set into rows for the stage, by pattern row and strip
+    /// position. They stay where they were set, so a cover sinking back
+    /// finds its place and the row doesn't change under the eye.
+    private(set) var placements: [Int: [Int: WallCover.ID]] = [:]
+    /// Changes when a focus move has finished, so a paused wall's timeline
+    /// can stop again.
+    private(set) var focusSettles = 0
+
+    // Where the wall last laid its rows out, for picking the row a cover
+    // rises from. Read only when the stage changes, so not observed.
+    @ObservationIgnored var wallSize: CGSize = .zero
+    @ObservationIgnored var wallMetrics: WallMetrics = .compact
+    @ObservationIgnored var parallax: Double = 0
+
+    /// The cover the pager asks for: the card it's on, while it's on one.
+    var requestedHero: WallCover.ID? {
+        guard featureActive, let feature, !feature.isEmpty else { return nil }
+        return feature[min(max(featureIndex, 0), feature.count - 1)]
+    }
+
+    /// The rows the wall draws, in its layout.
+    var rowGeometry: WallRowGeometry {
+        WallRowGeometry(
+            rows: WallComposition.rows(from: visibleCovers, count: WallRowsPattern.rowCount),
+            metrics: wallMetrics,
+            size: wallSize,
+            parallax: parallax
+        )
+    }
+
+    /// Where the big cover's middle sits on screen.
+    var stageCentreY: CGFloat {
+        if let posterArea { return (posterArea.lowerBound + posterArea.upperBound) / 2 }
+        return wallSize.height * 0.35
+    }
+
+    private func refocus(at date: Date = .now) {
+        let target = requestedHero
+        guard target != focus.target else { return }
+        let instant = pauseReasons.contains(.reduceMotion)
+
+        guard let target else {
+            focus.retarget(to: nil, at: date, instant: instant)
+            // The rows start again once the cover is back in its place.
+            let back = focus.glideStart
+            scheduleSettle(at: focus.end) { [weak self] in
+                guard let self, self.focus.target == nil else { return }
+                self.setPaused(false, for: .focused, at: back)
+            }
+            return
+        }
+
+        // The rows hold still around the stage; the one carrying the cover
+        // races it to the middle.
+        setPaused(true, for: .focused, at: date)
+        let geometry = rowGeometry
+        // The row through the middle of the stage races, and the cover
+        // arrives in it — whatever the row's category (user design).
+        let row = layout == .rows && geometry.size.width > 0 ? geometry.row(near: stageCentreY) : nil
+        var hero = WallFocus.Hero(id: target, row: row)
+        let glideStart = focus.glideStart(retargetingAt: date)
+
+        if let row {
+            let speed = WallSpeed.row(row)
+            let flow = elapsed(at: date) * speedScale * speed
+            let current = flow + nudge(row: row, at: glideStart)
+            let landing = geometry.positionToCentre(
+                from: current,
+                direction: speed,
+                minimum: Double(max(geometry.size.width, 320)) * 1.2
+            )
+            hero.position = landing.position
+            placements[row, default: [:]][landing.position] = target
+            focus.retarget(to: hero, at: date, instant: instant)
+            var nudge = nudges[row] ?? RowNudge()
+            nudge.glide(to: landing.distance - flow, start: focus.glideStart, duration: focus.glideTime)
+            nudges[row] = nudge
+        } else {
+            focus.retarget(to: hero, at: date, instant: instant)
+        }
+        scheduleSettle(at: focus.end) {}
+    }
+
+    private func scheduleSettle(at end: Date, then action: @escaping @MainActor () -> Void) {
+        let wait = max(end.timeIntervalSinceNow, 0) + 0.05
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(wait))
+            action()
+            self?.focusSettles &+= 1
+        }
+    }
 
     /// The library's content is pulled down: the wall slows, brightens,
     /// opens a record when its cover is tapped, and its rows can be pushed

@@ -1,6 +1,12 @@
 import SwiftUI
 import UIKit
 
+/// Distinct rows before layout A's pattern repeats vertically. Ten covers
+/// all five categories twice, so a repeat never stacks two identical rows.
+enum WallRowsPattern {
+    static let rowCount = 10
+}
+
 /// Spec §4.3 sizes. Every cover is cropped to 2:3 so rows keep one rhythm
 /// whatever the artwork's own shape.
 struct WallMetrics: Equatable {
@@ -44,6 +50,9 @@ struct LibraryWallView: View {
     var dimmingOverride: Double?
     /// Opens a cover's record, while the library is pulled down.
     var onSelect: ((WallCover) -> Void)?
+    /// This wall is the library's: it tells the model where its rows are,
+    /// for the stage. The other tabs' walls share the model but not that.
+    var reportsLayout = false
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.scenePhase) private var scenePhase
@@ -73,52 +82,68 @@ struct LibraryWallView: View {
                     .scaledToFill()
                     .modifier(WallLegibilityLayer(mode: .hero, dimmingOverride: dimmingOverride))
             } else {
-                let _ = model.stageSettles
-                TimelineView(.animation(paused: model.isPaused && !model.stage.isMoving(at: .now))) { timeline in
-                    let elapsed = model.elapsed(at: timeline.date) * model.speedScale
-                    let stage = model.stage.progress(at: timeline.date)
-                    let posters = (model.feature ?? []).compactMap { id in model.covers.first { $0.id == id } }
-                    // The hand-over is a cross-fade: the wall fades out as
-                    // the big poster fades in (2026-11-19, user decision).
-                    let fade = stage * stage * (3 - 2 * stage)
+                let _ = model.focusSettles
+                TimelineView(.animation(paused: model.isPaused && !model.focus.isMoving(at: .now))) { timeline in
+                    let date = timeline.date
+                    let elapsed = model.elapsed(at: date) * model.speedScale
+                    let focus = model.focus
+                    let dim = focus.dim(at: date)
+                    let heroes = stageHeroes(focus: focus, date: date)
+                    let hidden = Dictionary(
+                        heroes.compactMap { item in item.hero.row.flatMap { row in item.hero.position.map { (row, $0) } } },
+                        uniquingKeysWith: { first, _ in first }
+                    )
                     ZStack {
-                        if stage < 1 {
-                            // Every poster lit from behind: a blurred copy of
-                            // the wall underneath spills each cover's colour
-                            // into the dark around it.
-                            ZStack {
-                                flowing(covers: covers, elapsed: elapsed, date: timeline.date)
-                                    .blur(radius: WallTheater.glowRadius)
-                                    .saturation(1.4)
-                                    .opacity(WallTheater.glowOpacity)
-                                    .allowsHitTesting(false)
-                                flowing(covers: covers, elapsed: elapsed, date: timeline.date)
-                            }
-                            .opacity(1 - fade)
+                        // Every poster lit from behind: a blurred copy of
+                        // the wall underneath spills each cover's colour
+                        // into the dark around it.
+                        ZStack {
+                            flowing(covers: covers, elapsed: elapsed, date: date, hidden: hidden)
+                                .blur(radius: WallTheater.glowRadius)
+                                .saturation(1.4)
+                                .opacity(WallTheater.glowOpacity)
+                                .allowsHitTesting(false)
+                            flowing(covers: covers, elapsed: elapsed, date: date, hidden: hidden)
                         }
-                        if stage > 0, !posters.isEmpty {
-                            FeaturedPosters(
-                                covers: posters,
-                                previews: model.images,
-                                // The first poster fades in where it hangs;
-                                // only between lens cards do posters slide.
-                                position: max(model.featurePosition, 0),
-                                area: model.posterArea,
+                        // The covers around the stage step back.
+                        .brightness(-WallTheater.stageDimming * dim)
+                        .blur(radius: WallTheater.stageBlur * dim)
+                        .allowsHitTesting(dim < 0.5)
+                        .modifier(WallLegibilityLayer(
+                            mode: model.revealed ? .revealed : .standard,
+                            dimmingOverride: model.revealed ? nil : dimmingOverride
+                        ))
+
+                        ForEach(heroes, id: \.hero.id) { item in
+                            HeroPoster(
+                                cover: item.cover,
+                                preview: model.images[item.cover.id],
+                                from: item.from,
+                                to: item.to,
+                                growth: item.growth,
+                                startCorner: metrics.corner,
                                 onSelect: model.revealed ? onSelect : nil
                             )
-                            .opacity(fade)
+                            // Above the dimming, so it hangs bright; behind
+                            // the page's cards it steps down with the wall.
+                            .brightness(model.revealed ? 0 : -0.3)
                         }
                     }
                 }
-                .modifier(WallLegibilityLayer(
-                    mode: .standard,
-                    dimmingOverride: model.revealed ? WallTheater.revealedDimming : dimmingOverride
-                ))
                 .animation(.easeInOut(duration: 0.35), value: model.revealed)
             }
         }
         .animation(.easeInOut(duration: 0.45), value: model.context)
         .ignoresSafeArea()
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
+            if reportsLayout { model.wallSize = size }
+        }
+        .onChange(of: metrics, initial: true) {
+            if reportsLayout { model.wallMetrics = metrics }
+        }
+        .onChange(of: scrollOffset, initial: true) {
+            if reportsLayout { model.parallax = Double(scrollOffset * Self.parallaxFactor) }
+        }
         .allowsHitTesting(model.revealed && onSelect != nil)
         .accessibilityHidden(true)
         .onAppear(perform: syncPauseReasons)
@@ -131,8 +156,56 @@ struct LibraryWallView: View {
         }
     }
 
+    /// A cover on stage or on its way: where it starts in its row, where it
+    /// hangs at full size, and how far between the two it is.
+    private struct StageHero {
+        let hero: WallFocus.Hero
+        let cover: WallCover
+        let growth: Double
+        let from: CGRect
+        let to: CGRect
+    }
+
+    private func stageHeroes(focus: WallFocus, date: Date) -> [StageHero] {
+        let geometry = model.rowGeometry
+        let size = geometry.size
+        guard size.width > 0 else { return [] }
+
+        let band = model.posterArea ?? (size.height * 0.1)...(size.height * 0.6)
+        let height = min((band.upperBound - band.lowerBound) * 0.86, size.width * 0.66 / GeneratedCover.aspectRatio)
+        let width = height * GeneratedCover.aspectRatio
+        let to = CGRect(x: (size.width - width) / 2, y: model.stageCentreY - height / 2, width: width, height: height)
+
+        let candidates: [(WallFocus.Hero?, Double)] = [
+            (focus.outgoing, focus.outgoingGrowth(at: date)),
+            (focus.incoming, focus.incomingGrowth(at: date)),
+        ]
+        return candidates.compactMap { hero, growth in
+            guard let hero, growth > 0, let cover = model.covers.first(where: { $0.id == hero.id }) else { return nil }
+            return StageHero(hero: hero, cover: cover, growth: growth, from: rowRect(of: hero, geometry: geometry, date: date) ?? to.insetBy(dx: width * 0.35, dy: height * 0.35), to: to)
+        }
+    }
+
+    /// The model's placements as covers, for the rows to draw.
+    private var placedCovers: [Int: [Int: WallCover]] {
+        model.placements.mapValues { positions in
+            positions.compactMapValues { id in model.covers.first { $0.id == id } }
+        }
+    }
+
+    /// Where a stage cover sits in its row right now.
+    private func rowRect(of hero: WallFocus.Hero, geometry: WallRowGeometry, date: Date) -> CGRect? {
+        guard let row = hero.row, let position = hero.position,
+              let slot = geometry.slot(showing: row, near: model.stageCentreY) else { return nil }
+        let distance = model.elapsed(at: date) * model.speedScale * WallSpeed.row(row) + model.nudge(row: row, at: date)
+        let x = geometry.centreX(ofPosition: position, distance: distance)
+        let y = geometry.centreY(ofSlot: slot)
+        let m = geometry.metrics
+        return CGRect(x: x - m.coverWidth / 2, y: y - m.coverHeight / 2, width: m.coverWidth, height: m.coverHeight)
+    }
+
     @ViewBuilder
-    private func flowing(covers: [WallCover], elapsed: TimeInterval, date: Date = .now) -> some View {
+    private func flowing(covers: [WallCover], elapsed: TimeInterval, date: Date = .now, hidden: [Int: Int] = [:]) -> some View {
         let parallax = Double(scrollOffset * Self.parallaxFactor)
         switch model.layout {
         case .rows:
@@ -144,6 +217,8 @@ struct LibraryWallView: View {
                 parallax: parallax,
                 nudges: model.nudges,
                 date: date,
+                hidden: hidden,
+                placed: placedCovers,
                 onSelect: model.revealed ? onSelect : nil,
                 onDrag: model.revealed ? { row, translation in model.dragRow(row, by: translation) } : nil,
                 onRelease: { row, velocity in model.releaseRow(row, velocity: velocity) }
@@ -183,14 +258,17 @@ private struct WallRows: View {
     /// their coast at.
     var nudges: [Int: RowNudge] = [:]
     var date = Date()
+    /// Strip positions lifted onto the stage, by pattern row: their place
+    /// stays empty while they're up.
+    var hidden: [Int: Int] = [:]
+    /// Covers set into rows for the stage, by pattern row and strip position.
+    var placed: [Int: [Int: WallCover]] = [:]
     var onSelect: ((WallCover) -> Void)?
     /// Set while the library is pulled down: a sideways drag pushes a row.
     var onDrag: ((Int, Double) -> Void)?
     var onRelease: ((Int, Double) -> Void)?
 
-    /// Distinct rows before the pattern repeats vertically. Ten covers all
-    /// five categories twice, so a repeat never stacks two identical rows.
-    static let patternRowCount = 10
+    static let patternRowCount = WallRowsPattern.rowCount
 
     var body: some View {
         GeometryReader { proxy in
@@ -211,10 +289,14 @@ private struct WallRows: View {
 
                     ZStack(alignment: .topLeading) {
                         ForEach(0..<visibleSlots, id: \.self) { slot in
-                            let cover = row[horizontal.index(forSlot: slot, itemCount: row.count)]
+                            let position = horizontal.shift + slot
+                            let cover = placed[rowIndex]?[position] ?? row[horizontal.index(forSlot: slot, itemCount: row.count)]
+                            let x = CGFloat(slot) * metrics.pitchX - CGFloat(horizontal.remainder) - metrics.pitchX / 2
+                            let lifted = hidden[rowIndex] == position
                             WallTile(image: images[cover.id], accent: cover.accent, metrics: metrics)
+                                .opacity(lifted ? 0 : 1)
                                 .onTapGesture { onSelect?(cover) }
-                                .offset(x: CGFloat(slot) * metrics.pitchX - CGFloat(horizontal.remainder) - metrics.pitchX / 2)
+                                .offset(x: x)
                         }
                     }
                     .frame(width: size.width, height: metrics.coverHeight, alignment: .topLeading)
@@ -359,7 +441,8 @@ private struct PrismWallBackground: ViewModifier {
                     LibraryWallView(
                         model: wall,
                         scrollOffset: tab.flatMap { navigation?.scrollOffsets[$0] } ?? 0,
-                        onSelect: open
+                        onSelect: open,
+                        reportsLayout: tab == .home
                     )
                 } else {
                     SpectrumBloomBackground()

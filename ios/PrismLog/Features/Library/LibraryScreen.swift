@@ -18,6 +18,11 @@ struct LibraryScreen: View {
     /// The lead pager block (cards and page dots) in the page, so a lowered
     /// page keeps it whole at the bottom and the big cover stays above it.
     @State private var pagerFrame: CGRect?
+    /// The band a lowered page leaves free, top to bottom, on screen.
+    @State private var revealBand: (top: CGFloat, bottom: CGFloat)?
+    /// The pager's top on screen, measured once the page has come to rest
+    /// lowered: the big cover hangs above it.
+    @State private var loweredPagerTop: CGFloat?
     /// The spectrum card's height, which the lens cards match.
     @State private var spectrumHeight: CGFloat?
 
@@ -38,13 +43,7 @@ struct LibraryScreen: View {
                 Binding(get: { navigation.libraryRevealed }, set: { navigation.libraryRevealed = $0 })
             },
             revealAnchor: pagerFrame?.maxY,
-            onRevealGeometry: { resting in
-                guard let pagerFrame else { return }
-                let top = resting.top + 12
-                let bottom = resting.bottom - pagerFrame.height - 24
-                // Before the page is measured the band can come out empty.
-                wall?.posterArea = bottom - top > 120 ? top...bottom : nil
-            }
+            onRevealGeometry: { resting in revealBand = resting }
         ) {
             PrismGlassSection {
                 VStack(spacing: 14) {
@@ -81,6 +80,9 @@ struct LibraryScreen: View {
         }
         .onChange(of: featureIDs, initial: true) { navigation?.libraryFeature = featureIDs }
         .onChange(of: showsInProgress, initial: true) { navigation?.libraryFeatureActive = showsInProgress }
+        .onChange(of: PosterAreaInputs(band: revealBand.map { [$0.top, $0.bottom] }, pager: pagerFrame), initial: true) {
+            updatePosterArea()
+        }
     }
 
     /// The page is lowered: only the lead pager stays, at the bottom of the
@@ -88,6 +90,17 @@ struct LibraryScreen: View {
     /// glass in a container ignores an opacity set on its card.
     private var lowered: Bool {
         navigation?.libraryRevealed == true
+    }
+
+    /// Where the big cover hangs: between the top bar and the lowered
+    /// pager, whichever of the two was measured last.
+    private func updatePosterArea() {
+        guard let revealBand, let pagerFrame else { return }
+        let top = revealBand.top + 12
+        // Clear of the grabber that sits above the lowered pager.
+        let bottom = (loweredPagerTop ?? (revealBand.bottom - pagerFrame.height)) - 44
+        // Before the page is measured the band can come out empty.
+        wall?.posterArea = bottom - top > 120 ? top...bottom : nil
     }
 
     /// The wall's big covers: one per in-progress card, in pager order.
@@ -126,7 +139,7 @@ struct LibraryScreen: View {
                         ForEach(items) { item in
                             pagerPage {
                                 NavigationLink(value: item.record.id) {
-                                    LensCard(item: item, height: spectrumHeight)
+                                    LensCard(item: item, height: spectrumHeight, placard: lowered)
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("library.inProgress")
@@ -160,9 +173,9 @@ struct LibraryScreen: View {
                 return abs(position - nearest) < 0.002 ? nearest : position
             } action: { _, position in
                 pagerPosition = position
-                // The big covers follow the finger: the first sits a page to
-                // the right while the spectrum card is up.
-                wall?.featurePosition = position - 1
+                // The card the pager is on picks the cover on the wall's stage.
+                let index = max(0, Int((position - 1).rounded()))
+                if wall?.featureIndex != index { wall?.featureIndex = index }
                 // The rows leave a fifth of a page in and come back below a
                 // tenth, so a hesitant swipe doesn't flicker them.
                 let shows = showsInProgress ? position > 0.1 : position > 0.2
@@ -197,6 +210,15 @@ struct LibraryScreen: View {
         .onGeometryChange(for: CGRect.self) { proxy in
             proxy.frame(in: .named(PrismPageSpace.name))
         } action: { pagerFrame = $0 }
+        // Where the pager really is on screen, read while lowered; the
+        // last reading is where the lowering came to rest.
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.frame(in: .global).minY
+        } action: { top in
+            guard lowered else { return }
+            loweredPagerTop = top
+            updatePosterArea()
+        }
     }
 
     /// One page of the lead pager: as wide as the column, fading and
@@ -518,10 +540,66 @@ struct LensCard: View {
     /// The page height to fill — the spectrum card's, beside it in the
     /// pager. The cover grows to it.
     var height: CGFloat?
+    /// The page is lowered and the cover hangs large above: the card gives
+    /// way to a placard under it — no glass, no second copy of the cover.
+    var placard = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
+        if placard {
+            placardBody
+        } else {
+            cardBody
+        }
+    }
+
+    /// Category in its colour, the title, and progress as one large figure:
+    /// a gallery label for the cover on the wall.
+    private var placardBody: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(item.accent.label)
+                .font(.prismCaption)
+                .foregroundStyle(item.accent.color)
+
+            Text(item.title)
+                .font(.prismTitle)
+                .foregroundStyle(PrismColor.text)
+                .lineLimit(2)
+
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                if let progress = item.progress {
+                    Text("\(progress)%")
+                        .font(PrismFont.numeral(34, weight: .bold))
+                        .monospacedDigit()
+                        .foregroundStyle(PrismColor.text)
+                }
+                Text(item.progress == nil ? item.detail : item.detail.replacingOccurrences(of: "\(item.progress ?? 0)% 진행", with: ""))
+                    .font(.prismCallout)
+                    .foregroundStyle(PrismColor.textMuted)
+                    .lineLimit(1)
+            }
+
+            if let progress = item.progress {
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(PrismColor.text.opacity(0.14))
+                        Capsule().fill(item.accent.color)
+                            .frame(width: proxy.size.width * CGFloat(progress) / 100)
+                    }
+                }
+                .frame(height: 3)
+            }
+        }
+        .padding(.horizontal, 4)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(minHeight: height, alignment: .top)
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.title), \(item.accent.label), \(item.detail)")
+    }
+
+    private var cardBody: some View {
         HStack(alignment: .top, spacing: 14) {
             CoverImage(url: item.record.coverURL, accent: item.accent, title: item.title, cornerRadius: 10)
                 .frame(width: coverHeight * GeneratedCover.aspectRatio, height: coverHeight)
@@ -643,4 +721,9 @@ struct RecordSummaryRow: View {
             [record.categoryLabel, record.status].compactMap { $0 }.joined(separator: " · ")
         }
     }
+}
+
+private struct PosterAreaInputs: Equatable {
+    let band: [CGFloat]?
+    let pager: CGRect?
 }

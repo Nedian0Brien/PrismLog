@@ -40,6 +40,9 @@ struct WallLegibilityLayer: ViewModifier {
         case standard
         /// One cover filling the screen behind its detail.
         case hero
+        /// The library pulled down: the covers bright, deepening toward the
+        /// pager and its placard at the bottom.
+        case revealed
     }
 
     let mode: Mode
@@ -73,6 +76,7 @@ struct WallLegibilityLayer: ViewModifier {
         switch mode {
         case .standard: return setting.values
         case .hero: return (Self.heroDimming, Self.heroDimming)
+        case .revealed: return (0.06, 0.88)
         }
     }
 
@@ -83,7 +87,17 @@ struct WallLegibilityLayer: ViewModifier {
             .blur(radius: mode == .hero ? Self.heroBlurRadius : 0, opaque: true)
             .overlay {
                 LinearGradient(
-                    colors: [.black.opacity(dimming.top), .black.opacity(dimming.bottom)],
+                    stops: mode == .revealed && dimmingOverride == nil && !reduceTransparency
+                        ? [
+                            .init(color: .black.opacity(dimming.top), location: 0),
+                            .init(color: .black.opacity(dimming.top + 0.04), location: 0.48),
+                            .init(color: .black.opacity(dimming.bottom * 0.85), location: 0.64),
+                            .init(color: .black.opacity(dimming.bottom), location: 1),
+                        ]
+                        : [
+                            .init(color: .black.opacity(dimming.top), location: 0),
+                            .init(color: .black.opacity(dimming.bottom), location: 1),
+                        ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
