@@ -165,12 +165,25 @@ struct SeededGenerator: RandomNumberGenerator {
 struct WallClock: Equatable, Sendable {
     private var accumulated: TimeInterval = 0
     private var runningSince: Date?
+    /// Wall seconds per real second.
+    private(set) var rate: Double = 1
 
     var isRunning: Bool { runningSince != nil }
 
     func elapsed(at date: Date) -> TimeInterval {
         guard let runningSince else { return accumulated }
-        return accumulated + max(0, date.timeIntervalSince(runningSince))
+        return accumulated + max(0, date.timeIntervalSince(runningSince)) * rate
+    }
+
+    /// Changes the pace from `date` on, without moving what's already run:
+    /// the wall slows down where it is instead of jumping.
+    mutating func setRate(_ newRate: Double, at date: Date) {
+        guard newRate != rate else { return }
+        if runningSince != nil {
+            accumulated = elapsed(at: date)
+            runningSince = date
+        }
+        rate = newRate
     }
 
     mutating func start(at date: Date) {
@@ -193,8 +206,40 @@ enum WallPauseReason: Hashable, Sendable, CaseIterable {
     case reduceTransparency
     case disabledInSettings
     case stillContext
-    /// The library's content is pulled down and the covers can be tapped.
-    case revealed
+}
+
+/// How far the person has pushed one wall row by hand, on top of its flow.
+/// A released row coasts and slows to a stop on its own.
+struct RowNudge: Equatable, Sendable {
+    /// Points along the row's flow; positive moves the covers left.
+    private(set) var settled: Double = 0
+    private(set) var velocity: Double = 0
+    private(set) var released = Date.distantPast
+    /// The coast's time constant: a flick dies away within about a second.
+    static let decay: TimeInterval = 0.32
+    static let maximumSpeed: Double = 5_000
+
+    func offset(at date: Date) -> Double {
+        let t = max(0, date.timeIntervalSince(released))
+        return settled + velocity * Self.decay * (1 - exp(-t / Self.decay))
+    }
+
+    /// Holds the row where it is now, for a new drag.
+    mutating func grab(at date: Date) {
+        settled = offset(at: date)
+        velocity = 0
+    }
+
+    mutating func move(to offset: Double) {
+        settled = offset
+        velocity = 0
+    }
+
+    /// Lets go with the finger's speed, in points per second along the flow.
+    mutating func release(velocity: Double, at date: Date) {
+        self.velocity = min(max(velocity, -Self.maximumSpeed), Self.maximumSpeed)
+        released = date
+    }
 }
 
 /// The wall handing over to the library's big cover and back: 0 is the

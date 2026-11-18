@@ -87,11 +87,12 @@ struct LibraryWallView: View {
                             // the wall underneath spills each cover's colour
                             // into the dark around it.
                             ZStack {
-                                flowing(covers: covers, elapsed: elapsed)
+                                flowing(covers: covers, elapsed: elapsed, date: timeline.date)
                                     .blur(radius: WallTheater.glowRadius)
                                     .saturation(1.4)
                                     .opacity(WallTheater.glowOpacity)
-                                flowing(covers: covers, elapsed: elapsed)
+                                    .allowsHitTesting(false)
+                                flowing(covers: covers, elapsed: elapsed, date: timeline.date)
                             }
                             .opacity(1 - fade)
                         }
@@ -131,7 +132,7 @@ struct LibraryWallView: View {
     }
 
     @ViewBuilder
-    private func flowing(covers: [WallCover], elapsed: TimeInterval) -> some View {
+    private func flowing(covers: [WallCover], elapsed: TimeInterval, date: Date = .now) -> some View {
         let parallax = Double(scrollOffset * Self.parallaxFactor)
         switch model.layout {
         case .rows:
@@ -141,7 +142,11 @@ struct LibraryWallView: View {
                 metrics: metrics,
                 elapsed: elapsed,
                 parallax: parallax,
-                onSelect: model.revealed ? onSelect : nil
+                nudges: model.nudges,
+                date: date,
+                onSelect: model.revealed ? onSelect : nil,
+                onDrag: model.revealed ? { row, translation in model.dragRow(row, by: translation) } : nil,
+                onRelease: { row, velocity in model.releaseRow(row, velocity: velocity) }
             )
         case .mosaic:
             WallMosaic(
@@ -174,7 +179,14 @@ private struct WallRows: View {
     let metrics: WallMetrics
     let elapsed: TimeInterval
     let parallax: Double
+    /// Rows pushed by hand, by pattern row, and the frame's time to read
+    /// their coast at.
+    var nudges: [Int: RowNudge] = [:]
+    var date = Date()
     var onSelect: ((WallCover) -> Void)?
+    /// Set while the library is pulled down: a sideways drag pushes a row.
+    var onDrag: ((Int, Double) -> Void)?
+    var onRelease: ((Int, Double) -> Void)?
 
     /// Distinct rows before the pattern repeats vertically. Ten covers all
     /// five categories twice, so a repeat never stacks two identical rows.
@@ -192,25 +204,41 @@ private struct WallRows: View {
                     let rowIndex = vertical.index(forSlot: rowSlot, itemCount: rows.count)
                     let row = rows[rowIndex]
                     let horizontal = WallStrip(
-                        distance: elapsed * WallSpeed.row(rowIndex),
+                        distance: elapsed * WallSpeed.row(rowIndex) + (nudges[rowIndex]?.offset(at: date) ?? 0),
                         pitch: Double(metrics.pitchX)
                     )
                     let y = CGFloat(rowSlot) * metrics.pitchY - CGFloat(vertical.remainder) - metrics.pitchY / 2
 
-                    ForEach(0..<visibleSlots, id: \.self) { slot in
-                        let cover = row[horizontal.index(forSlot: slot, itemCount: row.count)]
-                        WallTile(image: images[cover.id], accent: cover.accent, metrics: metrics)
-                            .onTapGesture { onSelect?(cover) }
-                            .offset(
-                                x: CGFloat(slot) * metrics.pitchX - CGFloat(horizontal.remainder) - metrics.pitchX / 2,
-                                y: y
-                            )
+                    ZStack(alignment: .topLeading) {
+                        ForEach(0..<visibleSlots, id: \.self) { slot in
+                            let cover = row[horizontal.index(forSlot: slot, itemCount: row.count)]
+                            WallTile(image: images[cover.id], accent: cover.accent, metrics: metrics)
+                                .onTapGesture { onSelect?(cover) }
+                                .offset(x: CGFloat(slot) * metrics.pitchX - CGFloat(horizontal.remainder) - metrics.pitchX / 2)
+                        }
                     }
+                    .frame(width: size.width, height: metrics.coverHeight, alignment: .topLeading)
+                    .contentShape(.rect)
+                    .gesture(rowDrag(rowIndex), isEnabled: onDrag != nil)
+                    .offset(y: y)
                 }
             }
             .frame(width: size.width, height: size.height, alignment: .topLeading)
             .clipped()
         }
+    }
+
+    /// A sideways drag moves the row with the finger and lets it coast on
+    /// release. Mostly-vertical drags are left alone.
+    private func rowDrag(_ row: Int) -> some Gesture {
+        DragGesture(minimumDistance: 8)
+            .onChanged { value in
+                guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                onDrag?(row, Double(value.translation.width))
+            }
+            .onEnded { value in
+                onRelease?(row, Double(value.velocity.width))
+            }
     }
 }
 

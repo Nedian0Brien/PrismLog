@@ -267,11 +267,37 @@ struct LibraryWallTests {
         #expect(model.lastFeature == ["b"])
     }
 
-    @Test @MainActor func revealingTheWallStopsIt() {
+    @Test @MainActor func revealingTheWallSlowsItWithoutAJump() {
         let model = LibraryWallModel()
+        let before = model.elapsed(at: .now)
         model.revealed = true
-        #expect(model.pauseReasons.contains(.revealed))
-        model.revealed = false
-        #expect(!model.pauseReasons.contains(.revealed))
+        #expect(model.pauseReasons.isEmpty)
+        // No jump at the switch, and a third of the pace after it.
+        #expect(abs(model.elapsed(at: .now) - before) < 0.05)
+        let later = Date.now.addingTimeInterval(10)
+        let pace = model.elapsed(at: later.addingTimeInterval(3)) - model.elapsed(at: later)
+        #expect(abs(pace - 1) < 1e-6)
+    }
+
+    @Test func aReleasedRowCoastsToAStop() {
+        let start = Date(timeIntervalSinceReferenceDate: 1_000)
+        var nudge = RowNudge()
+        nudge.move(to: 40)
+        nudge.release(velocity: 1_000, at: start)
+        #expect(nudge.offset(at: start) == 40)
+        let far = nudge.offset(at: start.addingTimeInterval(5))
+        #expect(abs(far - (40 + 1_000 * RowNudge.decay)) < 1)
+        #expect(abs(nudge.offset(at: start.addingTimeInterval(6)) - far) < 0.5)
+    }
+
+    @Test @MainActor func draggingARowFollowsTheFingerAndKeepsItsPlace() {
+        let model = LibraryWallModel()
+        let now = Date.now
+        model.dragRow(2, by: 30, at: now)
+        #expect(model.nudge(row: 2, at: now) == -30)
+        model.releaseRow(2, velocity: 0, at: now)
+        model.dragRow(2, by: -10, at: now)
+        #expect(model.nudge(row: 2, at: now) == -20)
+        #expect(model.nudge(row: 3, at: now) == 0)
     }
 }

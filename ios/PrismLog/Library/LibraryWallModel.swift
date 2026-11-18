@@ -44,10 +44,42 @@ final class LibraryWallModel {
     private(set) var lastFeature: [WallCover.ID] = []
     private(set) var stage = WallStage()
 
-    /// The library's content is pulled down: the wall stops, brightens, and
-    /// opens a record when its cover is tapped.
+    /// The library's content is pulled down: the wall slows, brightens,
+    /// opens a record when its cover is tapped, and its rows can be pushed
+    /// along by hand.
     var revealed = false {
-        didSet { setPaused(revealed, for: .revealed) }
+        didSet {
+            guard revealed != oldValue else { return }
+            clock.setRate(revealed ? Self.revealedFlowRate : 1, at: .now)
+        }
+    }
+    /// A slower flow while the covers are within reach of a finger.
+    static let revealedFlowRate = 1.0 / 3
+
+    /// Rows pushed by hand, by pattern row.
+    private(set) var nudges: [Int: RowNudge] = [:]
+    /// Where each row was when its drag began.
+    private var grabbed: [Int: Double] = [:]
+
+    func nudge(row: Int, at date: Date) -> Double {
+        nudges[row]?.offset(at: date) ?? 0
+    }
+
+    func dragRow(_ row: Int, by translation: Double, at date: Date = .now) {
+        if grabbed[row] == nil {
+            var nudge = nudges[row] ?? RowNudge()
+            nudge.grab(at: date)
+            grabbed[row] = nudge.offset(at: date)
+            nudges[row] = nudge
+        }
+        // A finger moving right pulls the covers right: back along the flow.
+        nudges[row]?.move(to: (grabbed[row] ?? 0) - translation)
+    }
+
+    func releaseRow(_ row: Int, velocity: Double, at date: Date = .now) {
+        // A drag that never went sideways never grabbed the row.
+        guard grabbed.removeValue(forKey: row) != nil else { return }
+        nudges[row]?.release(velocity: -velocity, at: date)
     }
 
     var context: WallContext = .all {
