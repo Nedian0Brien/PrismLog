@@ -31,6 +31,14 @@ struct PrismScreenScaffold<Content: View>: View {
     /// of the screen, leaving the wall behind it open to touch. Takes the
     /// pull from refresh, so pass one or the other.
     var wallReveal: Binding<Bool>?
+    /// Where, in the page's content (`PrismPageSpace`), the part that stays
+    /// on screen when the page is lowered ends. The page lowers until that
+    /// point rests just above the bottom bar; without it, `revealPeek`
+    /// points of the page stay up.
+    var revealAnchor: CGFloat?
+    /// Reports, in screen points, the band a lowered page leaves free: from
+    /// below the top bar to where the anchored block's bottom rests.
+    var onRevealGeometry: ((_ resting: (top: CGFloat, bottom: CGFloat)) -> Void)?
     @ViewBuilder var content: Content
 
     @Environment(\.prismTab) private var tab
@@ -39,6 +47,10 @@ struct PrismScreenScaffold<Content: View>: View {
     /// How far the page is pulled past its top, in points.
     @State private var pull: CGFloat = 0
     @State private var pageHeight: CGFloat = 0
+    @State private var insets = EdgeInsets()
+    /// The page's safe area, top bar included — the scroll view's content
+    /// insets leave the bar out where its background is hidden.
+    @State private var safeTop: CGFloat = 0
     /// A drag on the lowered page, to raise it back.
     @State private var revealDrag: CGFloat = 0
 
@@ -72,6 +84,9 @@ struct PrismScreenScaffold<Content: View>: View {
                 guard let tab, let navigation else { return }
                 navigation.scrollOffsets[tab] = offset
             }
+            .onScrollGeometryChange(for: EdgeInsets.self) { $0.contentInsets } action: { _, new in
+                insets = new
+            }
             .onScrollPhaseChange { old, new in
                 guard let wallReveal, !wallReveal.wrappedValue,
                       old == .interacting, new != .interacting,
@@ -80,29 +95,32 @@ struct PrismScreenScaffold<Content: View>: View {
                 withAnimation(.spring(duration: 0.55, bounce: 0.18)) { wallReveal.wrappedValue = true }
             }
             .scrollDisabled(isRevealed)
-            // On the lowered page, so it travels with it: a tap or an upward
-            // drag anywhere on what's left of the page raises it again.
-            .overlay {
-                if isRevealed {
-                    Color.clear
-                        .contentShape(.rect)
-                        .onTapGesture { raise() }
-                        .gesture(
-                            DragGesture()
-                                .onChanged { revealDrag = $0.translation.height }
-                                .onEnded { value in
-                                    if value.translation.height < -60 { raise() }
-                                    withAnimation(.spring(duration: 0.4)) { revealDrag = 0 }
-                                }
-                        )
-                        .accessibilityElement()
-                        .accessibilityLabel("내용 다시 올리기")
-                        .accessibilityAddTraits(.isButton)
-                        .accessibilityAction { raise() }
-                }
-            }
-            .offset(y: isRevealed ? max(pageHeight - Self.revealPeek + min(revealDrag, 0), 0) : 0)
+            // On the lowered page, so it travels with it: an upward drag
+            // raises it again. Simultaneous, so the page's own controls —
+            // the lead pager's swipe, a card's tap — keep working.
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 12)
+                    .onChanged { value in
+                        guard abs(value.translation.height) > abs(value.translation.width) else { return }
+                        revealDrag = value.translation.height
+                    }
+                    .onEnded { value in
+                        let upward = value.translation.height < -60
+                            && abs(value.translation.height) > abs(value.translation.width)
+                        if upward { raise() }
+                        withAnimation(.spring(duration: 0.4)) { revealDrag = 0 }
+                    },
+                isEnabled: isRevealed
+            )
+            // A container that keeps its children, so the action doesn't
+            // fold the page into one element.
+            .accessibilityElement(children: .contain)
+            .offset(y: isRevealed ? max(revealDrop + min(revealDrag, 0), 0) : 0)
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { pageHeight = $0 }
+            .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { safeTop = $0 }
+            .onChange(of: RevealBand(top: max(safeTop, insets.top), bottom: restingBottom), initial: true) { _, band in
+                onRevealGeometry?((band.top, band.bottom))
+            }
             .prismWallBackground()
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -119,6 +137,17 @@ struct PrismScreenScaffold<Content: View>: View {
                 }
             }
             .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+    }
+
+    /// How far a lowered page drops.
+    private var revealDrop: CGFloat {
+        guard let revealAnchor else { return max(pageHeight - Self.revealPeek, 0) }
+        return max(restingBottom - insets.top - revealAnchor, 0)
+    }
+
+    /// Where a lowered page's anchored block ends: 16pt above the bottom bar.
+    private var restingBottom: CGFloat {
+        pageHeight - insets.bottom - 16
     }
 
     private func raise() {
@@ -145,12 +174,20 @@ struct PrismScreenScaffold<Content: View>: View {
             .padding(.horizontal, 18)
             .padding(.top, 6)
             .padding(.bottom, 24)
+            .coordinateSpace(.named(PrismPageSpace.name))
         }
         .scrollIndicators(.hidden)
         .scrollEdgeEffectStyle(.soft, for: [.top, .bottom])
     }
 
     private var header: some View {
+        headerContent
+            // A lowered page keeps its first block, not its title: the title
+            // would sit over the covers.
+            .opacity(isRevealed ? 0 : 1)
+    }
+
+    private var headerContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let backLabel, let onBack {
                 Button {
@@ -237,4 +274,15 @@ struct PrismPlaceholderCard: View {
         }
         .prismGlassCard(tint: accent.color)
     }
+}
+
+/// The coordinate space of a scaffold page's content, for measuring where a
+/// block sits in it.
+enum PrismPageSpace {
+    static let name = "prism.page"
+}
+
+private struct RevealBand: Equatable {
+    let top: CGFloat
+    let bottom: CGFloat
 }

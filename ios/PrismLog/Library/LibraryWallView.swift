@@ -73,29 +73,39 @@ struct LibraryWallView: View {
                     .scaledToFill()
                     .modifier(WallLegibilityLayer(mode: .hero, dimmingOverride: dimmingOverride))
             } else {
+                let _ = model.stageSettles
                 TimelineView(.animation(paused: model.isPaused && !model.stage.isMoving(at: .now))) { timeline in
                     let elapsed = model.elapsed(at: timeline.date) * model.speedScale
-                    let stage = model.isPaused ? model.stage.progress(at: .distantFuture) : model.stage.progress(at: timeline.date)
+                    let stage = model.stage.progress(at: timeline.date)
+                    let posters = (model.feature ?? []).compactMap { id in model.covers.first { $0.id == id } }
+                    // The hand-over is a cross-fade: the wall fades out as
+                    // the big poster fades in (2026-11-19, user decision).
+                    let fade = stage * stage * (3 - 2 * stage)
                     ZStack {
                         if stage < 1 {
                             // Every poster lit from behind: a blurred copy of
                             // the wall underneath spills each cover's colour
                             // into the dark around it.
                             ZStack {
-                                flowing(covers: covers, elapsed: elapsed, departure: stage)
+                                flowing(covers: covers, elapsed: elapsed)
                                     .blur(radius: WallTheater.glowRadius)
                                     .saturation(1.4)
                                     .opacity(WallTheater.glowOpacity)
-                                flowing(covers: covers, elapsed: elapsed, departure: stage)
+                                flowing(covers: covers, elapsed: elapsed)
                             }
+                            .opacity(1 - fade)
                         }
-                        if stage > 0 {
+                        if stage > 0, !posters.isEmpty {
                             FeaturedPosters(
-                                covers: model.lastFeature.compactMap { id in model.covers.first { $0.id == id } },
+                                covers: posters,
                                 previews: model.images,
-                                position: model.featurePosition,
-                                entrance: stage
+                                // The first poster fades in where it hangs;
+                                // only between lens cards do posters slide.
+                                position: max(model.featurePosition, 0),
+                                area: model.posterArea,
+                                onSelect: model.revealed ? onSelect : nil
                             )
+                            .opacity(fade)
                         }
                     }
                 }
@@ -121,7 +131,7 @@ struct LibraryWallView: View {
     }
 
     @ViewBuilder
-    private func flowing(covers: [WallCover], elapsed: TimeInterval, departure: Double = 0) -> some View {
+    private func flowing(covers: [WallCover], elapsed: TimeInterval) -> some View {
         let parallax = Double(scrollOffset * Self.parallaxFactor)
         switch model.layout {
         case .rows:
@@ -131,7 +141,6 @@ struct LibraryWallView: View {
                 metrics: metrics,
                 elapsed: elapsed,
                 parallax: parallax,
-                departure: departure,
                 onSelect: model.revealed ? onSelect : nil
             )
         case .mosaic:
@@ -142,7 +151,6 @@ struct LibraryWallView: View {
                 elapsed: elapsed,
                 parallax: parallax
             )
-            .opacity(1 - departure)
         }
     }
 
@@ -166,12 +174,7 @@ private struct WallRows: View {
     let metrics: WallMetrics
     let elapsed: TimeInterval
     let parallax: Double
-    /// 0 at rest; toward 1 each row rushes off in its own direction and fades.
-    var departure: Double = 0
     var onSelect: ((WallCover) -> Void)?
-
-    /// Rows leave one after another, this far apart in `departure`.
-    static let departureStagger = 0.08
 
     /// Distinct rows before the pattern repeats vertically. Ten covers all
     /// five categories twice, so a repeat never stacks two identical rows.
@@ -188,10 +191,8 @@ private struct WallRows: View {
                 ForEach(0..<visibleRows, id: \.self) { rowSlot in
                     let rowIndex = vertical.index(forSlot: rowSlot, itemCount: rows.count)
                     let row = rows[rowIndex]
-                    let speed = WallSpeed.row(rowIndex)
-                    let rush = Self.rush(departure: departure, slot: rowSlot)
                     let horizontal = WallStrip(
-                        distance: elapsed * speed + (speed < 0 ? -1 : 1) * rush * Double(size.width) * 3,
+                        distance: elapsed * WallSpeed.row(rowIndex),
                         pitch: Double(metrics.pitchX)
                     )
                     let y = CGFloat(rowSlot) * metrics.pitchY - CGFloat(vertical.remainder) - metrics.pitchY / 2
@@ -199,7 +200,6 @@ private struct WallRows: View {
                     ForEach(0..<visibleSlots, id: \.self) { slot in
                         let cover = row[horizontal.index(forSlot: slot, itemCount: row.count)]
                         WallTile(image: images[cover.id], accent: cover.accent, metrics: metrics)
-                            .opacity(1 - rush)
                             .onTapGesture { onSelect?(cover) }
                             .offset(
                                 x: CGFloat(slot) * metrics.pitchX - CGFloat(horizontal.remainder) - metrics.pitchX / 2,
@@ -211,14 +211,6 @@ private struct WallRows: View {
             .frame(width: size.width, height: size.height, alignment: .topLeading)
             .clipped()
         }
-    }
-
-    /// How far a row has gone, 0–1, eased in so it gathers speed as it leaves.
-    static func rush(departure: Double, slot: Int) -> Double {
-        guard departure > 0 else { return 0 }
-        let delay = Double(slot % 4) * departureStagger
-        let local = min(max((departure - delay) / (1 - departureStagger * 3), 0), 1)
-        return local * local * local
     }
 }
 

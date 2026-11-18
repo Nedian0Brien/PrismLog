@@ -35,6 +35,8 @@ final class AppNavigationModel {
     /// The library's "now in progress" covers while that section has the
     /// screen, for the wall's big cover.
     var libraryFeature: [String]?
+    /// The library's pager is on the "now in progress" cards.
+    var libraryFeatureActive = false
     /// The library's content is pulled down to show the wall.
     var libraryRevealed = false
 

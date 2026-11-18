@@ -11,18 +11,35 @@ import UIKit
 final class LibraryWallModel {
     var layout: WallLayout = .rows
 
-    /// The library's "now in progress" covers while that section has the
-    /// screen: the wall's rows rush off and these covers take its place.
+    /// The library's "now in progress" covers, in pager order, while the
+    /// library is on screen. The big posters draw from them.
     var feature: [WallCover.ID]? {
+        didSet { if let feature { lastFeature = feature } }
+    }
+    /// The pager has moved onto the "now in progress" cards: the rows leave
+    /// and the big posters take the stage.
+    var featureActive = false {
         didSet {
-            if let feature { lastFeature = feature }
-            guard (feature != nil) != (oldValue != nil) else { return }
+            guard featureActive != oldValue else { return }
             let instant = pauseReasons.contains(.reduceMotion)
-            stage.move(to: feature == nil ? 0 : 1, at: .now, duration: instant ? 0 : WallStage.duration)
+            let duration = instant ? 0 : WallStage.duration
+            stage.move(to: featureActive ? 1 : 0, at: .now, duration: duration)
+            // A paused wall's timeline runs only while the stage moves; this
+            // tick redraws it once the move is over so it can stop again.
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(duration + 0.05))
+                self?.stageSettles &+= 1
+            }
         }
     }
-    /// The "now in progress" carousel's page, fractional while it scrolls.
-    var featurePosition: Double = 0
+    /// Changes when a stage move has finished.
+    private(set) var stageSettles = 0
+    /// Where on screen, top to bottom, the big poster may hang: below the
+    /// top bar, above where the lowered pager rests.
+    var posterArea: ClosedRange<CGFloat>?
+    /// Which big poster is centred, fractional while the pager moves: 0 is
+    /// the first, −1 puts it a page to the right (the spectrum card is up).
+    var featurePosition: Double = -1
     /// The covers last featured, kept while they leave.
     private(set) var lastFeature: [WallCover.ID] = []
     private(set) var stage = WallStage()

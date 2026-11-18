@@ -57,6 +57,7 @@ struct AppShell: View {
         .onChange(of: store.records, initial: true) { wall.update(records: store.records) }
         .onChange(of: wallContext, initial: true) { wall.context = wallContext }
         .onChange(of: libraryFeature, initial: true) { wall.feature = libraryFeature }
+        .onChange(of: libraryFeatureActive, initial: true) { wall.featureActive = libraryFeatureActive }
         .onChange(of: libraryRevealed, initial: true) { wall.revealed = libraryRevealed }
         .onChange(of: navigation.tab) { storedTab = navigation.tab.rawValue }
         .onChange(of: navigation.recordsSection) { storedSection = navigation.recordsSection?.rawValue ?? "" }
@@ -82,7 +83,11 @@ struct AppShell: View {
     }
 
     private var libraryFeature: [String]? {
-        onLibraryPage && !navigation.libraryRevealed ? navigation.libraryFeature : nil
+        onLibraryPage ? navigation.libraryFeature : nil
+    }
+
+    private var libraryFeatureActive: Bool {
+        onLibraryPage && navigation.libraryFeatureActive
     }
 
     private var libraryRevealed: Bool {

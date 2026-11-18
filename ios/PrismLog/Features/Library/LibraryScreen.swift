@@ -10,9 +10,16 @@ struct LibraryScreen: View {
     @Environment(AppNavigationModel.self) private var navigation: AppNavigationModel?
     @Environment(LibraryWallModel.self) private var wall: LibraryWallModel?
 
-    /// The "now in progress" section has the screen: the wall hands over to
-    /// its covers.
-    @State private var inProgressFocused = false
+    /// The lead pager's page, fractional mid-swipe: 0 is the spectrum card.
+    @State private var pagerPosition: Double = 0
+    /// The pager has moved far enough onto the "now in progress" cards for
+    /// the wall's rows to leave.
+    @State private var showsInProgress = false
+    /// The lead pager block (cards and page dots) in the page, so a lowered
+    /// page keeps it whole at the bottom and the big cover stays above it.
+    @State private var pagerFrame: CGRect?
+    /// The spectrum card's height, which the lens cards match.
+    @State private var spectrumHeight: CGFloat?
 
     @State private var trendCumulative = true
     @State private var trendRange: TrendRange = .year
@@ -29,6 +36,14 @@ struct LibraryScreen: View {
             // refreshing; the app still syncs whenever it becomes active.
             wallReveal: navigation.map { navigation in
                 Binding(get: { navigation.libraryRevealed }, set: { navigation.libraryRevealed = $0 })
+            },
+            revealAnchor: pagerFrame?.maxY,
+            onRevealGeometry: { resting in
+                guard let pagerFrame else { return }
+                let top = resting.top + 12
+                let bottom = resting.bottom - pagerFrame.height - 24
+                // Before the page is measured the band can come out empty.
+                wall?.posterArea = bottom - top > 120 ? top...bottom : nil
             }
         ) {
             PrismGlassSection {
@@ -40,21 +55,23 @@ struct LibraryScreen: View {
                         // Spec §6.1: on a wide screen the sections pair up in
                         // two columns that meet at the fold, if there is one.
                         FoldAwareColumns {
-                            spectrumCard
-                            inProgressSection
-                            recentSection
+                            leadPager
+                            if !lowered { recentSection }
                         } trailing: {
+                            if !lowered {
+                                trendCard
+                                distributionCard
+                                heatmapCard
+                            }
+                        }
+                    } else {
+                        leadPager
+                        if !lowered {
                             trendCard
                             distributionCard
                             heatmapCard
+                            recentSection
                         }
-                    } else {
-                        spectrumCard
-                        inProgressSection
-                        trendCard
-                        distributionCard
-                        heatmapCard
-                        recentSection
                     }
                 }
             }
@@ -63,101 +80,143 @@ struct LibraryScreen: View {
             }
         }
         .onChange(of: featureIDs, initial: true) { navigation?.libraryFeature = featureIDs }
+        .onChange(of: showsInProgress, initial: true) { navigation?.libraryFeatureActive = showsInProgress }
     }
 
-    /// The wall's big covers: the in-progress cards' covers while that
-    /// section has the screen.
+    /// The page is lowered: only the lead pager stays, at the bottom of the
+    /// screen. The blocks under it leave the layout rather than fade —
+    /// glass in a container ignores an opacity set on its card.
+    private var lowered: Bool {
+        navigation?.libraryRevealed == true
+    }
+
+    /// The wall's big covers: one per in-progress card, in pager order.
     private var featureIDs: [String]? {
-        guard inProgressFocused else { return nil }
         let ids = LibraryMetrics.inProgress(from: store.records).map { item in
             item.record.entityID?.uuidString ?? item.record.id.uuidString
         }
         return ids.isEmpty ? nil : ids
     }
 
-    // MARK: - In progress
+    // MARK: - Lead pager
 
-    /// Spec §6.1 item 2: lens cards for what's being read, watched, played,
-    /// and studied right now.
-    @ViewBuilder
-    private var inProgressSection: some View {
+    /// The page's first block, one card per page: the spectrum, then a lens
+    /// card for each record in progress (spec §6.1). Swiping onto them hands
+    /// the wall over to their covers; when the page is lowered, it is the
+    /// one block left on screen.
+    private var leadPager: some View {
         let items = LibraryMetrics.inProgress(from: store.records)
-        if !items.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("지금 진행 중")
-                    .font(.prismTitle)
-                    .foregroundStyle(PrismColor.text)
-                    .padding(.horizontal, 4)
+        return VStack(spacing: 10) {
+            ScrollView(.horizontal) {
+                // Its own glass container, inside the scroll view: the
+                // screen's container draws glass in its own layer and
+                // ignores this scroll view's clip, which let cards show past
+                // the column and under iPhone Duo's vertical bar (Phase 7).
+                GlassEffectContainer(spacing: 12) {
+                    // Gaps wider than the margin the pager reaches into, so
+                    // at rest the next card sits wholly off screen.
+                    // Not lazy: a dozen pages, and the pitch is read from the
+                    // content width, which a lazy stack only estimates.
+                    HStack(alignment: .top, spacing: Self.pagerSpacing) {
+                        pagerPage {
+                            spectrumCard
+                                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { spectrumHeight = $0 }
+                        }
 
-                ScrollView(.horizontal) {
-                    // Its own glass container, inside the scroll view: the
-                    // screen's container draws glass in its own layer and
-                    // ignores this scroll view's clip, which let lens cards
-                    // show past the column and under iPhone Duo's vertical
-                    // bar (Phase 7).
-                    GlassEffectContainer(spacing: 12) {
-                        // Gaps wider than the margin the carousel reaches
-                        // into, so at rest the next card sits wholly off
-                        // screen instead of peeking in cut off.
-                        LazyHStack(spacing: Self.carouselMargin + 8) {
-                            ForEach(items) { item in
+                        ForEach(items) { item in
+                            pagerPage {
                                 NavigationLink(value: item.record.id) {
-                                    LensCard(item: item)
+                                    LensCard(item: item, height: spectrumHeight)
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("library.inProgress")
-                                // One card per page, as wide as the column.
-                                .containerRelativeFrame(.horizontal)
-                                // A card on its way out fades and settles
-                                // back, so the clip at the margin never
-                                // cuts through a card at full strength.
-                                .scrollTransition(.interactive, axis: .horizontal) { card, phase in
-                                    card
-                                        .opacity(1 - min(abs(phase.value), 1) * 0.7)
-                                        .scaleEffect(1 - min(abs(phase.value), 1) * 0.06)
-                                }
                             }
                         }
-                        .scrollTargetLayout()
                     }
+                    .scrollTargetLayout()
                 }
-                .scrollTargetBehavior(.viewAligned)
-                .scrollIndicators(.hidden)
-                // The carousel reaches into the screen margin on each side,
-                // so a card is clipped at the margin, not at the column, and
-                // the first card still lines up with the column at rest.
-                // Clipped, not masked: glass ignores a mask but honours a
-                // clip. Not `scrollClipDisabled()`: unclipped cards ran
-                // under iPhone Duo's vertical bar and its `+` (spec §7.2).
-                .contentMargins(.horizontal, Self.carouselMargin, for: .scrollContent)
-                // The page the carousel is on, fractional mid-swipe: the
-                // wall's big covers slide with it.
-                .onScrollGeometryChange(for: Double.self) { geometry in
-                    let card = geometry.containerSize.width - Self.carouselMargin * 2
-                    let page = card + Self.carouselMargin + 8
-                    guard page > 0 else { return 0 }
-                    return Double((geometry.contentOffset.x + geometry.contentInsets.leading) / page)
-                } action: { _, position in
-                    wall?.featurePosition = position
-                }
-                .clipped()
-                .padding(.horizontal, -Self.carouselMargin)
             }
-            // The section has the screen once its top passes the upper third;
-            // it lets go a little lower, so a small scroll back doesn't flicker.
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                guard let visible = proxy.bounds(of: .scrollView(axis: .vertical)), visible.height > 0 else { return 1 }
-                return -visible.minY / visible.height
-            } action: { top in
-                let focused = inProgressFocused ? top < 0.46 : top < 0.36
-                if focused != inProgressFocused { inProgressFocused = focused }
+            .scrollTargetBehavior(.viewAligned)
+            .scrollIndicators(.hidden)
+            // The pager reaches into the screen margin on each side, so a
+            // card is clipped at the margin, not at the column, and the
+            // first card still lines up with the column at rest. Clipped,
+            // not masked: glass ignores a mask but honours a clip. Not
+            // `scrollClipDisabled()`: unclipped cards ran under iPhone Duo's
+            // vertical bar and its `+` (spec §7.2).
+            .contentMargins(.horizontal, Self.carouselMargin, for: .scrollContent)
+            // The page the pager is on, fractional mid-swipe: 0 is the
+            // spectrum card. The pitch comes from the laid-out content, not
+            // from the column width: a guessed pitch drifts a little per
+            // page, and after a few swipes the big poster sat off-centre.
+            .onScrollGeometryChange(for: Double.self) { geometry in
+                let pages = CGFloat(items.count + 1)
+                let pitch = (geometry.contentSize.width + Self.pagerSpacing) / pages
+                guard pitch > 0 else { return 0 }
+                let position = Double((geometry.contentOffset.x + geometry.contentInsets.leading) / pitch)
+                // At rest the pager sits exactly on a page; snap the last
+                // fraction of a point so the poster settles dead centre.
+                let nearest = position.rounded()
+                return abs(position - nearest) < 0.002 ? nearest : position
+            } action: { _, position in
+                pagerPosition = position
+                // The big covers follow the finger: the first sits a page to
+                // the right while the spectrum card is up.
+                wall?.featurePosition = position - 1
+                // The rows leave a fifth of a page in and come back below a
+                // tenth, so a hesitant swipe doesn't flicker them.
+                let shows = showsInProgress ? position > 0.1 : position > 0.2
+                if shows != showsInProgress { showsInProgress = shows }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .clipped()
+            .padding(.horizontal, -Self.carouselMargin)
+
+            if !items.isEmpty {
+                PageDots(count: items.count + 1, position: pagerPosition)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // Above the pager, only while the page is lowered: the way back up.
+        .overlay(alignment: .top) {
+            if navigation?.libraryRevealed == true {
+                Button {
+                    withAnimation(.spring(duration: 0.5, bounce: 0.12)) { navigation?.libraryRevealed = false }
+                } label: {
+                    Capsule()
+                        .fill(PrismColor.text.opacity(0.55))
+                        .frame(width: 36, height: 5)
+                        .frame(width: 88, height: 28)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("내용 다시 올리기")
+                .offset(y: -30)
+                .transition(.opacity)
+            }
+        }
+        .onGeometryChange(for: CGRect.self) { proxy in
+            proxy.frame(in: .named(PrismPageSpace.name))
+        } action: { pagerFrame = $0 }
+    }
+
+    /// One page of the lead pager: as wide as the column, fading and
+    /// settling back on its way out, so the clip at the margin never cuts
+    /// through a card at full strength.
+    private func pagerPage(@ViewBuilder _ content: () -> some View) -> some View {
+        content()
+            .containerRelativeFrame(.horizontal)
+            .scrollTransition(.interactive, axis: .horizontal) { card, phase in
+                card
+                    .opacity(1 - min(abs(phase.value), 1) * 0.7)
+                    .scaleEffect(1 - min(abs(phase.value), 1) * 0.06)
+            }
     }
 
     /// The screen margin (`PrismScreenScaffold`), which the carousel reaches into.
     private static let carouselMargin: CGFloat = 18
+    /// Gap between pager pages: wider than the margin the pager reaches
+    /// into, so the next card sits wholly off screen at rest.
+    private static let pagerSpacing: CGFloat = carouselMargin + 8
 
     // MARK: - Spectrum
 
@@ -456,13 +515,16 @@ struct LibraryScreen: View {
 /// small text at 4.5:1 (issue #19), so there is no small print here.
 struct LensCard: View {
     let item: LibraryMetrics.InProgress
+    /// The page height to fill — the spectrum card's, beside it in the
+    /// pager. The cover grows to it.
+    var height: CGFloat?
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             CoverImage(url: item.record.coverURL, accent: item.accent, title: item.title, cornerRadius: 10)
-                .frame(width: 64, height: 96)
+                .frame(width: coverHeight * GeneratedCover.aspectRatio, height: coverHeight)
                 .shadow(color: .black.opacity(0.25), radius: 10, y: 6)
 
             VStack(alignment: .leading, spacing: 8) {
@@ -490,10 +552,44 @@ struct LensCard: View {
         // Height grows with the text; at accessibility sizes a fixed 96pt cut
         // the title to its first word.
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(minHeight: 96)
-        .prismLensCard()
+        .frame(minHeight: max(Self.minimumCoverHeight, innerHeight ?? 0))
+        .prismLensCard(padding: Self.padding)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.title), \(item.accent.label), \(item.detail)")
+    }
+
+    static let padding: CGFloat = 18
+    static let minimumCoverHeight: CGFloat = 96
+
+    private var innerHeight: CGFloat? {
+        height.map { $0 - Self.padding * 2 }
+    }
+
+    /// The cover fills the card's height, up to a 2:3 cover a third of the
+    /// way across; text sizes past that keep the small cover.
+    private var coverHeight: CGFloat {
+        guard !dynamicTypeSize.isAccessibilitySize, let innerHeight else { return Self.minimumCoverHeight }
+        return max(Self.minimumCoverHeight, min(innerHeight, 150))
+    }
+}
+
+/// Which page of the lead pager is up: one dot per page, the current one
+/// lit, fading across as the pager moves.
+private struct PageDots: View {
+    let count: Int
+    let position: Double
+
+    var body: some View {
+        HStack(spacing: 7) {
+            ForEach(0..<count, id: \.self) { index in
+                let closeness = max(0, 1 - abs(Double(index) - position))
+                Circle()
+                    .fill(PrismColor.text.opacity(0.28 + 0.62 * closeness))
+                    .frame(width: 6, height: 6)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityHidden(true)
     }
 }
 

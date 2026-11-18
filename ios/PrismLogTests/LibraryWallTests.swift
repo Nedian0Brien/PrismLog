@@ -252,16 +252,17 @@ struct LibraryWallTests {
         #expect(stage.progress(at: midway.addingTimeInterval(WallStage.duration)) == 0)
     }
 
-    @Test @MainActor func featureMovesTheStageOnlyWhenItAppearsOrGoes() {
+    @Test @MainActor func onlyTheActiveFlagMovesTheStage() {
         let model = LibraryWallModel()
         model.feature = ["a", "b"]
+        #expect(model.stage.progress(at: .distantFuture) == 0)
+        model.featureActive = true
         #expect(model.stage.progress(at: .distantFuture) == 1)
-        #expect(model.lastFeature == ["a", "b"])
         let moved = model.stage
+        model.featureActive = true
         model.feature = ["b"]
         #expect(model.stage == moved)
-        #expect(model.lastFeature == ["b"])
-        model.feature = nil
+        model.featureActive = false
         #expect(model.stage.progress(at: .distantFuture) == 0)
         #expect(model.lastFeature == ["b"])
     }

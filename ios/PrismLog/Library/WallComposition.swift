@@ -201,7 +201,8 @@ enum WallPauseReason: Hashable, Sendable, CaseIterable {
 /// flowing wall, 1 the cover. A clock rather than an animation, because the
 /// wall draws from a `TimelineView` that already redraws every frame.
 struct WallStage: Equatable, Sendable {
-    static let duration: TimeInterval = 0.9
+    /// The wall's cross-fade to the big poster and back.
+    static let duration: TimeInterval = 0.55
 
     private(set) var from = 0.0
     private(set) var to = 0.0
@@ -209,10 +210,14 @@ struct WallStage: Equatable, Sendable {
     private(set) var duration: TimeInterval = 0
 
     func progress(at date: Date) -> Double {
+        // Exactly the target once the run is over: the wall checks for 0
+        // and 1 to decide what to draw.
         guard duration > 0 else { return to }
+        // Linear; the wall eases the fade itself.
         let t = min(max(date.timeIntervalSince(start) / duration, 0), 1)
-        let eased = t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2
-        return from + (to - from) * eased
+        // Date arithmetic leaves the last frame a hair short of 1.
+        guard t < 0.999_999 else { return to }
+        return from + (to - from) * t
     }
 
     func isMoving(at date: Date) -> Bool {
