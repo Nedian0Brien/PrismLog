@@ -13,8 +13,10 @@ struct WallMetrics: Equatable {
     var pitchX: CGFloat { coverWidth + coverSpacing }
     var pitchY: CGFloat { coverHeight + rowSpacing }
 
-    static let compact = WallMetrics(coverHeight: 132, coverSpacing: 10, rowSpacing: 12, corner: 8)
-    static let regular = WallMetrics(coverHeight: 168, coverSpacing: 12, rowSpacing: 14, corner: 10)
+    // Wide gaps: each poster hangs in its own patch of dark, with room for
+    // its light to spill (the theater look, 2026-11-19).
+    static let compact = WallMetrics(coverHeight: 132, coverSpacing: 18, rowSpacing: 22, corner: 6)
+    static let regular = WallMetrics(coverHeight: 168, coverSpacing: 22, rowSpacing: 26, corner: 8)
 }
 
 /// Flow speeds, in points per second (spec §4.3, §4.4).
@@ -40,6 +42,8 @@ struct LibraryWallView: View {
     var scrollOffset: CGFloat = 0
     /// Overrides the legibility layer's dimming — the debug lab's slider.
     var dimmingOverride: Double?
+    /// Opens a cover's record, while the library is pulled down.
+    var onSelect: ((WallCover) -> Void)?
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.scenePhase) private var scenePhase
@@ -59,7 +63,7 @@ struct LibraryWallView: View {
         let covers = model.visibleCovers
 
         ZStack {
-            PrismColor.background
+            WallTheater.darkness
 
             if covers.isEmpty {
                 SpectrumBloomBackground()
@@ -69,16 +73,42 @@ struct LibraryWallView: View {
                     .scaledToFill()
                     .modifier(WallLegibilityLayer(mode: .hero, dimmingOverride: dimmingOverride))
             } else {
-                TimelineView(.animation(paused: model.isPaused)) { timeline in
+                TimelineView(.animation(paused: model.isPaused && !model.stage.isMoving(at: .now))) { timeline in
                     let elapsed = model.elapsed(at: timeline.date) * model.speedScale
-                    flowing(covers: covers, elapsed: elapsed)
+                    let stage = model.isPaused ? model.stage.progress(at: .distantFuture) : model.stage.progress(at: timeline.date)
+                    ZStack {
+                        if stage < 1 {
+                            // Every poster lit from behind: a blurred copy of
+                            // the wall underneath spills each cover's colour
+                            // into the dark around it.
+                            ZStack {
+                                flowing(covers: covers, elapsed: elapsed, departure: stage)
+                                    .blur(radius: WallTheater.glowRadius)
+                                    .saturation(1.4)
+                                    .opacity(WallTheater.glowOpacity)
+                                flowing(covers: covers, elapsed: elapsed, departure: stage)
+                            }
+                        }
+                        if stage > 0 {
+                            FeaturedPosters(
+                                covers: model.lastFeature.compactMap { id in model.covers.first { $0.id == id } },
+                                previews: model.images,
+                                position: model.featurePosition,
+                                entrance: stage
+                            )
+                        }
+                    }
                 }
-                .modifier(WallLegibilityLayer(mode: .standard, dimmingOverride: dimmingOverride))
+                .modifier(WallLegibilityLayer(
+                    mode: .standard,
+                    dimmingOverride: model.revealed ? WallTheater.revealedDimming : dimmingOverride
+                ))
+                .animation(.easeInOut(duration: 0.35), value: model.revealed)
             }
         }
         .animation(.easeInOut(duration: 0.45), value: model.context)
         .ignoresSafeArea()
-        .allowsHitTesting(false)
+        .allowsHitTesting(model.revealed && onSelect != nil)
         .accessibilityHidden(true)
         .onAppear(perform: syncPauseReasons)
         .onChange(of: scenePhase) { syncPauseReasons() }
@@ -91,7 +121,7 @@ struct LibraryWallView: View {
     }
 
     @ViewBuilder
-    private func flowing(covers: [WallCover], elapsed: TimeInterval) -> some View {
+    private func flowing(covers: [WallCover], elapsed: TimeInterval, departure: Double = 0) -> some View {
         let parallax = Double(scrollOffset * Self.parallaxFactor)
         switch model.layout {
         case .rows:
@@ -100,7 +130,9 @@ struct LibraryWallView: View {
                 images: model.images,
                 metrics: metrics,
                 elapsed: elapsed,
-                parallax: parallax
+                parallax: parallax,
+                departure: departure,
+                onSelect: model.revealed ? onSelect : nil
             )
         case .mosaic:
             WallMosaic(
@@ -110,6 +142,7 @@ struct LibraryWallView: View {
                 elapsed: elapsed,
                 parallax: parallax
             )
+            .opacity(1 - departure)
         }
     }
 
@@ -133,6 +166,12 @@ private struct WallRows: View {
     let metrics: WallMetrics
     let elapsed: TimeInterval
     let parallax: Double
+    /// 0 at rest; toward 1 each row rushes off in its own direction and fades.
+    var departure: Double = 0
+    var onSelect: ((WallCover) -> Void)?
+
+    /// Rows leave one after another, this far apart in `departure`.
+    static let departureStagger = 0.08
 
     /// Distinct rows before the pattern repeats vertically. Ten covers all
     /// five categories twice, so a repeat never stacks two identical rows.
@@ -149,8 +188,10 @@ private struct WallRows: View {
                 ForEach(0..<visibleRows, id: \.self) { rowSlot in
                     let rowIndex = vertical.index(forSlot: rowSlot, itemCount: rows.count)
                     let row = rows[rowIndex]
+                    let speed = WallSpeed.row(rowIndex)
+                    let rush = Self.rush(departure: departure, slot: rowSlot)
                     let horizontal = WallStrip(
-                        distance: elapsed * WallSpeed.row(rowIndex),
+                        distance: elapsed * speed + (speed < 0 ? -1 : 1) * rush * Double(size.width) * 3,
                         pitch: Double(metrics.pitchX)
                     )
                     let y = CGFloat(rowSlot) * metrics.pitchY - CGFloat(vertical.remainder) - metrics.pitchY / 2
@@ -158,6 +199,8 @@ private struct WallRows: View {
                     ForEach(0..<visibleSlots, id: \.self) { slot in
                         let cover = row[horizontal.index(forSlot: slot, itemCount: row.count)]
                         WallTile(image: images[cover.id], accent: cover.accent, metrics: metrics)
+                            .opacity(1 - rush)
+                            .onTapGesture { onSelect?(cover) }
                             .offset(
                                 x: CGFloat(slot) * metrics.pitchX - CGFloat(horizontal.remainder) - metrics.pitchX / 2,
                                 y: y
@@ -168,6 +211,14 @@ private struct WallRows: View {
             .frame(width: size.width, height: size.height, alignment: .topLeading)
             .clipped()
         }
+    }
+
+    /// How far a row has gone, 0–1, eased in so it gathers speed as it leaves.
+    static func rush(departure: Double, slot: Int) -> Double {
+        guard departure > 0 else { return 0 }
+        let delay = Double(slot % 4) * departureStagger
+        let local = min(max((departure - delay) / (1 - departureStagger * 3), 0), 1)
+        return local * local * local
     }
 }
 
@@ -273,6 +324,13 @@ private struct PrismWallBackground: ViewModifier {
     @Environment(AppNavigationModel.self) private var navigation: AppNavigationModel?
     @Environment(\.prismTab) private var tab
 
+    /// A tapped cover on the pulled-down library opens its newest record.
+    private func open(_ cover: WallCover) {
+        guard let tab, let navigation, let id = cover.recordID else { return }
+        PrismHaptics.selection()
+        navigation.paths[tab, default: []].append(id)
+    }
+
     func body(content: Content) -> some View {
         content
             .containerBackground(.clear, for: .navigation)
@@ -280,7 +338,8 @@ private struct PrismWallBackground: ViewModifier {
                 if let wall {
                     LibraryWallView(
                         model: wall,
-                        scrollOffset: tab.flatMap { navigation?.scrollOffsets[$0] } ?? 0
+                        scrollOffset: tab.flatMap { navigation?.scrollOffsets[$0] } ?? 0,
+                        onSelect: open
                     )
                 } else {
                     SpectrumBloomBackground()

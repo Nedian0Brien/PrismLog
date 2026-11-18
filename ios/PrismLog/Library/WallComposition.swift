@@ -13,6 +13,8 @@ struct WallCover: Identifiable, Hashable, Sendable {
     /// a book read last month belongs on the wall while last month is on
     /// screen, even if it was read again since.
     var activities: [Date] = []
+    /// The entity's newest record — what tapping its cover opens.
+    var recordID: UUID?
 
     var source: CoverKey.Source {
         if let coverURL { return .remote(coverURL) }
@@ -70,7 +72,8 @@ enum WallComposition {
                 title: record.entityTitle ?? record.title,
                 coverURL: record.coverURL,
                 lastActivity: latest[key] ?? record.occurredAt,
-                activities: (activities[key] ?? []).sorted()
+                activities: (activities[key] ?? []).sorted(),
+                recordID: record.id
             )
         }
         .sorted { lhs, rhs in
@@ -190,6 +193,40 @@ enum WallPauseReason: Hashable, Sendable, CaseIterable {
     case reduceTransparency
     case disabledInSettings
     case stillContext
+    /// The library's content is pulled down and the covers can be tapped.
+    case revealed
+}
+
+/// The wall handing over to the library's big cover and back: 0 is the
+/// flowing wall, 1 the cover. A clock rather than an animation, because the
+/// wall draws from a `TimelineView` that already redraws every frame.
+struct WallStage: Equatable, Sendable {
+    static let duration: TimeInterval = 0.9
+
+    private(set) var from = 0.0
+    private(set) var to = 0.0
+    private(set) var start = Date.distantPast
+    private(set) var duration: TimeInterval = 0
+
+    func progress(at date: Date) -> Double {
+        guard duration > 0 else { return to }
+        let t = min(max(date.timeIntervalSince(start) / duration, 0), 1)
+        let eased = t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2
+        return from + (to - from) * eased
+    }
+
+    func isMoving(at date: Date) -> Bool {
+        duration > 0 && date.timeIntervalSince(start) < duration
+    }
+
+    /// Heads for `target` from wherever the stage is now, so turning back
+    /// mid-way never jumps.
+    mutating func move(to target: Double, at date: Date, duration: TimeInterval = WallStage.duration) {
+        from = progress(at: date)
+        to = target
+        start = date
+        self.duration = duration
+    }
 }
 
 /// A virtualized strip position: which item fills `slot` once the strip has

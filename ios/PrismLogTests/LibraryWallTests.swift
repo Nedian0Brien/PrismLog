@@ -226,4 +226,51 @@ struct LibraryWallTests {
         model.context = .all
         #expect(!model.isPaused)
     }
+
+    // MARK: Big cover hand-over
+
+    @Test func stageRunsFromWallToCoverAndSettles() {
+        let start = Date(timeIntervalSinceReferenceDate: 1_000)
+        var stage = WallStage()
+        #expect(stage.progress(at: start) == 0)
+        stage.move(to: 1, at: start)
+        #expect(stage.progress(at: start) == 0)
+        #expect(stage.isMoving(at: start.addingTimeInterval(0.1)))
+        #expect(abs(stage.progress(at: start.addingTimeInterval(WallStage.duration / 2)) - 0.5) < 1e-9)
+        #expect(stage.progress(at: start.addingTimeInterval(WallStage.duration + 1)) == 1)
+        #expect(!stage.isMoving(at: start.addingTimeInterval(WallStage.duration + 1)))
+    }
+
+    @Test func stageTurnsBackFromWhereItIs() {
+        let start = Date(timeIntervalSinceReferenceDate: 1_000)
+        var stage = WallStage()
+        stage.move(to: 1, at: start)
+        let midway = start.addingTimeInterval(WallStage.duration / 2)
+        let reached = stage.progress(at: midway)
+        stage.move(to: 0, at: midway)
+        #expect(stage.progress(at: midway) == reached)
+        #expect(stage.progress(at: midway.addingTimeInterval(WallStage.duration)) == 0)
+    }
+
+    @Test @MainActor func featureMovesTheStageOnlyWhenItAppearsOrGoes() {
+        let model = LibraryWallModel()
+        model.feature = ["a", "b"]
+        #expect(model.stage.progress(at: .distantFuture) == 1)
+        #expect(model.lastFeature == ["a", "b"])
+        let moved = model.stage
+        model.feature = ["b"]
+        #expect(model.stage == moved)
+        #expect(model.lastFeature == ["b"])
+        model.feature = nil
+        #expect(model.stage.progress(at: .distantFuture) == 0)
+        #expect(model.lastFeature == ["b"])
+    }
+
+    @Test @MainActor func revealingTheWallStopsIt() {
+        let model = LibraryWallModel()
+        model.revealed = true
+        #expect(model.pauseReasons.contains(.revealed))
+        model.revealed = false
+        #expect(!model.pauseReasons.contains(.revealed))
+    }
 }

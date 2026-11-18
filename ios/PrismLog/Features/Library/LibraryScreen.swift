@@ -7,6 +7,12 @@ struct LibraryScreen: View {
     @Environment(PrismStore.self) private var store
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(AppNavigationModel.self) private var navigation: AppNavigationModel?
+    @Environment(LibraryWallModel.self) private var wall: LibraryWallModel?
+
+    /// The "now in progress" section has the screen: the wall hands over to
+    /// its covers.
+    @State private var inProgressFocused = false
 
     @State private var trendCumulative = true
     @State private var trendRange: TrendRange = .year
@@ -19,7 +25,11 @@ struct LibraryScreen: View {
             eyebrow: todayLabel,
             title: "라이브러리",
             focus: .reading,
-            onRefresh: { await store.sync() }
+            // Pulling past the top lowers the page onto the wall instead of
+            // refreshing; the app still syncs whenever it becomes active.
+            wallReveal: navigation.map { navigation in
+                Binding(get: { navigation.libraryRevealed }, set: { navigation.libraryRevealed = $0 })
+            }
         ) {
             PrismGlassSection {
                 VStack(spacing: 14) {
@@ -30,8 +40,8 @@ struct LibraryScreen: View {
                         // Spec §6.1: on a wide screen the sections pair up in
                         // two columns that meet at the fold, if there is one.
                         FoldAwareColumns {
-                            inProgressSection
                             spectrumCard
+                            inProgressSection
                             recentSection
                         } trailing: {
                             trendCard
@@ -39,8 +49,8 @@ struct LibraryScreen: View {
                             heatmapCard
                         }
                     } else {
-                        inProgressSection
                         spectrumCard
+                        inProgressSection
                         trendCard
                         distributionCard
                         heatmapCard
@@ -52,6 +62,17 @@ struct LibraryScreen: View {
                 RecordDetailScreen(recordID: id)
             }
         }
+        .onChange(of: featureIDs, initial: true) { navigation?.libraryFeature = featureIDs }
+    }
+
+    /// The wall's big covers: the in-progress cards' covers while that
+    /// section has the screen.
+    private var featureIDs: [String]? {
+        guard inProgressFocused else { return nil }
+        let ids = LibraryMetrics.inProgress(from: store.records).map { item in
+            item.record.entityID?.uuidString ?? item.record.id.uuidString
+        }
+        return ids.isEmpty ? nil : ids
     }
 
     // MARK: - In progress
@@ -109,8 +130,27 @@ struct LibraryScreen: View {
                 // clip. Not `scrollClipDisabled()`: unclipped cards ran
                 // under iPhone Duo's vertical bar and its `+` (spec §7.2).
                 .contentMargins(.horizontal, Self.carouselMargin, for: .scrollContent)
+                // The page the carousel is on, fractional mid-swipe: the
+                // wall's big covers slide with it.
+                .onScrollGeometryChange(for: Double.self) { geometry in
+                    let card = geometry.containerSize.width - Self.carouselMargin * 2
+                    let page = card + Self.carouselMargin + 8
+                    guard page > 0 else { return 0 }
+                    return Double((geometry.contentOffset.x + geometry.contentInsets.leading) / page)
+                } action: { _, position in
+                    wall?.featurePosition = position
+                }
                 .clipped()
                 .padding(.horizontal, -Self.carouselMargin)
+            }
+            // The section has the screen once its top passes the upper third;
+            // it lets go a little lower, so a small scroll back doesn't flicker.
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                guard let visible = proxy.bounds(of: .scrollView(axis: .vertical)), visible.height > 0 else { return 1 }
+                return -visible.minY / visible.height
+            } action: { top in
+                let focused = inProgressFocused ? top < 0.46 : top < 0.36
+                if focused != inProgressFocused { inProgressFocused = focused }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

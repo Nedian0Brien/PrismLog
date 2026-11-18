@@ -88,6 +88,7 @@
 		EC8FBDB3390F6A693BB2B1AD /* PrismStore+Culture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1443EAEC6E5E8FB11BD296AD /* PrismStore+Culture.swift */; };
 		F1FF07742A6D1EB1FB2C117F /* PrismStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 152E240D32692C198201E992 /* PrismStore.swift */; };
 		F42491D0E48CD1C7DC436D4D /* CoverThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9273439E438E48EB688CF53 /* CoverThumbnailCache.swift */; };
+		F491280DA1DE5D8CDB33938D /* WallTheater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C760ACA967038FE5A864EF5 /* WallTheater.swift */; };
 		F5D4855679D449F460AA46DE /* RecordsHubTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92D1348F402F596720C35B30 /* RecordsHubTests.swift */; };
 		FA5D37AEB332EA5744EAED29 /* CategoryDetailSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37885200E9558756FAB5D916 /* CategoryDetailSections.swift */; };
 		FAA2E5EA34E83A3EDD8DE8E5 /* WallFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29528522624AE72835D46B2D /* WallFixtures.swift */; };
@@ -153,6 +154,7 @@
 		1E684271C4069409533706F4 /* LibraryMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryMetrics.swift; sourceTree = "<group>"; };
 		20C5E8D43388B1DFFB98D56E /* TimelineBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineBuilderTests.swift; sourceTree = "<group>"; };
 		29528522624AE72835D46B2D /* WallFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallFixtures.swift; sourceTree = "<group>"; };
+		2C760ACA967038FE5A864EF5 /* WallTheater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallTheater.swift; sourceTree = "<group>"; };
 		2CEED0489EE03A08A0C98ED7 /* FoldAwareColumns.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoldAwareColumns.swift; sourceTree = "<group>"; };
 		2E3AFA98A64E1E0BAADD6D36 /* NewCultureSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewCultureSheet.swift; sourceTree = "<group>"; };
 		3587A4560FFFFF1C181D4B5F /* LibraryWallModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryWallModel.swift; sourceTree = "<group>"; };
@@ -302,6 +304,7 @@
 				29528522624AE72835D46B2D /* WallFixtures.swift */,
 				59B41A5F579041C2081FCD4C /* WallFrameMeter.swift */,
 				6E24A518B9459337C2F6CA93 /* WallLegibilityLayer.swift */,
+				2C760ACA967038FE5A864EF5 /* WallTheater.swift */,
 			);
 			path = Library;
 			sourceTree = "<group>";
@@ -735,6 +738,7 @@
 				7E1D1C76E45707BC44A8F8C9 /* WallFrameMeter.swift in Sources */,
 				57CEC5870E03C88EA26F923D /* WallLabScreen.swift in Sources */,
 				5F7428A9B1133FABBD6B3281 /* WallLegibilityLayer.swift in Sources */,
+				F491280DA1DE5D8CDB33938D /* WallTheater.swift in Sources */,
 				65E7BB180C7D9AD4DE9152A4 /* WidgetRefresher.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

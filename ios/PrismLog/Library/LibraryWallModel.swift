@@ -11,6 +11,28 @@ import UIKit
 final class LibraryWallModel {
     var layout: WallLayout = .rows
 
+    /// The library's "now in progress" covers while that section has the
+    /// screen: the wall's rows rush off and these covers take its place.
+    var feature: [WallCover.ID]? {
+        didSet {
+            if let feature { lastFeature = feature }
+            guard (feature != nil) != (oldValue != nil) else { return }
+            let instant = pauseReasons.contains(.reduceMotion)
+            stage.move(to: feature == nil ? 0 : 1, at: .now, duration: instant ? 0 : WallStage.duration)
+        }
+    }
+    /// The "now in progress" carousel's page, fractional while it scrolls.
+    var featurePosition: Double = 0
+    /// The covers last featured, kept while they leave.
+    private(set) var lastFeature: [WallCover.ID] = []
+    private(set) var stage = WallStage()
+
+    /// The library's content is pulled down: the wall stops, brightens, and
+    /// opens a record when its cover is tapped.
+    var revealed = false {
+        didSet { setPaused(revealed, for: .revealed) }
+    }
+
     var context: WallContext = .all {
         didSet { setPaused(context == .still, for: .stillContext) }
     }

@@ -197,3 +197,15 @@
 - iPhone: 위 바·아래 탭 바 구간에서 콘텐츠와 벽이 함께 흐려짐 확인. 듀오 접힘: 위·아래 바가 없어 효과 없음
 - `toolbarBackgroundVisibility(.hidden)` 유무는 효과에 영향 없음(iPhone에서 비교)
 - 단위·UI 91개 중 89 통과·2 건너뜀, 경고 0
+
+## 2026-11-19
+
+### ~12:00 · 발견 · 머티리얼+마스크 블러 반려
+- 사용자가 결과를 보고 반려, 커밋 전 변경을 버리고 4083fb9 상태로 복귀
+
+### ~12:45 · T24 완료 · 극장 연출·큰 표지 전환·내려서 보기
+- `WallTheater.swift`(극장 바탕·`FeaturedPosters`·`TheaterPoster`), `WallStage`, `WallCover.recordID`, `WallPauseReason.revealed`
+- 라이브러리 순서 스펙트럼 → 지금 진행 중, 구역 초점·캐러셀 위치 추적, `PrismScreenScaffold.wallReveal`
+- 발견: 가독성 층 디밍 그라디언트가 표지 터치를 가로챔 → `allowsHitTesting(false)`
+- 듀오 접힘에서 전환·캐러셀 연동·내려서 표지 터치→상세·다시 올리기 확인
+- 단위 87개 중 85 통과·2 건너뜀, UI 8/8, 경고 0

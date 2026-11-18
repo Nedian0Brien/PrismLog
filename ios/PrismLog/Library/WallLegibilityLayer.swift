@@ -87,6 +87,9 @@ struct WallLegibilityLayer: ViewModifier {
                     startPoint: .top,
                     endPoint: .bottom
                 )
+                // Touches go through to the covers when the library is
+                // pulled down.
+                .allowsHitTesting(false)
             }
     }
 }

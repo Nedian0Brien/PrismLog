@@ -32,6 +32,11 @@ final class AppNavigationModel {
     /// Each tab's scroll offset, so the wall's parallax follows whichever
     /// tab is showing without jumping when the tab changes.
     var scrollOffsets: [PrismTab: CGFloat] = [:]
+    /// The library's "now in progress" covers while that section has the
+    /// screen, for the wall's big cover.
+    var libraryFeature: [String]?
+    /// The library's content is pulled down to show the wall.
+    var libraryRevealed = false
 
     func path(for tab: PrismTab) -> Binding<[UUID]> {
         Binding(

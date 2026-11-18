@@ -27,11 +27,28 @@ struct PrismScreenScaffold<Content: View>: View {
     /// records tab puts this page in a split view's sidebar on wide screens.
     var embedsInStack = true
     var onRefresh: (@Sendable () async -> Void)?
+    /// Set to let a pull past the top lower the whole page to the bottom
+    /// of the screen, leaving the wall behind it open to touch. Takes the
+    /// pull from refresh, so pass one or the other.
+    var wallReveal: Binding<Bool>?
     @ViewBuilder var content: Content
 
     @Environment(\.prismTab) private var tab
     @Environment(AppNavigationModel.self) private var navigation: AppNavigationModel?
     @State private var localPath: [UUID] = []
+    /// How far the page is pulled past its top, in points.
+    @State private var pull: CGFloat = 0
+    @State private var pageHeight: CGFloat = 0
+    /// A drag on the lowered page, to raise it back.
+    @State private var revealDrag: CGFloat = 0
+
+    /// A pull this far past the top lowers the page.
+    static var revealPull: CGFloat { 90 }
+    /// How much of a lowered page stays on screen: the title and the top
+    /// of the first card.
+    static var revealPeek: CGFloat { 230 }
+
+    private var isRevealed: Bool { wallReveal?.wrappedValue ?? false }
 
     private var path: Binding<[UUID]> {
         if let tab, let navigation { return navigation.path(for: tab) }
@@ -47,6 +64,77 @@ struct PrismScreenScaffold<Content: View>: View {
     }
 
     private var page: some View {
+        refreshing(scroll)
+            .onScrollGeometryChange(for: CGFloat.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top
+            } action: { _, offset in
+                pull = max(-offset, 0)
+                guard let tab, let navigation else { return }
+                navigation.scrollOffsets[tab] = offset
+            }
+            .onScrollPhaseChange { old, new in
+                guard let wallReveal, !wallReveal.wrappedValue,
+                      old == .interacting, new != .interacting,
+                      pull > Self.revealPull else { return }
+                PrismHaptics.selection()
+                withAnimation(.spring(duration: 0.55, bounce: 0.18)) { wallReveal.wrappedValue = true }
+            }
+            .scrollDisabled(isRevealed)
+            // On the lowered page, so it travels with it: a tap or an upward
+            // drag anywhere on what's left of the page raises it again.
+            .overlay {
+                if isRevealed {
+                    Color.clear
+                        .contentShape(.rect)
+                        .onTapGesture { raise() }
+                        .gesture(
+                            DragGesture()
+                                .onChanged { revealDrag = $0.translation.height }
+                                .onEnded { value in
+                                    if value.translation.height < -60 { raise() }
+                                    withAnimation(.spring(duration: 0.4)) { revealDrag = 0 }
+                                }
+                        )
+                        .accessibilityElement()
+                        .accessibilityLabel("내용 다시 올리기")
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityAction { raise() }
+                }
+            }
+            .offset(y: isRevealed ? max(pageHeight - Self.revealPeek + min(revealDrag, 0), 0) : 0)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { pageHeight = $0 }
+            .prismWallBackground()
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    PrismWordmark(size: 18)
+                }
+                // The wordmark is a label, not a control — without this iOS 26
+                // wraps it in the toolbar's glass capsule.
+                .sharedBackgroundVisibility(.hidden)
+
+                if tab != .settings, let navigation {
+                    ToolbarItem(placement: .topBarPinnedTrailing) {
+                        PrismComposerMenu { navigation.pendingComposer = $0 }
+                    }
+                }
+            }
+            .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+    }
+
+    private func raise() {
+        withAnimation(.spring(duration: 0.5, bounce: 0.12)) { wallReveal?.wrappedValue = false }
+    }
+
+    @ViewBuilder
+    private func refreshing(_ scroll: some View) -> some View {
+        if let onRefresh {
+            scroll.refreshable { await onRefresh() }
+        } else {
+            scroll
+        }
+    }
+
+    private var scroll: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
@@ -60,31 +148,6 @@ struct PrismScreenScaffold<Content: View>: View {
         }
         .scrollIndicators(.hidden)
         .scrollEdgeEffectStyle(.soft, for: [.top, .bottom])
-        .refreshable {
-            await onRefresh?()
-        }
-        .onScrollGeometryChange(for: CGFloat.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top
-        } action: { _, offset in
-            guard let tab, let navigation else { return }
-            navigation.scrollOffsets[tab] = offset
-        }
-        .prismWallBackground()
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                PrismWordmark(size: 18)
-            }
-            // The wordmark is a label, not a control — without this iOS 26
-            // wraps it in the toolbar's glass capsule.
-            .sharedBackgroundVisibility(.hidden)
-
-            if tab != .settings, let navigation {
-                ToolbarItem(placement: .topBarPinnedTrailing) {
-                    PrismComposerMenu { navigation.pendingComposer = $0 }
-                }
-            }
-        }
-        .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
     }
 
     private var header: some View {

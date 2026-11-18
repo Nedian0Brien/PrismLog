@@ -56,6 +56,8 @@ struct AppShell: View {
         }
         .onChange(of: store.records, initial: true) { wall.update(records: store.records) }
         .onChange(of: wallContext, initial: true) { wall.context = wallContext }
+        .onChange(of: libraryFeature, initial: true) { wall.feature = libraryFeature }
+        .onChange(of: libraryRevealed, initial: true) { wall.revealed = libraryRevealed }
         .onChange(of: navigation.tab) { storedTab = navigation.tab.rawValue }
         .onChange(of: navigation.recordsSection) { storedSection = navigation.recordsSection?.rawValue ?? "" }
         .onChange(of: navigation.paths[.records]) {
@@ -71,6 +73,20 @@ struct AppShell: View {
         case .timeline: TimelineScreen()
         case .settings: SettingsScreen()
         }
+    }
+
+    /// The library's big cover and pulled-down wall belong to the library
+    /// page alone: another tab or a pushed record puts the plain wall back.
+    private var onLibraryPage: Bool {
+        navigation.tab == .home && navigation.topRecordID == nil
+    }
+
+    private var libraryFeature: [String]? {
+        onLibraryPage && !navigation.libraryRevealed ? navigation.libraryFeature : nil
+    }
+
+    private var libraryRevealed: Bool {
+        onLibraryPage && navigation.libraryRevealed
     }
 
     /// What the wall shows behind the current screen (spec §3, §4.5).
