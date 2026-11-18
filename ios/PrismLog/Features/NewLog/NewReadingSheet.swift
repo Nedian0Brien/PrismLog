@@ -7,11 +7,14 @@ import SwiftUI
 struct NewReadingSheet: View {
     @Environment(PrismStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Namespace private var covers
 
-    @State private var query = ""
+    @State private var query = debugAddSheetQuery
     @State private var results: [BookSearchItem] = []
     @State private var searching = false
-    @State private var searchError: String?
+    @State private var searchError: Error?
+    /// Bumped by "다시 시도" to run the same search again.
+    @State private var attempt = 0
 
     @State private var selected: BookSearchItem?
     @State private var enrichment: BookEnrichment?
@@ -31,7 +34,7 @@ struct NewReadingSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                SpectrumBloomBackground(focus: .reading)
+                TheaterSheetBackground(accent: .reading)
 
                 Group {
                     if let selected {
@@ -55,37 +58,24 @@ struct NewReadingSheet: View {
 
     private var searchList: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 16) {
                 if searching {
-                    ProgressView().padding(.top, 40)
+                    CoverGridSkeleton(accent: .reading)
                 } else if let searchError {
-                    PrismPlaceholderCard(
-                        accent: .movie,
-                        title: "검색에 실패했습니다",
-                        detail: searchError
-                    )
-                } else if results.isEmpty, !query.isEmpty {
-                    PrismPlaceholderCard(
-                        accent: .reading,
-                        title: "결과가 없습니다",
-                        detail: "제목의 일부나 ISBN으로 다시 검색해 보세요."
-                    )
-                } else if results.isEmpty {
-                    PrismPlaceholderCard(
-                        accent: .reading,
-                        title: "읽을 책을 찾아보세요",
-                        detail: "제목이나 ISBN을 입력하면 표지와 쪽수까지 함께 가져옵니다."
-                    )
-                }
-
-                ForEach(results) { book in
-                    Button {
-                        Task { await choose(book) }
-                    } label: {
-                        resultRow(book)
+                    SearchFailureLine(accent: .reading, error: searchError) { attempt += 1 }
+                } else if !results.isEmpty {
+                    CoverGrid(tiles: results.map(tile(for:)), namespace: covers) { tile in
+                        if let book = results.first(where: { $0.id == tile.id }) {
+                            Task { await choose(book) }
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("booksearch.result")
+                } else if query.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2 {
+                    Text("‘\(query.trimmingCharacters(in: .whitespacesAndNewlines))’에 맞는 책이 없습니다.")
+                        .font(.prismCallout)
+                        .prismMuted()
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 48)
+                        .accessibilityIdentifier("coversearch.empty")
                 }
             }
             .padding(.horizontal, 18)
@@ -98,41 +88,19 @@ struct NewReadingSheet: View {
         .searchable(
             text: $query,
             placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "제목 또는 ISBN"
+            prompt: "책 제목 또는 ISBN"
         )
-        .task(id: query) { await runSearch() }
+        .task(id: SearchKey(query: query, attempt: attempt)) { await runSearch() }
     }
 
-    private func resultRow(_ book: BookSearchItem) -> some View {
-        HStack(spacing: 12) {
-            CoverImage(url: book.coverURL, accent: .reading, title: book.title)
-                .frame(width: 48, height: 70)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(book.title)
-                    .font(.prismHeadline)
-                    .foregroundStyle(PrismColor.text)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-
-                if !book.authorLine.isEmpty {
-                    Text(book.authorLine)
-                        .font(.prismMicro)
-                        .prismMuted()
-                        .lineLimit(1)
-                }
-
-                if let publisher = book.publisher {
-                    Text(publisher)
-                        .font(.prismMicro)
-                        .prismMuted()
-                        .lineLimit(1)
-                }
-            }
-
-            Spacer(minLength: 0)
-        }
-        .prismGlassCard(tint: PrismAccent.reading.color, padding: 12)
+    private func tile(for book: BookSearchItem) -> CoverSearchTile {
+        CoverSearchTile(
+            id: book.id,
+            title: book.title,
+            subtitle: [book.authorLine, book.publisher ?? ""].filter { !$0.isEmpty }.joined(separator: " · "),
+            coverURL: book.coverURL,
+            accent: .reading
+        )
     }
 
     private func runSearch() async {
@@ -158,7 +126,7 @@ struct NewReadingSheet: View {
             return
         } catch {
             results = []
-            searchError = error.localizedDescription
+            searchError = error
         }
     }
 
@@ -166,7 +134,7 @@ struct NewReadingSheet: View {
 
     private func choose(_ book: BookSearchItem) async {
         PrismHaptics.selection()
-        selected = book
+        withAnimation(.spring(duration: 0.45, bounce: 0.12)) { selected = book }
         pagesTotal = book.pagesTotal.map(String.init) ?? ""
         pagesRead = "0"
 
@@ -183,25 +151,11 @@ struct NewReadingSheet: View {
     private func detailForm(for book: BookSearchItem) -> some View {
         ScrollView {
             VStack(spacing: 16) {
-                HStack(alignment: .top, spacing: 14) {
-                    CoverImage(url: book.coverURL, accent: .reading, title: book.title)
-                        .frame(width: 92, height: 134)
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(book.title)
-                            .font(.prismTitle)
-                            .foregroundStyle(PrismColor.text)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        if !book.authorLine.isEmpty {
-                            Text(book.authorLine)
-                                .font(.prismCaption)
-                                .prismMuted()
-                        }
-                    }
-
-                    Spacer(minLength: 0)
-                }
+                SelectedCoverHeader(
+                    tile: tile(for: book),
+                    detail: Int(pagesTotal).map { "\($0)쪽" },
+                    namespace: covers
+                )
 
                 VStack(spacing: 12) {
                     field("전체 쪽수", text: $pagesTotal, placeholder: "예: 320")
@@ -234,8 +188,10 @@ struct NewReadingSheet: View {
                 .accessibilityIdentifier("booksearch.save")
 
                 Button {
-                    selected = nil
-                    enrichment = nil
+                    withAnimation(.spring(duration: 0.45, bounce: 0.12)) {
+                        selected = nil
+                        enrichment = nil
+                    }
                 } label: {
                     Text("다른 책 고르기")
                         .font(.prismCallout)

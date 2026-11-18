@@ -66,6 +66,7 @@
 		AD101E090723CF59D41E5D69 /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = D79AC3C7AC77AC06362729C7 /* Pretendard-Regular.otf */; };
 		AEE4F403267812B7838C93A8 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D57E7AB4730940A425513B /* SettingsScreen.swift */; };
 		B48C172F506FEEF6E6B63815 /* Pretendard-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = FEB52242E7D96DDB7134B701 /* Pretendard-Medium.otf */; };
+		B81FB257639AD7DA1EEFB87A /* CoverSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15629C5009214C5B368FF32D /* CoverSearch.swift */; };
 		BBA1BBFD5153695D04F0AF67 /* PrismAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4420F18602ED6C61D97E01C5 /* PrismAPIClient.swift */; };
 		BCB5C0B1F063CCFD27DDAC6C /* WebParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C579DB9E8B60C0C313B5E950 /* WebParityTests.swift */; };
 		BD02F5B4AB3718855E79E2D5 /* PrismMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2B6BAD42684EA51FB69629B /* PrismMotion.swift */; };
@@ -146,6 +147,7 @@
 		12CD85814256B83644C027F8 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONValue.swift; sourceTree = "<group>"; };
 		1443EAEC6E5E8FB11BD296AD /* PrismStore+Culture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PrismStore+Culture.swift"; sourceTree = "<group>"; };
 		152E240D32692C198201E992 /* PrismStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismStore.swift; sourceTree = "<group>"; };
+		15629C5009214C5B368FF32D /* CoverSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverSearch.swift; sourceTree = "<group>"; };
 		170918D50FAAC4E8BFF6F11C /* WallComposition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallComposition.swift; sourceTree = "<group>"; };
 		177BBAD1C3AAD792B7CEFEA8 /* DistributionBars.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistributionBars.swift; sourceTree = "<group>"; };
 		191A0B160303D5288BFABE39 /* PrismTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismTypography.swift; sourceTree = "<group>"; };
@@ -286,6 +288,7 @@
 		503336121F6B2DD6FE458DB8 /* NewLog */ = {
 			isa = PBXGroup;
 			children = (
+				15629C5009214C5B368FF32D /* CoverSearch.swift */,
 				2E3AFA98A64E1E0BAADD6D36 /* NewCultureSheet.swift */,
 				6B8283AA72D3A7782B9B46E6 /* NewReadingSheet.swift */,
 				6BA7FC1452574EEFD368A2A4 /* NewStudySheet.swift */,
@@ -682,6 +685,7 @@
 				FA5D37AEB332EA5744EAED29 /* CategoryDetailSections.swift in Sources */,
 				4E280803F133415DA28DCA0F /* CategoryEditSheets.swift in Sources */,
 				C96473A97DE52A07180B337D /* CoverImage.swift in Sources */,
+				B81FB257639AD7DA1EEFB87A /* CoverSearch.swift in Sources */,
 				F42491D0E48CD1C7DC436D4D /* CoverThumbnailCache.swift in Sources */,
 				2CF95E8AA2D338730CD69A34 /* CultureOptions.swift in Sources */,
 				3B44D6FF31968E790DBDEA4D /* DashboardMetrics.swift in Sources */,

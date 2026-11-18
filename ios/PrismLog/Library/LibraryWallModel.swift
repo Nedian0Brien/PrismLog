@@ -238,6 +238,8 @@ final class LibraryWallModel {
     private(set) var discovery: [WallCover] = [] {
         didSet { if discovery != oldValue { loadImages() } }
     }
+    /// The same list as search items, for the add sheets' "this week" grid.
+    private(set) var discoveryItems: [MediaSearchItem] = []
 
     private static var discoveryFile: URL {
         URL.cachesDirectory.appending(path: "featured-media.json")
@@ -250,6 +252,7 @@ final class LibraryWallModel {
         let file = Self.discoveryFile
         let saved = try? Data(contentsOf: file)
         if let saved, let items = try? JSONDecoder().decode([MediaSearchItem].self, from: saved) {
+            discoveryItems = items
             discovery = items.compactMap(Self.wallCover(from:))
         }
         let age = (try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)
@@ -257,6 +260,7 @@ final class LibraryWallModel {
         guard saved == nil || age > Self.discoveryLifetime else { return }
 
         guard let items = try? await api.featuredMedia() else { return }
+        discoveryItems = items
         discovery = items.compactMap(Self.wallCover(from:))
         if let data = try? JSONEncoder().encode(items) {
             try? data.write(to: file, options: .atomic)

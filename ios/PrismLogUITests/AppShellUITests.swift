@@ -201,12 +201,13 @@ final class AppShellUITests: XCTestCase {
         searchField.tap()
         searchField.typeText("한강")
 
-        let firstResult = app.buttons["booksearch.result"].firstMatch
+        let firstResult = app.buttons["coversearch.result"].firstMatch
         guard firstResult.waitForExistence(timeout: 15) else {
             // Offline or the provider is down — the sheet must still say so
             // rather than spin forever.
             XCTAssertTrue(
-                app.staticTexts["결과가 없습니다"].exists || app.staticTexts["검색에 실패했습니다"].exists,
+                app.descendants(matching: .any)["coversearch.failure"].exists
+                    || app.staticTexts["coversearch.empty"].exists,
                 "결과도 없고 실패 안내도 없음"
             )
             return
