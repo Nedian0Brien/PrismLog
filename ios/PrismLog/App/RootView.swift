@@ -6,6 +6,9 @@ struct RootView: View {
     @State private var tab: PrismTab = .home
     @State private var composerExpanded = false
     @State private var pendingComposer: PrismAccent?
+    #if DEBUG
+    @State private var showsWallLab = WallLabScreen.opensOnLaunch
+    #endif
 
     var body: some View {
         ZStack {
@@ -60,6 +63,9 @@ struct RootView: View {
         .sheet(item: $pendingComposer) { accent in
             composerSheet(for: accent)
         }
+        #if DEBUG
+        .fullScreenCover(isPresented: $showsWallLab) { WallLabScreen() }
+        #endif
         .animation(PrismMotion.screen, value: tab)
         .task { await store.sync() }
         .onChange(of: scenePhase) { _, phase in

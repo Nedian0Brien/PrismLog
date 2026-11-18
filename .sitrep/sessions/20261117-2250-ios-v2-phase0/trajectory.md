@@ -92,3 +92,23 @@
 
 ### 00:07 · 보고 · 완료됨 100%
 - Phase 1 완료
+
+### ~08:55 · 범위 확장 · Phase 2 시작 (사용자 승인)
+- 전체 작업 제목을 "PrismLog iOS v2 Phase 0–2"로 넓힘
+
+### ~09:05 · T11.1–T11.4 완료 · 표지 벽 구현
+- `Library/WallComposition.swift`, `LibraryWallModel.swift`, `LibraryWallView.swift`, `WallLegibilityLayer.swift`, `WallFixtures.swift`, `WallFrameMeter.swift`, `Features/Settings/WallLabScreen.swift`
+- `LibraryWallTests` 12개 통과
+
+### ~09:10 · T11.5 발견 · 최악 조건 대비 미달
+- spec 기본 디밍(0.30→0.55)에서 `.regular` 본문 3.90:1, 보조 글자색 1.55:1. 디밍 0.55 고정 시 본문 4.78:1
+
+### ~09:20 · T11.6 막힘 · 실기기 Instruments 데이터 없음
+- Xcode 27.2 + iOS 27.3 기기: Animation Hitches·Time Profiler 데이터 비어 옴. Activity Monitor만 기록(메모리 62MB, CPU 22–30%)
+- 대안으로 `WallFrameMeter` 추가
+
+### 21:24 · T11.6 폐기 · 사용자 지시로 시뮬레이터에서 진행
+- 시뮬레이터 측정: 모든 조합 hitch 0ms/s·60fps, 200장 벽 33.4MB, 앱 57MB
+
+### 21:24 · 보고 · 구현 중 90%
+- D2 결정 요청 (권장 A). 녹화 `docs/ios-v2/screens/phase2-wall-A-vs-B.mp4`

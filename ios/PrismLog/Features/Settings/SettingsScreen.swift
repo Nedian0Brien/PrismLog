@@ -6,6 +6,7 @@ struct SettingsScreen: View {
     @State private var editingUserID = false
     @State private var draftUserID = ""
     @State private var backupState: BackupState = .idle
+    @State private var showsWallLab = false
 
     private enum BackupState: Equatable {
         case idle
@@ -27,9 +28,15 @@ struct SettingsScreen: View {
                     accountCard
                     backupCard
                     aboutCard
+                    #if DEBUG
+                    wallLabCard
+                    #endif
                 }
             }
         }
+        #if DEBUG
+        .fullScreenCover(isPresented: $showsWallLab) { WallLabScreen() }
+        #endif
         .alert("사용자 ID", isPresented: $editingUserID) {
             TextField("user_id", text: $draftUserID)
                 .textInputAutocapitalization(.never)
@@ -47,6 +54,35 @@ struct SettingsScreen: View {
     }
 
     // MARK: - Cards
+
+    #if DEBUG
+    /// Debug builds only: the library wall prototype (v2 Phase 2).
+    private var wallLabCard: some View {
+        Button {
+            showsWallLab = true
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("표지 벽 실험실")
+                        .font(.prismHeadline)
+                        .foregroundStyle(PrismColor.text)
+                    Text("디버그 빌드 전용 · 배치 A/B 비교")
+                        .font(.prismCaption)
+                        .foregroundStyle(PrismColor.textMuted)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(PrismColor.textMuted)
+            }
+            .contentShape(.rect)
+            // On the label, not the button: glass on a `Button` eats its
+            // touches (spec §2.3).
+            .prismGlassCard()
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.wallLab")
+    }
+    #endif
 
     private var syncCard: some View {
         VStack(alignment: .leading, spacing: 12) {

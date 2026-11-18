@@ -11,7 +11,7 @@ struct GeneratedCover: View {
 
     /// Covers are drawn at the 2:3 of a book jacket or a poster; other frames
     /// crop it the same way they crop real artwork.
-    static let aspectRatio: CGFloat = 2.0 / 3.0
+    nonisolated static let aspectRatio: CGFloat = 2.0 / 3.0
 
     var body: some View {
         GeometryReader { proxy in

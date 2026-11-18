@@ -1,0 +1,249 @@
+import SwiftUI
+import UIKit
+
+/// Spec §4.3 sizes. Every cover is cropped to 2:3 so rows keep one rhythm
+/// whatever the artwork's own shape.
+struct WallMetrics: Equatable {
+    let coverHeight: CGFloat
+    let coverSpacing: CGFloat
+    let rowSpacing: CGFloat
+    let corner: CGFloat
+
+    var coverWidth: CGFloat { (coverHeight * GeneratedCover.aspectRatio).rounded() }
+    var pitchX: CGFloat { coverWidth + coverSpacing }
+    var pitchY: CGFloat { coverHeight + rowSpacing }
+
+    static let compact = WallMetrics(coverHeight: 132, coverSpacing: 10, rowSpacing: 12, corner: 8)
+    static let regular = WallMetrics(coverHeight: 168, coverSpacing: 12, rowSpacing: 14, corner: 10)
+}
+
+/// Flow speeds, in points per second (spec §4.3, §4.4).
+enum WallSpeed {
+    /// 8–14 pt/s per row, neighbours in opposite directions. Fixed per row
+    /// index so a row keeps its pace when the wall rebuilds.
+    static func row(_ index: Int) -> Double {
+        let magnitude = 8 + Double((index * 5 + 3) % 7)
+        return index.isMultiple(of: 2) ? magnitude : -magnitude
+    }
+
+    static let mosaic: Double = 6.5
+    /// Mosaic drift direction in grid space, before the −12° tilt.
+    static let mosaicDirection = CGVector(dx: 0.89, dy: 0.45)
+}
+
+/// The library wall (spec §4). Purely decorative: hidden from VoiceOver and
+/// never hit-testable, so it can sit under every screen.
+struct LibraryWallView: View {
+    let model: LibraryWallModel
+    /// How far the foreground has scrolled, in points. The wall moves at
+    /// 0.35× of it (spec §4.3).
+    var scrollOffset: CGFloat = 0
+    /// Overrides the legibility layer's dimming — the debug lab's slider.
+    var dimmingOverride: Double?
+
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    static let parallaxFactor: CGFloat = 0.35
+
+    private var metrics: WallMetrics {
+        horizontalSizeClass == .regular ? .regular : .compact
+    }
+
+    var body: some View {
+        let covers = model.visibleCovers
+
+        ZStack {
+            PrismColor.background
+
+            if covers.isEmpty {
+                SpectrumBloomBackground()
+            } else if case .hero(let id) = model.context, let image = model.images[id] {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .modifier(WallLegibilityLayer(mode: .hero, dimmingOverride: dimmingOverride))
+            } else {
+                TimelineView(.animation(paused: model.isPaused)) { timeline in
+                    let elapsed = model.elapsed(at: timeline.date) * model.speedScale
+                    flowing(covers: covers, elapsed: elapsed)
+                }
+                .modifier(WallLegibilityLayer(mode: .standard, dimmingOverride: dimmingOverride))
+            }
+        }
+        .animation(.easeInOut(duration: 0.45), value: model.context)
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .onAppear(perform: syncPauseReasons)
+        .onChange(of: scenePhase) { syncPauseReasons() }
+        .onChange(of: reduceMotion) { syncPauseReasons() }
+        .onChange(of: reduceTransparency) { syncPauseReasons() }
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+            syncPauseReasons()
+        }
+    }
+
+    @ViewBuilder
+    private func flowing(covers: [WallCover], elapsed: TimeInterval) -> some View {
+        let parallax = Double(scrollOffset * Self.parallaxFactor)
+        switch model.layout {
+        case .rows:
+            WallRows(
+                rows: WallComposition.rows(from: covers, count: WallRows.patternRowCount),
+                images: model.images,
+                metrics: metrics,
+                elapsed: elapsed,
+                parallax: parallax
+            )
+        case .mosaic:
+            WallMosaic(
+                sequence: WallComposition.mosaic(from: covers),
+                images: model.images,
+                metrics: metrics,
+                elapsed: elapsed,
+                parallax: parallax
+            )
+        }
+    }
+
+    private func syncPauseReasons() {
+        model.setPaused(scenePhase != .active, for: .sceneInactive)
+        model.setPaused(reduceMotion, for: .reduceMotion)
+        model.setPaused(reduceTransparency, for: .reduceTransparency)
+        model.setPaused(ProcessInfo.processInfo.isLowPowerModeEnabled, for: .lowPowerMode)
+    }
+}
+
+// MARK: - Layout A
+
+/// Category rows, each drifting at its own pace, neighbours in opposite
+/// directions. Rows and slots are virtualized: only the covers on screen
+/// exist as views, and a row of any length loops without a seam.
+private struct WallRows: View {
+    let rows: [[WallCover]]
+    let images: [WallCover.ID: UIImage]
+    let metrics: WallMetrics
+    let elapsed: TimeInterval
+    let parallax: Double
+
+    /// Distinct rows before the pattern repeats vertically. Ten covers all
+    /// five categories twice, so a repeat never stacks two identical rows.
+    static let patternRowCount = 10
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            let vertical = WallStrip(distance: parallax, pitch: Double(metrics.pitchY))
+            let visibleRows = Int((size.height / metrics.pitchY).rounded(.up)) + 2
+            let visibleSlots = Int((size.width / metrics.pitchX).rounded(.up)) + 2
+
+            ZStack(alignment: .topLeading) {
+                ForEach(0..<visibleRows, id: \.self) { rowSlot in
+                    let rowIndex = vertical.index(forSlot: rowSlot, itemCount: rows.count)
+                    let row = rows[rowIndex]
+                    let horizontal = WallStrip(
+                        distance: elapsed * WallSpeed.row(rowIndex),
+                        pitch: Double(metrics.pitchX)
+                    )
+                    let y = CGFloat(rowSlot) * metrics.pitchY - CGFloat(vertical.remainder) - metrics.pitchY / 2
+
+                    ForEach(0..<visibleSlots, id: \.self) { slot in
+                        let cover = row[horizontal.index(forSlot: slot, itemCount: row.count)]
+                        WallTile(image: images[cover.id], accent: cover.accent, metrics: metrics)
+                            .offset(
+                                x: CGFloat(slot) * metrics.pitchX - CGFloat(horizontal.remainder) - metrics.pitchX / 2,
+                                y: y
+                            )
+                    }
+                }
+            }
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
+            .clipped()
+        }
+    }
+}
+
+// MARK: - Layout B
+
+/// A dense mosaic tilted −12°, drifting along its diagonal (spec §4.4).
+/// Odd columns sit half a cover lower, so the tilt reads as staggered
+/// bricks rather than a rotated spreadsheet.
+private struct WallMosaic: View {
+    let sequence: [WallCover]
+    let images: [WallCover.ID: UIImage]
+    let metrics: WallMetrics
+    let elapsed: TimeInterval
+    let parallax: Double
+
+    static let tilt: Angle = .degrees(-12)
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            // The tilted grid must still cover the corners: size it to the
+            // screen's diagonal plus a cover of margin on every side.
+            let side = (size.width * size.width + size.height * size.height).squareRoot()
+                + metrics.coverHeight * 2
+            let travel = elapsed * WallSpeed.mosaic
+            let horizontal = WallStrip(
+                distance: travel * Double(WallSpeed.mosaicDirection.dx),
+                pitch: Double(metrics.pitchX)
+            )
+            let vertical = WallStrip(
+                distance: travel * Double(WallSpeed.mosaicDirection.dy) + parallax,
+                pitch: Double(metrics.pitchY)
+            )
+            let columns = Int((side / metrics.pitchX).rounded(.up)) + 2
+            let rows = Int((side / metrics.pitchY).rounded(.up)) + 2
+
+            ZStack(alignment: .topLeading) {
+                ForEach(0..<columns, id: \.self) { column in
+                    let absoluteColumn = column + horizontal.shift
+                    let stagger = absoluteColumn.isMultiple(of: 2) ? 0 : metrics.pitchY / 2
+
+                    ForEach(0..<rows, id: \.self) { row in
+                        let cover = sequence[
+                            WallMosaicIndex.index(column: absoluteColumn, row: row + vertical.shift, count: sequence.count)
+                        ]
+                        WallTile(image: images[cover.id], accent: cover.accent, metrics: metrics)
+                            .offset(
+                                x: CGFloat(column) * metrics.pitchX - CGFloat(horizontal.remainder) - metrics.pitchX,
+                                y: CGFloat(row) * metrics.pitchY - CGFloat(vertical.remainder) + stagger - metrics.pitchY
+                            )
+                    }
+                }
+            }
+            .frame(width: side, height: side, alignment: .topLeading)
+            .rotationEffect(Self.tilt)
+            .frame(width: size.width, height: size.height)
+            .clipped()
+        }
+    }
+}
+
+// MARK: - Tile
+
+private struct WallTile: View {
+    let image: UIImage?
+    let accent: PrismAccent
+    let metrics: WallMetrics
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                // A cover still decoding holds its place in the category's
+                // tone instead of leaving a hole in the wall.
+                accent.tone.main.opacity(0.35)
+            }
+        }
+        .frame(width: metrics.coverWidth, height: metrics.coverHeight)
+        .clipShape(.rect(cornerRadius: metrics.corner, style: .continuous))
+    }
+}

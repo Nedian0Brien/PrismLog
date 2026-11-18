@@ -1,22 +1,27 @@
 flowchart TD
-  P1[Phase 1 표지 파이프라인]:::done
-  CI[CoverImage 13곳]:::done
-  CTC[CoverThumbnailCache]:::done
-  MEM[(NSCache 80MB)]:::done
-  DISK[(Caches/covers JPEG)]:::done
-  NET[표지 URL 다운로드]:::done
-  GC[GeneratedCover]:::done
-  T[단위 테스트 15개]:::done
-  P2[Phase 2 표지 벽]:::todo
-  P1 --> CI
-  CI --> CTC
-  CTC --> MEM
-  CTC --> DISK
-  CTC --> NET
-  CI -->|표지 없음·실패| GC
-  GC --> CTC
-  P1 --> T
-  CTC --> P2
+  REC[(PrismStore 기록)]:::done
+  COMP[WallComposition]:::done
+  MODEL[LibraryWallModel]:::done
+  CACHE[CoverThumbnailCache 256px]:::done
+  VIEW[LibraryWallView]:::done
+  A[배치 A 가로 행]:::done
+  B[배치 B 모자이크]:::done
+  LEG[WallLegibilityLayer]:::done
+  LAB[표지 벽 실험실 Debug]:::done
+  METER[WallFrameMeter]:::done
+  D2{D2 배치 확정}:::decide
+  P3[Phase 3 앱 셸·글래스 v2]:::todo
+  REC --> COMP --> MODEL
+  CACHE --> MODEL
+  MODEL --> VIEW
+  VIEW --> A
+  VIEW --> B
+  VIEW --> LEG
+  LAB --> VIEW
+  LAB --> METER
+  A --> D2
+  B --> D2
+  D2 --> P3
   classDef done fill:#d1fae5,stroke:#059669
   classDef doing fill:#fef3c7,stroke:#d97706
   classDef decide fill:#fee2e2,stroke:#dc2626
