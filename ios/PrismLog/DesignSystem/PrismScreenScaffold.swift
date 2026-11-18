@@ -59,6 +59,7 @@ struct PrismScreenScaffold<Content: View>: View {
             .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
+        .scrollEdgeEffectStyle(.soft, for: [.top, .bottom])
         .refreshable {
             await onRefresh?()
         }

@@ -190,3 +190,10 @@
 - 캐러셀에 가장자리 페이드 `mask`를 걸었으나 글래스는 마스크를 무시하고 표지만 영역 밖으로 나옴 → 폐기
 - 해결: 카드 폭 = 열 폭(`containerRelativeFrame`), 간격 26pt, 화면 여백까지 넓혀 `clipped()`, `scrollTransition`으로 넘어가는 카드 흐림·축소
 - 단위·UI 91개 중 89 통과·2 건너뜀(듀오 접힘), 경고 0
+
+### ~00:05 · T22 폐기·대체 · 직접 만든 블러 → 시스템 스크롤 가장자리 효과
+- 사용자: 블러가 고급스럽지 않음. Apple 기본 제공 확인 요청 → 공개 가변 블러 API 없음, `scrollEdgeEffectStyle`만 있음(사용자 선택)
+- `WallEdgeBlur.swift` 삭제, `PrismScreenScaffold`에 `.scrollEdgeEffectStyle(.soft, for: [.top, .bottom])`
+- iPhone: 위 바·아래 탭 바 구간에서 콘텐츠와 벽이 함께 흐려짐 확인. 듀오 접힘: 위·아래 바가 없어 효과 없음
+- `toolbarBackgroundVisibility(.hidden)` 유무는 효과에 영향 없음(iPhone에서 비교)
+- 단위·UI 91개 중 89 통과·2 건너뜀, 경고 0
