@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import SwiftData
 import Testing
@@ -191,6 +192,64 @@ struct LibraryWallTests {
                 #expect(here != WallMosaicIndex.index(column: column + 1, row: row, count: count))
                 #expect(here != WallMosaicIndex.index(column: column, row: row + 1, count: count))
                 #expect((0..<count).contains(here))
+            }
+        }
+    }
+
+    // MARK: Palette and spectrum light
+
+    @Test("표지 대표색은 넓은 회색보다 작아도 선명한 색을 고르고, 색상끼리 떨어져 있다")
+    func paletteFavoursVividColoursOverLargeGreys() {
+        let grey = (r: 0.5, g: 0.5, b: 0.52)
+        let red = (r: 0.85, g: 0.15, b: 0.12)
+        let blue = (r: 0.1, g: 0.3, b: 0.9)
+        let pixels = Array(repeating: grey, count: 400) + Array(repeating: red, count: 40) + Array(repeating: blue, count: 25)
+        let swatches = CoverPalette.swatches(fromPixels: pixels, count: 3)
+        #expect(swatches.count == 2, "회색은 대표색이 되지 않아야 함")
+        #expect(swatches[0].hue < 0.05 || swatches[0].hue > 0.95, "가장 큰 선명한 색(빨강)이 먼저")
+        #expect(abs(swatches[1].hue - 0.62) < 0.05)
+    }
+
+    @Test func aGreyscaleCoverHasNoSwatches() {
+        let pixels = (0..<100).map { index in (r: Double(index) / 100, g: Double(index) / 100, b: Double(index) / 100) }
+        #expect(CoverPalette.swatches(fromPixels: pixels).isEmpty)
+    }
+
+    @Test("라이브러리 스펙트럼은 프리즘 순서로, 카테고리 몫만큼 열을 차지한다")
+    @MainActor
+    func spectrumColumnsFollowPrismOrderAndShare() {
+        var covers = (0..<6).map { Self.cover("book-\($0)", .reading) }
+        covers += (0..<2).map { Self.cover("film-\($0)", .movie) }
+        let columns = SpectrumMeshLight.spectrumColumns(for: covers)
+        #expect(columns.count == SpectrumMeshLight.size)
+        // 영화 25%, 독서 75%: first column garnet, the other three jade.
+        #expect(columns[0] == PrismAccent.movie.swatch)
+        #expect(columns[1...].allSatisfy { $0 == PrismAccent.reading.swatch })
+        #expect(SpectrumMeshLight.spectrumColumns(for: []).isEmpty)
+    }
+
+    @Test("기록 화면의 빛은 표지 색에서 오고, 표지에 색이 없으면 카테고리 색이 남는다")
+    @MainActor
+    func recordColumnsComeFromTheCover() {
+        let cover = Self.cover("book-1", .reading)
+        let swatch = CoverPalette.Swatch(hue: 0.6, saturation: 0.7, brightness: 0.8)
+        #expect(SpectrumMeshLight.paletteColumns(covers: [cover], palettes: [cover.id: [swatch]]) == [swatch, PrismAccent.reading.swatch])
+        #expect(SpectrumMeshLight.paletteColumns(covers: [cover], palettes: [:]) == [PrismAccent.reading.swatch])
+    }
+
+    @Test("메시의 가장자리 점은 화면 밖으로 나가지 않는다")
+    @MainActor
+    func meshEdgesStayPinned() {
+        for elapsed in stride(from: 0.0, through: 120, by: 7.5) {
+            let points = SpectrumMeshLight.points(elapsed: elapsed, parallax: 0)
+            let size = SpectrumMeshLight.size
+            for column in 0..<size {
+                #expect(points[column].y == 0)
+                #expect(points[(size - 1) * size + column].y == 1)
+            }
+            for row in 0..<size {
+                #expect(points[row * size].x == 0)
+                #expect(points[row * size + size - 1].x == 1)
             }
         }
     }

@@ -1,27 +1,28 @@
 flowchart TD
   REC[(PrismStore 기록)]:::done
-  COMP[WallComposition]:::done
   MODEL[LibraryWallModel]:::done
-  CACHE[CoverThumbnailCache 256px]:::done
+  PAL[CoverPalette 표지 색]:::done
+  ACC[PrismPalette OKLCH]:::done
   VIEW[LibraryWallView]:::done
-  A[배치 A 가로 행]:::done
-  B[배치 B 실험실 전용]:::done
-  LEG[WallLegibilityLayer]:::done
-  LAB[표지 벽 실험실 Debug]:::done
-  METER[WallFrameMeter]:::done
-  D2[D2 확정 A 가로 행]:::done
-  P3[Phase 3 앱 셸·글래스 v2]:::todo
-  REC --> COMP --> MODEL
-  CACHE --> MODEL
+  COV[표지 벽 기존]:::done
+  FEAT[방향1 표지 히어로]:::done
+  SPEC[방향2 스펙트럼 빛]:::done
+  LEG[WallLegibilityLayer 디밍]:::done
+  D6{D6 배경 방향}:::decide
+  CLEAN[기본값 지정·정리]:::todo
+  D5{D5 main 머지}:::todo
+  REC --> MODEL
+  MODEL --> PAL
   MODEL --> VIEW
-  VIEW --> A
-  VIEW --> B
-  VIEW --> LEG
-  LAB --> VIEW
-  LAB --> METER
-  A --> D2
-  B --> D2
-  D2 --> P3
+  ACC --> PAL
+  VIEW --> COV
+  VIEW --> FEAT
+  VIEW --> SPEC
+  FEAT --> LEG
+  SPEC --> LEG
+  FEAT --> D6
+  SPEC --> D6
+  D6 --> CLEAN --> D5
   classDef done fill:#d1fae5,stroke:#059669
   classDef doing fill:#fef3c7,stroke:#d97706
   classDef decide fill:#fee2e2,stroke:#dc2626

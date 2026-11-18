@@ -47,6 +47,7 @@ struct LibraryWallView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     /// Settings' "표지 벽 흐름" switch (spec §6.4).
     @AppStorage(LibraryWallView.flowSettingKey) private var flowEnabled = true
+    @AppStorage(WallStyle.storageKey) private var style: WallStyle = .covers
 
     static let flowSettingKey = "wall.flowEnabled"
     static let parallaxFactor: CGFloat = 0.35
@@ -63,17 +64,17 @@ struct LibraryWallView: View {
 
             if covers.isEmpty {
                 SpectrumBloomBackground()
-            } else if case .hero(let id) = model.context, let image = model.images[id] {
+            } else if style == .covers, case .hero(let id) = model.context, let image = model.images[id] {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
-                    .modifier(WallLegibilityLayer(mode: .hero, dimmingOverride: dimmingOverride))
+                    .modifier(WallLegibilityLayer(mode: .hero, style: style, dimmingOverride: dimmingOverride))
             } else {
-                TimelineView(.animation(paused: model.isPaused)) { timeline in
-                    let elapsed = model.elapsed(at: timeline.date) * model.speedScale
-                    flowing(covers: covers, elapsed: elapsed)
+                styled(covers: covers)
+                    .modifier(WallLegibilityLayer(mode: .standard, style: style, dimmingOverride: dimmingOverride))
+                if style != .covers {
+                    WallGrain()
                 }
-                .modifier(WallLegibilityLayer(mode: .standard, dimmingOverride: dimmingOverride))
             }
         }
         .animation(.easeInOut(duration: 0.45), value: model.context)
@@ -88,6 +89,59 @@ struct LibraryWallView: View {
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             syncPauseReasons()
         }
+    }
+
+    @ViewBuilder
+    private func styled(covers: [WallCover]) -> some View {
+        let parallax = Double(scrollOffset * Self.parallaxFactor)
+        switch style {
+        case .covers:
+            TimelineView(.animation(paused: model.isPaused)) { timeline in
+                flowing(covers: covers, elapsed: model.elapsed(at: timeline.date) * model.speedScale)
+            }
+        case .featured:
+            // Still: the only motion is the page's own parallax.
+            let cover = featuredCover(from: covers)
+            FeaturedCoverBackdrop(
+                cover: cover,
+                preview: cover.flatMap { model.images[$0.id] },
+                swatches: cover.flatMap { model.palettes[$0.id] } ?? [],
+                parallax: parallax
+            )
+        case .spectrum:
+            let columns = spectrumColumns(for: covers)
+            TimelineView(.animation(paused: model.isPaused)) { timeline in
+                SpectrumMeshLight(
+                    columns: columns,
+                    elapsed: model.elapsed(at: timeline.date) * model.speedScale,
+                    parallax: parallax
+                )
+            }
+            .animation(.easeInOut(duration: 0.8), value: columns)
+        }
+    }
+
+    /// The cover a context is about: the record in progress on the
+    /// library, the latest on a shelf, the record itself on its detail.
+    private func featuredCover(from covers: [WallCover]) -> WallCover? {
+        if case .all = model.context, let id = model.featuredID, let match = covers.first(where: { $0.id == id }) {
+            return match
+        }
+        return covers.first { $0.coverURL != nil } ?? covers.first
+    }
+
+    /// Two or three related colours, the way Apple Music lights a song —
+    /// the featured cover's own, then its category's. Only when a cover
+    /// has too few does the library's spectrum fill in.
+    private func spectrumColumns(for covers: [WallCover]) -> [CoverPalette.Swatch] {
+        let featured = featuredCover(from: covers).map { [$0] } ?? []
+        var columns = SpectrumMeshLight.paletteColumns(covers: featured, palettes: model.palettes)
+        if columns.count < 2 {
+            for swatch in SpectrumMeshLight.spectrumColumns(for: covers) where !columns.contains(swatch) {
+                columns.append(swatch)
+            }
+        }
+        return Array(columns.prefix(3))
     }
 
     @ViewBuilder

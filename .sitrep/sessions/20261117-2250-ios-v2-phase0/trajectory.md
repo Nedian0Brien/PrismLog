@@ -152,3 +152,16 @@
 
 ### 22:33 · T17 완료 · Phase 8 테스트
 - 단위 83개 중 81 통과·2 건너뜀, UI iPhone 8/8, 듀오 8/8. 이슈 #20 등록
+
+### ~22:40 · T19 폐기 · A·B·C 시제품
+- 사용자가 세 안 모두 반려. 대안으로 두 방향(표지 사용 방식 개선, Apple Music식 빛)과 포인트 색 교체를 지시함
+
+### 22:55 · T20 완료 · 두 방향 구현과 측정
+- `WallBackgroundStyles.swift`(`WallStyle`, `FeaturedCoverBackdrop`, `SpectrumMeshLight`, `WallGrain`), `CoverPalette.swift` 추가
+- `PrismPalette` 포인트 색을 OKLCH L 0.68·C 0.12로 통일, `textMuted` #C1BDB5
+- 최악 조건 대비: 표지 히어로 상단 clear 카드 2.9:1 → 디밍 위 0.56으로 5.0:1. 스펙트럼 빛 위 0.20으로 5.1:1
+- 단위 83개 중 81 통과·2 건너뜀, UI iPhone 8/8, 듀오 8/8, 경고 0
+
+### 22:55 · 보고 · D6 결정 요청
+- 구현 중 95%. 두 방향을 같은 앱에 넣고 `wall.style`로 전환. 기본값은 표지 벽 유지
+- D6 배경 방향 결정 요청, 권장 스펙트럼 빛

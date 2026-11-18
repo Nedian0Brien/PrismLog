@@ -10,6 +10,9 @@ struct SettingsScreen: View {
     @State private var clearedCache = false
     @AppStorage(LibraryWallView.flowSettingKey) private var wallFlows = true
     @AppStorage(WallDimming.storageKey) private var wallDimming: WallDimming = .standard
+    #if DEBUG
+    @AppStorage(WallStyle.storageKey) private var wallStyle: WallStyle = .covers
+    #endif
 
     private enum BackupState: Equatable {
         case idle
@@ -92,6 +95,19 @@ struct SettingsScreen: View {
     private var wallLabCard: some View {
         VStack(spacing: 10) {
             wallLabButton
+
+            // Compare the background directions on the real screens.
+            VStack(alignment: .leading, spacing: 8) {
+                Text("배경 방식 (비교용)")
+                    .font(.prismCallout)
+                    .foregroundStyle(PrismColor.text)
+                Picker("배경 방식", selection: $wallStyle) {
+                    ForEach(WallStyle.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("settings.wallStyle")
+            }
+            .prismGlassCard()
 
             Button(clearedCache ? "표지 캐시를 비웠습니다" : "표지 캐시 비우기", systemImage: "trash") {
                 Task {

@@ -19,6 +19,7 @@ struct WallLabScreen: View {
     @State private var scrollOffset: CGFloat = 0
     @State private var showsControls: Bool
     @State private var meter = WallFrameMeter()
+    @AppStorage(WallStyle.storageKey) private var style: WallStyle = .covers
 
     init() {
         let defaults = UserDefaults.standard
@@ -205,6 +206,12 @@ struct WallLabScreen: View {
         @Bindable var wall = wall
 
         return VStack(alignment: .leading, spacing: 10) {
+            Picker("배경", selection: $style) {
+                ForEach(WallStyle.allCases) { Text($0.label).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("wallLab.style")
+
             Picker("배치", selection: $wall.layout) {
                 Text("A · 가로 행").tag(WallLayout.rows)
                 Text("B · 모자이크").tag(WallLayout.mosaic)
@@ -261,7 +268,7 @@ struct WallLabScreen: View {
     /// Tags each console report with what was on screen.
     private var meterLabel: String {
         let megabytes = Double(wall.decodedBytes) / 1_048_576
-        return "layout=\(wall.layout.rawValue) source=\(source.rawValue) covers=\(wall.images.count) px=\(wall.imagePixelBucket) wall=\(String(format: "%.1f", megabytes))MB"
+        return "style=\(style.rawValue) layout=\(wall.layout.rawValue) source=\(source.rawValue) covers=\(wall.images.count) px=\(wall.imagePixelBucket) wall=\(String(format: "%.1f", megabytes))MB"
     }
 
     private var readout: String {

@@ -11,6 +11,11 @@ import UIKit
 final class LibraryWallModel {
     var layout: WallLayout = .rows
 
+    /// The record the library is about right now — the first one in
+    /// progress. The backgrounds take their cover and colours from it, so
+    /// the backdrop matches the first lens card.
+    var featuredID: WallCover.ID?
+
     var context: WallContext = .all {
         didSet { setPaused(context == .still, for: .stillContext) }
     }
@@ -32,7 +37,12 @@ final class LibraryWallModel {
     }
 
     private(set) var covers: [WallCover] = []
-    private(set) var images: [WallCover.ID: UIImage] = [:]
+    private(set) var images: [WallCover.ID: UIImage] = [:] {
+        didSet { refreshPalettes() }
+    }
+    /// Each cover's vivid colours, for the light and hero backgrounds.
+    /// Cached because they're read every frame.
+    private(set) var palettes: [WallCover.ID: [CoverPalette.Swatch]] = [:]
     private(set) var pauseReasons: Set<WallPauseReason> = []
 
     private var clock = WallClock()
@@ -98,6 +108,13 @@ final class LibraryWallModel {
     }
 
     // MARK: Images
+
+    private func refreshPalettes() {
+        palettes = palettes.filter { id, _ in images[id] != nil }
+        for (id, image) in images where palettes[id] == nil {
+            palettes[id] = CoverPalette.swatches(from: image)
+        }
+    }
 
     private func loadImages() {
         guard !isFixture else { return }
