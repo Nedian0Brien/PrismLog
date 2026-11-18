@@ -9,7 +9,7 @@ struct RecordDetailScreen: View {
 
     @Environment(PrismStore.self) private var store
     @State private var loggingProgress = false
-    @State private var readingSession = false
+    @Environment(AppNavigationModel.self) private var navigation: AppNavigationModel?
     @State private var addingNote = false
     @State private var editing = false
     /// Captured on first appearance. A study detail anchors on one activity
@@ -18,6 +18,15 @@ struct RecordDetailScreen: View {
     @State private var fallbackEntityID: UUID?
     @State private var seriesToast: SeriesProgressChange?
     @State private var toastDismissTask: Task<Void, Never>?
+
+    private var readingSessionPresented: Binding<Bool> {
+        Binding(
+            get: { navigation?.readingSession?.recordID == (record?.id ?? recordID) },
+            set: { presented in
+                if !presented { navigation?.readingSession = nil }
+            }
+        )
+    }
 
     private var record: RecordItem? {
         if let direct = store.record(id: recordID) { return direct }
@@ -95,7 +104,12 @@ struct RecordDetailScreen: View {
                         Menu {
                             if record.category == .reading {
                                 Button("읽기 시작", systemImage: "book") {
-                                    readingSession = true
+                                    navigation?.readingSession = ReadingSessionState(
+                                        recordID: record.id,
+                                        startedAt: .now,
+                                        currentPage: record.pagesRead > 0 ? String(record.pagesRead) : "",
+                                        note: ""
+                                    )
                                 }
                                 .accessibilityIdentifier("detail.readingSession")
                                 Button("진도 기록", systemImage: "chart.line.uptrend.xyaxis") {
@@ -125,7 +139,9 @@ struct RecordDetailScreen: View {
                         ReadingProgressSheet(record: record)
                     }
                 }
-                .fullScreenCover(isPresented: $readingSession) {
+                // Presented from the model's session, so rebuilding this
+                // screen on a fold or rotation keeps the session open.
+                .fullScreenCover(isPresented: readingSessionPresented) {
                     ReadingSessionScreen(record: record)
                 }
                 .sheet(isPresented: $addingNote) {

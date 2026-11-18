@@ -67,20 +67,29 @@ struct LibraryScreen: View {
                     .padding(.horizontal, 4)
 
                 ScrollView(.horizontal) {
-                    LazyHStack(spacing: 12) {
-                        ForEach(items) { item in
-                            NavigationLink(value: item.record.id) {
-                                LensCard(item: item)
+                    // Its own glass container, inside the scroll view: the
+                    // screen's container draws glass in its own layer and
+                    // ignores this scroll view's clip, which let lens cards
+                    // show past the column and under iPhone Duo's vertical
+                    // bar (Phase 7).
+                    GlassEffectContainer(spacing: 12) {
+                        LazyHStack(spacing: 12) {
+                            ForEach(items) { item in
+                                NavigationLink(value: item.record.id) {
+                                    LensCard(item: item)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("library.inProgress")
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("library.inProgress")
                         }
+                        .scrollTargetLayout()
                     }
-                    .scrollTargetLayout()
                 }
+                .clipped()
                 .scrollTargetBehavior(.viewAligned)
                 .scrollIndicators(.hidden)
-                .scrollClipDisabled()
+                // Clipped, not `scrollClipDisabled()`: unclipped cards ran
+                // under iPhone Duo's vertical bar and its `+` (spec §7.2).
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

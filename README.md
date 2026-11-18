@@ -165,6 +165,21 @@ const COLORS = {
 - **태블릿**: 확장된 대시보드 레이아웃
 - **데스크톱**: 풀 너비 콘텐츠 표시
 
+## 📱 iOS 앱 (v2)
+
+`ios/`에 SwiftUI 네이티브 앱이 있다. 기록한 표지를 화면 뒤에 흐르게 깐 "표지 벽" 위에 Liquid Glass를 올리고, 아이폰 듀오의 접은 화면과 펼친 화면을 모두 지원한다.
+
+- 요구 사항: Xcode 27.1 이상(27.2에서 검증), iOS 27.1 이상, [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+- 프로젝트 생성: `cd ios && xcodegen generate` (파일을 추가하거나 옮긴 뒤 다시 실행)
+- 빌드와 테스트:
+  ```bash
+  cd ios
+  xcodebuild -project PrismLog.xcodeproj -scheme PrismLog -destination 'platform=iOS Simulator,name=iPhone Duo' test
+  ```
+- 구조: `App/`(셸·내비게이션 모델), `Library/`(표지 캐시·생성 표지·표지 벽), `Features/`(라이브러리·기록·타임라인·설정·작성·독서 세션), `Data/`(SwiftData 저장소와 API 동기화), `DesignSystem/`
+- Debug 빌드의 설정 탭에 "표지 벽 실험실"이 있다. 실행 인자로 바로 열 수 있다: `-WallLab YES -WallLabLayout rows -WallLabSource worstCase`
+- 기획·명세·계획: [`docs/ios-v2/`](docs/ios-v2/) (01-intent, 02-spec, 03-plan, 04-phase0-audit)
+
 ## 🔐 보안
 
 - HTTPS: Let's Encrypt SSL 자동 갱신

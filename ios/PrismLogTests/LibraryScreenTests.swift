@@ -116,6 +116,27 @@ struct LibraryScreenTests {
         #expect(LibraryMetrics.streakDays(from: []) == 0)
     }
 
+    // MARK: Reading session
+
+    @Test("세션 시계는 한 시간 전까지 분:초, 넘으면 시:분:초로 쓴다")
+    func sessionClockFormatsByLength() {
+        let start = Date(timeIntervalSinceReferenceDate: 0)
+        #expect(ReadingSessionScreen.elapsedLabel(from: start, to: start.addingTimeInterval(727)) == "12:07")
+        #expect(ReadingSessionScreen.elapsedLabel(from: start, to: start.addingTimeInterval(3_727)) == "1:02:07")
+        #expect(ReadingSessionScreen.elapsedLabel(from: start, to: start.addingTimeInterval(-5)) == "00:00")
+    }
+
+    @Test("읽기 세션은 내비게이션 모델에 남아서 화면이 다시 만들어져도 이어진다")
+    func readingSessionLivesInTheNavigationModel() {
+        let navigation = AppNavigationModel()
+        let id = UUID()
+        let started = Date(timeIntervalSinceReferenceDate: 100)
+        navigation.readingSession = ReadingSessionState(recordID: id, startedAt: started, currentPage: "12", note: "")
+        navigation.readingSession?.note = "접어도 남는 메모"
+        #expect(navigation.readingSession?.startedAt == started)
+        #expect(navigation.readingSession?.note == "접어도 남는 메모")
+    }
+
     // MARK: Columns
 
     @Test("접힘선이 있으면 두 열이 접힘선 양쪽에 놓이고 사이 간격이 접힘선을 덮는다")

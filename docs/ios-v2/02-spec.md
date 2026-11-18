@@ -79,7 +79,7 @@ ios/PrismLog/
 - compact width: 하단(또는 듀오 바깥 화면에서는 세로) 탭바.
 - regular width: `.tabViewStyle(.sidebarAdaptable)`로 사이드바 전환을 허용한다. 사이드바도 표지 벽 위에 뜬 글래스가 된다.
 
-**작성 진입점**: v1의 떠 있는 FAB(고정 `bottom 78`)를 없앤다. 각 화면 툴바의 `+` 버튼 하나가 카테고리 5종 메뉴를 연다. 툴바 항목이라 듀오에서 세로 바로 옮겨 가는 동작과 접힘선 회피를 시스템이 맡는다. 펼칠 때 글래스가 메뉴로 모핑하는 연출은 `glassEffectID`로 만든다.
+**작성 진입점**: v1의 떠 있는 FAB(고정 `bottom 78`)를 없앤다. 각 화면 툴바의 `+` 버튼 하나가 카테고리 5종 메뉴를 연다. 툴바 항목이라 듀오에서 세로 바로 옮겨 가는 동작과 접힘선 회피를 시스템이 맡는다. 메뉴는 시스템 툴바 `Menu`(`topBarPinnedTrailing`)로 만든다. 툴바 메뉴는 시스템이 글래스에서 메뉴로 모핑하므로 `glassEffectID`로 따로 만들지 않는다(Phase 3).
 
 ## 4. 표지 벽 (Library Wall)
 
@@ -142,6 +142,7 @@ enum WallContext: Equatable {
   - **[확인됨]** SwiftUI 업데이트 문서(2026년 6월·9월 항목)에 TabView 콘텐츠 배경 투명화 API는 없다.
   - **[확인됨]** iOS 27.2 SDK(Xcode 27.2) `SwiftUI.swiftinterface`에서도 `.tabView`는 `@available(iOS, unavailable)`이다. `.navigation`과 `.navigationSplitView`만 iOS 18.0+로 열려 있다.
   - **[빌드 확인]** `.navigation` 배경만 지웠을 때 `TabView`가 그 아래에 불투명 배경을 칠하는지는 선언으로 알 수 없다. Phase 3 첫 작업에서 듀오 시뮬레이터로 확인한다. 칠하면 대안으로 간다.
+- **2026-11-18 Phase 3 결과**: 듀오 시뮬레이터에서 TabView가 루트에 깐 벽 위를 불투명하게 칠했다. 그래서 아래 대안을 쓴다. 각 화면과 상세가 `prismWallBackground()`로 같은 `LibraryWallModel`의 벽을 그린다.
 - 대안: v1처럼 각 화면 스캐폴드 안에 벽을 두고, 공유 `LibraryWallModel`로 시계·배치를 이어 붙인다. v1 `PrismScreenScaffold`가 이 방식이다. 탭 컨테이너가 불투명 시스템 배경을 칠하기 때문에 v1은 이 방식을 골랐다.
 - 흐름은 `TimelineView(.animation)`이 구동하고, 행 하나를 `HStack` 두 벌로 이어 붙여 끊김 없이 순환시킨다. 표지 수가 많으면 `Canvas` + 미리 resolve한 이미지로 바꾼다.
 - 정지 조건: `scenePhase != .active`, 저전력 모드(`ProcessInfo.isLowPowerModeEnabled`), 동작 줄이기, 설정에서 끔.
@@ -191,6 +192,9 @@ enum WallContext: Equatable {
 - compact: v1 허브 구조(`RecordsHub` → 카테고리 목록 → `RecordDetailScreen`)를 `NavigationStack`으로 유지한다.
 - regular: `NavigationSplitView` — 사이드바(카테고리 + 해당 목록), 상세. 듀오 펼침에서 시스템이 50/50으로 나누고 접힘선이 자연스러운 경계가 된다.
 - 목록의 표지 셀에서 상세로 갈 때 벽이 `hero` 맥락으로 바뀐다.
+- **Phase 7 결정**: compact에서도 `NavigationStack`으로 바꾸지 않고 `NavigationSplitView` 하나를 쓴다. 접을 때 스택과 분할 화면을 바꿔 끼우면 기록 탭 전체가 다시 만들어져서 상세에서 연 시트·세션이 닫히고 입력이 사라졌다. 분할 화면은 compact에서 스스로 접히고 열의 뷰를 유지한다. 그 대가로 기록 탭의 목록→상세 `zoom` 전환은 쓰지 않는다.
+- 분할 화면은 접힘선에 열 경계를 맞추지 않았다(시뮬레이터). 사이드바의 기본 폭을 접힘선 왼쪽 끝으로 준다. 책 자세에서는 경계가 접힘선에 맞았고, 완전히 펼친 자세에서는 시스템이 사이드바를 약 418pt로 제한해 접힘선(459–497pt)에 못 미쳤다. 실기기에서 다시 본다.
+- 펼친 상태에서 기록을 고른 채 접으면 상세가 스택의 루트가 되어 뒤로 가기가 사라졌다. 접힐 때 사이드바를 잠깐 보였다가 상세를 다시 올려서 뒤로 가기를 되살린다.
 - 상세 섹션(독서 진행·필사·세션, 시리즈 에피소드, 게임 세션 달력, 공부 목차·활동)은 기능을 모두 유지한다.
 
 ### 6.3 타임라인
@@ -221,6 +225,8 @@ enum WallContext: Equatable {
   - 환경 값: `EnvironmentValues.splitArrangementAxis`, `EnvironmentValues.overlayArrangementZIndex`. `overlayArrangementZIndex`는 수식어가 아니라 환경 값이다.
   - 배치 제약: `ArrangementView`를 `ScrollView`, `NavigationSplitView`, 그리드, `List` 안에 넣지 않는다. `ArrangementView` 안에 `NavigationSplitView`나 `TabView`를 넣지 않는다. 그래서 세션 모드 화면은 스크롤 없이 `ArrangementView`를 화면 최상위에 둔다. 메모 입력처럼 길어지는 영역은 primary 또는 secondary 안에서만 스크롤한다.
   - 세션 모드 기본안: `ArrangementView { 표지·경과 시간 } secondary: { 쪽수·메모·종료 }` + `.arrangementViewStyle(.split.axes(.vertical))`. **[빌드 확인]** 테이블탑에서 접힘선 기준으로 위·아래가 나뉘는지 시뮬레이터로 확인한다.
+  - **Phase 7 결과**: 테이블탑에서 위·아래로 나뉜다. 그런데 세로축만 허용하면 책 자세(세로 접힘선)에서 secondary가 통째로 사라졌다. 그래서 `.arrangementViewStyle(.split)`(두 축)으로 바꿨다. 책 자세에서는 좌우로 나뉜다.
+  - 세션 진행 상태(시작 시각·쪽수·메모)는 `AppNavigationModel.readingSession`에 둔다. 화면 자체 상태로 두었을 때 자세가 바뀌면 시계가 0으로 돌아갔다.
 
 ## 7. 아이폰 듀오 대응
 

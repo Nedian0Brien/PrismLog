@@ -3,28 +3,52 @@ import SwiftUI
 /// Reading session mode (spec §6.6): a timer beside the book while reading,
 /// then the usual progress sheet to save it.
 ///
-/// Built on `ArrangementView` split on the vertical axis, so on iPhone Duo in
-/// tabletop the cover and clock stand on the upper half and the controls lie
-/// on the lower half, divided at the fold. Every posture keeps the same
-/// controls and order — Apple's guidance is not to drop features by posture.
+/// Built on `ArrangementView` split at the fold on either axis: in tabletop
+/// the cover and clock stand on the upper half and the controls lie on the
+/// lower half; in book posture they sit side by side. Spec §6.6 first limited
+/// the split to the vertical axis, which in book posture dropped the controls
+/// entirely (iOS 27.2 iPhone Duo simulator, Phase 7). Every posture keeps the
+/// same controls and order — Apple's guidance is not to drop features by
+/// posture.
 struct ReadingSessionScreen: View {
     let record: RecordItem
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(AppNavigationModel.self) private var navigation
 
-    @State private var startedAt = Date.now
-    @State private var currentPage: String
-    @State private var note: String
     @State private var finishing: ReadingProgressSheet.SessionDraft?
     /// The hinge is part-way open — tabletop or book. Only dresses the
     /// clock; layout comes from `ArrangementView` (spec §7.3).
     @State private var isPartlyOpen = false
 
-    init(record: RecordItem) {
-        self.record = record
-        _currentPage = State(initialValue: record.pagesRead > 0 ? String(record.pagesRead) : "")
-        _note = State(initialValue: "")
+    /// The session lives in the navigation model, not in this view, so a
+    /// fold or a rotation that rebuilds the screen keeps the clock running
+    /// and what's been typed (spec §7.4).
+    private var session: ReadingSessionState {
+        if let current = navigation.readingSession, current.recordID == record.id { return current }
+        return ReadingSessionState(
+            recordID: record.id,
+            startedAt: .now,
+            currentPage: record.pagesRead > 0 ? String(record.pagesRead) : "",
+            note: ""
+        )
+    }
+
+    private var startedAt: Date { session.startedAt }
+
+    private var currentPage: Binding<String> {
+        Binding(
+            get: { session.currentPage },
+            set: { navigation.readingSession?.currentPage = $0 }
+        )
+    }
+
+    private var note: Binding<String> {
+        Binding(
+            get: { session.note },
+            set: { navigation.readingSession?.note = $0 }
+        )
     }
 
     var body: some View {
@@ -33,14 +57,21 @@ struct ReadingSessionScreen: View {
         } secondary: {
             controls
         }
-        .arrangementViewStyle(.split.axes(.vertical))
+        .arrangementViewStyle(.split)
         .prismWallBackground()
+        .onAppear {
+            // Start a session, or pick up the one already running for this book.
+            if navigation.readingSession?.recordID != record.id {
+                navigation.readingSession = session
+            }
+        }
         .onHingeChange { _, newContext in
             let partlyOpen = newContext.hinge?.status == .partiallyOpen
             withAnimation(reduceMotion ? nil : PrismMotion.screen) { isPartlyOpen = partlyOpen }
         }
         .sheet(item: $finishing) { draft in
             ReadingProgressSheet(record: record, session: draft) {
+                navigation.readingSession = nil
                 dismiss()
             }
         }
@@ -84,7 +115,7 @@ struct ReadingSessionScreen: View {
                         .font(.prismCaption)
                         .foregroundStyle(PrismColor.text)
                     HStack {
-                        TextField("쪽", text: $currentPage)
+                        TextField("쪽", text: currentPage)
                             .keyboardType(.numberPad)
                             .font(PrismFont.numeral(22))
                             .foregroundStyle(PrismColor.text)
@@ -102,7 +133,7 @@ struct ReadingSessionScreen: View {
                     Text("메모")
                         .font(.prismCaption)
                         .foregroundStyle(PrismColor.text)
-                    TextField("남기고 싶은 문장이나 생각", text: $note, axis: .vertical)
+                    TextField("남기고 싶은 문장이나 생각", text: note, axis: .vertical)
                         .lineLimit(3...6)
                         .font(.prismBody)
                         .foregroundStyle(PrismColor.text)
@@ -110,7 +141,10 @@ struct ReadingSessionScreen: View {
                 .prismGlassCard()
 
                 HStack(spacing: 12) {
-                    Button("그만두기", systemImage: "xmark") { dismiss() }
+                    Button("그만두기", systemImage: "xmark") {
+                        navigation.readingSession = nil
+                        dismiss()
+                    }
                         .buttonStyle(.glass)
                         .accessibilityIdentifier("session.cancel")
 
@@ -131,8 +165,8 @@ struct ReadingSessionScreen: View {
         finishing = ReadingProgressSheet.SessionDraft(
             startedAt: startedAt,
             endedAt: .now,
-            currentPage: Int(currentPage),
-            note: note
+            currentPage: Int(session.currentPage),
+            note: session.note
         )
     }
 

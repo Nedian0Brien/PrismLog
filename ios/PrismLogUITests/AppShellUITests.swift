@@ -18,6 +18,9 @@ final class AppShellUITests: XCTestCase {
     override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
+        // Every test starts from the library tab. Without this, scene
+        // restoration reopens whatever tab and record the last test left.
+        app.launchArguments += ["-ApplePersistenceIgnoreState", "YES"]
         app.launch()
     }
 
@@ -71,12 +74,16 @@ final class AppShellUITests: XCTestCase {
             XCTAssertTrue(app.buttons[label].firstMatch.waitForExistence(timeout: 3), "\(label) 작성 항목이 없음")
         }
 
-        // Tapping outside the menu closes it.
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)).tap()
-        XCTAssertFalse(
-            app.buttons["composer.reading"].waitForExistence(timeout: 2),
-            "바깥을 탭해도 메뉴가 닫히지 않음"
-        )
+        // Tapping outside the menu closes it — on the screen title, an
+        // element rather than a screen coordinate: iPhone Duo's inner
+        // display doesn't map normalized coordinates where the app is.
+        app.staticTexts["screen.title"].firstMatch.tap()
+        // Hittable, not existing: in a vertical bar the closed menu's items
+        // can stay in the accessibility tree, off screen.
+        let readingItem = app.buttons["composer.reading"]
+        let closed = NSPredicate { _, _ in !readingItem.exists || !readingItem.isHittable }
+        expectation(for: closed, evaluatedWith: nil)
+        waitForExpectations(timeout: 3)
 
         openTab("타임라인")
         XCTAssertTrue(

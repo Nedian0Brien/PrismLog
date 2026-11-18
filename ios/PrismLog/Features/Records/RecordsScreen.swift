@@ -22,28 +22,75 @@ struct RecordsScreen: View {
     @State private var loggingProgress: RecordItem?
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    /// Ties a list card's cover to the detail it opens (spec §4.5).
-    @Namespace private var zoom
 
-    private var isSplit: Bool { horizontalSizeClass == .regular }
+    private var isCompact: Bool { horizontalSizeClass != .regular }
 
+    /// The sidebar width that puts the split on iPhone Duo's fold. The
+    /// system doesn't snap a split view's columns to the fold on its own
+    /// (checked on the iOS 27.2 iPhone Duo simulator, Phase 7), so the
+    /// sidebar is offered the fold's leading edge as its ideal width.
+    /// `nil` without a fold.
+    @State private var foldSidebarWidth: CGFloat?
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    /// Which column a collapsed (compact) split view shows.
+    @State private var compactColumn: NavigationSplitViewColumn = .sidebar
+    /// Set while the shell re-stacks the detail on the sidebar after a
+    /// collapse, so the brief trip through `.sidebar` isn't read as "back".
+    @State private var restacking = false
+    static let defaultSidebarWidth: CGFloat = 340
+
+    /// Always a split view (spec §6.2), never swapped for a stack.
+    ///
+    /// Folding iPhone Duo changes the size class. Swapping a stack for a
+    /// split view at that moment rebuilt the whole tab, which dismissed any
+    /// sheet or session open on a record and lost what was typed into it
+    /// (Phase 7). A split view collapses to a stack by itself in compact
+    /// width and keeps its columns' views — and their presentations —
+    /// across the change. The cost is the list-to-detail zoom, which a
+    /// split view doesn't offer.
     var body: some View {
-        Group {
-            if isSplit {
-                // Spec §6.2: on a wide screen, hub and shelf in the sidebar,
-                // the record beside it. On iPhone Duo unfolded the system
-                // splits the columns at the fold.
-                NavigationSplitView {
-                    scaffold(embedsInStack: false)
-                } detail: {
-                    NavigationStack {
-                        splitDetail
-                    }
-                }
-                .navigationSplitViewStyle(.balanced)
-                .containerBackground(.clear, for: .navigationSplitView)
-            } else {
-                scaffold(embedsInStack: true)
+        NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: $compactColumn) {
+            scaffold
+                .navigationSplitViewColumnWidth(
+                    min: 280,
+                    ideal: foldSidebarWidth ?? Self.defaultSidebarWidth,
+                    max: max(foldSidebarWidth ?? 0, 480)
+                )
+        } detail: {
+            splitDetail
+        }
+        .navigationSplitViewStyle(.balanced)
+        .containerBackground(.clear, for: .navigationSplitView)
+        .onGeometryChange(for: CGFloat?.self) { proxy in
+            let width = proxy.size.width
+            let divisions = proxy.reservedRegions(kind: .division, options: .includeInactive).map(\.frame)
+            let split = ColumnSplit.make(width: width, height: proxy.size.height, divisions: divisions, spacing: 0)
+            return split.followsFold ? split.leadingWidth : nil
+        } action: { width in
+            foldSidebarWidth = width
+        }
+        // Selection drives the collapsed column: a record shows its detail,
+        // none shows the hub. Coming back to the sidebar in compact clears it.
+        .onChange(of: navigation.paths[.records], initial: true) {
+            compactColumn = navigation.paths[.records]?.last == nil ? .sidebar : .detail
+        }
+        .onChange(of: compactColumn) { _, column in
+            guard isCompact, column == .sidebar, !restacking else { return }
+            navigation.paths[.records] = []
+        }
+        .onChange(of: isCompact) { _, nowCompact in
+            // Collapsing an expanded split view with a record selected shows
+            // the detail as the stack's root, with no way back to the list
+            // (iOS 27.2 iPhone Duo simulator, Phase 7). Showing the sidebar
+            // and then the detail again stacks the detail on the sidebar,
+            // which brings the back button.
+            guard nowCompact, navigation.paths[.records]?.last != nil else { return }
+            restacking = true
+            compactColumn = .sidebar
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(80))
+                compactColumn = .detail
+                restacking = false
             }
         }
         .sheet(item: $editing) { record in
@@ -62,7 +109,7 @@ struct RecordsScreen: View {
         }
     }
 
-    private func scaffold(embedsInStack: Bool) -> some View {
+    private var scaffold: some View {
         PrismScreenScaffold(
             eyebrow: "Records",
             title: section?.label ?? "기록 허브",
@@ -70,10 +117,10 @@ struct RecordsScreen: View {
             backLabel: section == nil ? nil : "기록 허브",
             onBack: { section = nil },
             headerAccessory: section == nil ? AnyView(columnToggle) : nil,
-            embedsInStack: embedsInStack,
+            embedsInStack: false,
             onRefresh: { await store.sync() }
         ) {
-            let content = Group {
+            Group {
                 if let section {
                     shelf(section)
                         .transition(.asymmetric(
@@ -89,17 +136,6 @@ struct RecordsScreen: View {
                 }
             }
             .animation(PrismMotion.screen, value: section)
-
-            if embedsInStack {
-                content.navigationDestination(for: UUID.self) { id in
-                    if let record = store.record(id: id) {
-                        RecordDetailScreen(recordID: record.id)
-                            .navigationTransition(.zoom(sourceID: id, in: zoom))
-                    }
-                }
-            } else {
-                content
-            }
         }
     }
 
@@ -121,21 +157,13 @@ struct RecordsScreen: View {
         }
     }
 
-    /// A card that opens a record: a push with a zoom from its cover in a
-    /// stack, a selection into the detail column in a split view.
-    @ViewBuilder
+    /// A card that opens a record: it selects it, and the split view shows
+    /// it beside the list or, collapsed, on top of it.
     private func recordLink<Label: View>(_ id: UUID, @ViewBuilder label: () -> Label) -> some View {
-        if isSplit {
-            Button {
-                navigation.paths[.records] = [id]
-            } label: {
-                label()
-            }
-        } else {
-            NavigationLink(value: id) {
-                label()
-            }
-            .matchedTransitionSource(id: id, in: zoom)
+        Button {
+            navigation.paths[.records] = [id]
+        } label: {
+            label()
         }
     }
 
