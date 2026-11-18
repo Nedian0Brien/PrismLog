@@ -2,4 +2,4 @@
 
 | 세션 | 전체 작업 | 최종 상태 | 진행률 |
 |---|---|---|---|
-| 20261117-2250-ios-v2-phase0 | PrismLog iOS v2 Phase 0–2 | 구현 중 | 90% |
+| 20261117-2250-ios-v2-phase0 | PrismLog iOS v2 Phase 0–2 | 완료됨 | 100% |

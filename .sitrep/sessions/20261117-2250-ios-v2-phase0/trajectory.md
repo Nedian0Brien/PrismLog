@@ -112,3 +112,7 @@
 
 ### 21:24 · 보고 · 구현 중 90%
 - D2 결정 요청 (권장 A). 녹화 `docs/ios-v2/screens/phase2-wall-A-vs-B.mp4`
+
+### 21:29 · D2 결정 · A 가로 행
+- 결정: 사용자. B는 Debug 실험실에 비교용으로만 남김
+- intent D2, spec §4.3·§4.4, 03-plan Phase 2 갱신

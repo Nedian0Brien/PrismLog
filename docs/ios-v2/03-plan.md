@@ -27,9 +27,9 @@
 - [x] `LibraryWallView`: 배치 A(가로 행) / B(−12° 모자이크), 패럴랙스 입력 — 행과 칸을 가상화해서 화면에 보이는 표지만 뷰로 만든다
 - [x] `WallLegibilityLayer`와 최악 조건 픽스처 — `Library/WallLegibilityLayer.swift`, `Library/WallFixtures.swift`(Debug)
 - [x] 디버그 샌드박스 화면: 벽 + 글래스 카드 샘플(.regular/.clear, 텍스트 많음/적음) + 배치·속도·디밍 슬라이더 — 설정 탭의 "표지 벽 실험실"(Debug 빌드). 실행 인자로 바로 열 수 있다: `-WallLab YES -WallLabLayout rows|mosaic -WallLabSource library|worstCase|synthetic30|synthetic200 -WallLabHideControls YES -WallLabDimming 0.7`
-- [ ] 실기기에서 A와 B를 녹화해 사용자에게 보여 주고 D2를 확정한다 — 2026-11-18 사용자 지시로 시뮬레이터에서 진행. 듀오 시뮬레이터 녹화를 `docs/ios-v2/screens/phase2-wall-A-vs-B.mp4`로 전달했다. D2 결정 대기
+- [x] 실기기에서 A와 B를 녹화해 사용자에게 보여 주고 D2를 확정한다 — 2026-11-18 사용자 지시로 시뮬레이터에서 진행. 듀오 시뮬레이터 녹화(`docs/ios-v2/screens/phase2-wall-A-vs-B.mp4`)를 보고 사용자가 **A(가로 행)**로 확정했다
 - [x] 성능 측정: 표지 30/200장에서 hitch, 메모리 — 시뮬레이터 참고값(아래). 실기기 Instruments는 Xcode 27.2와 iOS 27.3 기기 조합에서 화면·hitch·Time Profiler 데이터가 비어 와서, 실험실에 `WallFrameMeter`(CADisplayLink 기반 hitch 측정, 콘솔 `[WallMeter]` 출력)를 넣었다
-- 완료 기준: D2 확정, 성능 예산 충족, 굴절이 스크린샷에서 식별됨
+- 완료 기준: D2 확정, 성능 예산 충족, 굴절이 스크린샷에서 식별됨 — 2026-11-18 완료. 성능은 시뮬레이터 참고값으로 예산 안이다. 실기기 120Hz hitch는 Xcode가 iOS 27.3을 지원할 때 다시 잰다. 가독성 미달은 이슈 #19로 Phase 3에서 처리한다
 
 ### Phase 2 측정 (2026-11-18, 듀오 시뮬레이터, 표지 256px, 참고값)
 | 배치 | 표지 | hitch | fps | 벽 디코딩 메모리 | 앱 전체 메모리 | CPU(호스트) |
@@ -111,4 +111,5 @@
 | 2026-11-17 | 0 | `app-resizability` 스킬(Xcode 27.2)로 v1 재점검. 새 결함 없음 | d4adcc4 |
 | 2026-11-17 | 0 | 듀오 시뮬레이터 접힘·반쯤 펼침·펼침 화면 확인. Phase 0 완료 | 9913696 |
 | 2026-11-18 | 1 | 표지 캐시, 생성 표지, `CoverImage` 교체, 단위 테스트 16개. HEIC 대신 JPEG 디스크 캐시. Phase 1 완료 | 1b33218 |
-| 2026-11-18 | 2 | 표지 벽 모델·배치 A/B·가독성 층·실험실·프레임 측정, 단위 테스트. 시뮬레이터 측정과 가독성 수치 기록. D2 결정 대기 | (이 커밋) |
+| 2026-11-18 | 2 | 표지 벽 모델·배치 A/B·가독성 층·실험실·프레임 측정, 단위 테스트. 시뮬레이터 측정과 가독성 수치 기록 | 5f2a9be |
+| 2026-11-18 | 2 | D2를 A(가로 행)로 확정. Phase 2 완료 | (이 커밋) |
