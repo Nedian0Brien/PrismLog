@@ -53,31 +53,31 @@
 - 스크린샷: `docs/ios-v2/screens/phase2-wall-worst-case.jpg`
 
 ## Phase 3 — 글래스 v2와 앱 셸
-- [ ] `PrismGlass` v2 토큰·수식어 (spec §5)
-- [ ] `AppNavigationModel` + `@SceneStorage` 연결
-- [ ] `AppShell`: TabView(4탭, `sidebarAdaptable`), 루트 벽 배치(또는 대안), 툴바 `+` 작성 메뉴와 모핑
-- [ ] `PrismScreenScaffold` 재작성: 고정 여백(`bottom 78`, `bottom 130`) 제거, 스크롤 오프셋 → 벽 패럴랙스
-- [ ] 코드 전체에서 `UIScreen.main`, 방향·idiom 분기, 고정 크기 비교를 찾아 없앤다
-- 완료 기준: 4탭 빈 화면이 compact·regular·듀오 바깥 화면(세로 바)에서 깨지지 않고, 작성 메뉴가 기존 시트를 연다
+- [x] `PrismGlass` v2 토큰·수식어 (spec §5) — `lensCorner = 28`, `readableWidth = 640`, `prismLensCard()`. 이슈 #19에 따라 벽 기본 디밍을 0.55 → 0.70으로 올렸다
+- [x] `AppNavigationModel` + `@SceneStorage` 연결 — 탭, 기록 탭의 선반, 탭별 경로, 작성 요청, 탭별 스크롤 오프셋, 타임라인 기간. 장면 복원은 탭·선반·기록 탭 맨 위 기록
+- [x] `AppShell`: TabView(4탭, `sidebarAdaptable`), 루트 벽 배치(또는 대안), 툴바 `+` 작성 메뉴와 모핑 — **[빌드 확인] 결과: TabView가 루트에 깐 벽 위에 불투명 배경을 칠한다.** 그래서 대안(각 화면이 공유 `LibraryWallModel`로 벽을 그림, `prismWallBackground()`)을 썼다. 작성은 시스템 툴바 `Menu`(`topBarPinnedTrailing`)로 바꿨다. 툴바 메뉴는 시스템이 글래스 모핑과 접힘선 회피, 세로 바 이동을 맡는다
+- [x] `PrismScreenScaffold` 재작성: 고정 여백(`bottom 78`, `bottom 130`) 제거, 스크롤 오프셋 → 벽 패럴랙스 — FAB(`PrismComposerButton`)와 스크림을 지웠다(P1·P5). 시트 툴바의 제목만 있는 버튼 18곳에 아이콘을 붙였다(P3)
+- [x] 코드 전체에서 `UIScreen.main`, 방향·idiom 분기, 고정 크기 비교를 찾아 없앤다 — Phase 0 점검대로 0건
+- 완료 기준: 4탭 빈 화면이 compact·regular·듀오 바깥 화면(세로 바)에서 깨지지 않고, 작성 메뉴가 기존 시트를 연다 — UI 테스트 8개가 iPhone 17 Pro와 듀오 접힌 화면에서 모두 통과(이슈 #18 해결). UI 테스트 경고 171건 → 0건
 
 ## Phase 4 — 라이브러리(홈)
-- [ ] 렌즈 카드 캐러셀(지금 진행 중)
-- [ ] 스펙트럼 요약, 통계 카드 이전(추세·분포·히트맵), 최근 기록
-- [ ] regular width 2열 + 접힘선 대응(짝수 열, 간격)
-- [ ] main 머지 여부를 사용자와 결정한다 (D5)
-- 완료 기준: 홈이 spec §6.1을 만족, 대비·성능 기준 통과
+- [x] 렌즈 카드 캐러셀(지금 진행 중) — `LibraryMetrics.inProgress`: 읽는 중인 책, "시청 중" 시리즈, "플레이 중" 게임, 0–100% 사이 공부. 렌즈 카드는 `.clear` 글래스에 큰 글씨만 둔다(이슈 #19)
+- [x] 스펙트럼 요약, 통계 카드 이전(추세·분포·히트맵), 최근 기록 — 스펙트럼 카드에 연속 기록일을 넣었다
+- [x] regular width 2열 + 접힘선 대응(짝수 열, 간격) — `FoldAwareColumns`: 비활성 포함 division 영역이 있으면 두 열이 접힘선 양쪽에 놓이고 간격이 접힘선을 덮는다
+- [ ] main 머지 여부를 사용자와 결정한다 (D5) — 사용자 지시로 모든 Phase를 마친 뒤 최종 보고에서 묻는다
+- 탭 이름을 "라이브러리"로 바꿨다(spec §3)
 
 ## Phase 5 — 기록
-- [ ] compact: 허브 → 목록 → 상세 (`NavigationStack`)
-- [ ] regular: `NavigationSplitView` (사이드바 카테고리+목록 / 상세)
-- [ ] 벽 맥락 연동: 카테고리 → `category`, 상세 → `hero` + 표지 zoom 전환
-- [ ] 상세 섹션과 편집 시트 전부 이전, 기존 테스트 통과
-- 완료 기준: v1의 기록 기능 전부 동작, compact↔regular 전환에서 선택 유지
+- [x] compact: 허브 → 목록 → 상세 (`NavigationStack`)
+- [x] regular: `NavigationSplitView` (사이드바 카테고리+목록 / 상세) — 사이드바는 compact와 같은 허브·선반 화면이고, 고른 기록은 상세 열에 열린다
+- [x] 벽 맥락 연동: 카테고리 → `category`, 상세 → `hero` + 표지 zoom 전환 — 상세는 모든 탭에서 `hero`. compact 목록 카드에서 상세로 `zoom` 전환
+- [x] 상세 섹션과 편집 시트 전부 이전, 기존 테스트 통과
+- 완료 기준: v1의 기록 기능 전부 동작, compact↔regular 전환에서 선택 유지 — 선반과 선택 기록을 `AppNavigationModel`이 들고 있어서 두 구조가 같은 상태를 그린다
 
 ## Phase 6 — 타임라인·설정·작성
-- [ ] 타임라인: 한 열 640pt, `period` 맥락
-- [ ] 설정: 표시 옵션(배치·흐름·밝기), 디버그 섹션
-- [ ] 작성 초안을 모델로 옮겨 접기·펼치기에도 유지
+- [x] 타임라인: 한 열 640pt, `period` 맥락 — 화면에 보이는 날짜 블록을 모으고, 스크롤이 0.6초 멈추면 그 기간에 기록된 표지로 벽을 바꾼다
+- [x] 설정: 표시 옵션(배치·흐름·밝기), 디버그 섹션 — 흐름 켜기/끄기와 밝기 3단계(기본·어둡게·더 어둡게, 모두 본문 4.5:1 이상). 배치는 D2에서 A로 정해서 옵션에서 뺐다. 디버그: 표지 벽 실험실(0/5/30/200장, 최악 조건), 표지 캐시 비우기
+- [ ] 작성 초안을 모델로 옮겨 접기·펼치기에도 유지 — Phase 7 듀오 확인 결과로 판단한다
 - 완료 기준: v1 기능 패리티 체크리스트(아래) 전부 통과
 
 ## Phase 7 — 듀오 다듬기

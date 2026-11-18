@@ -6,16 +6,63 @@ import SwiftUI
 struct RecordsScreen: View {
     @Environment(PrismStore.self) private var store
 
+    @Environment(AppNavigationModel.self) private var navigation
+
     /// `nil` is the hub. Kept as state rather than a navigation push so the
     /// hub↔shelf move can cross-fade the way the web's pane transition does.
-    @State private var section: PrismAccent?
+    /// Held by the navigation model so it survives folding and unfolding.
+    private var section: PrismAccent? {
+        get { navigation.recordsSection }
+        nonmutating set { navigation.recordsSection = newValue }
+    }
     @State private var hubColumns = 1
     @State private var readingGrid = false
 
     @State private var editing: RecordItem?
     @State private var loggingProgress: RecordItem?
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    /// Ties a list card's cover to the detail it opens (spec §4.5).
+    @Namespace private var zoom
+
+    private var isSplit: Bool { horizontalSizeClass == .regular }
+
     var body: some View {
+        Group {
+            if isSplit {
+                // Spec §6.2: on a wide screen, hub and shelf in the sidebar,
+                // the record beside it. On iPhone Duo unfolded the system
+                // splits the columns at the fold.
+                NavigationSplitView {
+                    scaffold(embedsInStack: false)
+                } detail: {
+                    NavigationStack {
+                        splitDetail
+                    }
+                }
+                .navigationSplitViewStyle(.balanced)
+                .containerBackground(.clear, for: .navigationSplitView)
+            } else {
+                scaffold(embedsInStack: true)
+            }
+        }
+        .sheet(item: $editing) { record in
+            switch record.category {
+            case .reading: ReadingEditSheet(record: record)
+            case .study: StudyEditSheet(record: record)
+            default: CultureEditSheet(record: record)
+            }
+        }
+        .sheet(item: $loggingProgress) { record in
+            switch record.category {
+            case .reading: ReadingProgressSheet(record: record)
+            case .study: StudyProgressSheet(record: record)
+            default: GameSessionSheet(record: record)
+            }
+        }
+    }
+
+    private func scaffold(embedsInStack: Bool) -> some View {
         PrismScreenScaffold(
             eyebrow: "Records",
             title: section?.label ?? "기록 허브",
@@ -23,9 +70,10 @@ struct RecordsScreen: View {
             backLabel: section == nil ? nil : "기록 허브",
             onBack: { section = nil },
             headerAccessory: section == nil ? AnyView(columnToggle) : nil,
+            embedsInStack: embedsInStack,
             onRefresh: { await store.sync() }
         ) {
-            Group {
+            let content = Group {
                 if let section {
                     shelf(section)
                         .transition(.asymmetric(
@@ -41,25 +89,53 @@ struct RecordsScreen: View {
                 }
             }
             .animation(PrismMotion.screen, value: section)
-            .navigationDestination(for: UUID.self) { id in
-                if let record = store.record(id: id) {
-                    RecordDetailScreen(recordID: record.id)
+
+            if embedsInStack {
+                content.navigationDestination(for: UUID.self) { id in
+                    if let record = store.record(id: id) {
+                        RecordDetailScreen(recordID: record.id)
+                            .navigationTransition(.zoom(sourceID: id, in: zoom))
+                    }
                 }
+            } else {
+                content
             }
-            .sheet(item: $editing) { record in
-                switch record.category {
-                case .reading: ReadingEditSheet(record: record)
-                case .study: StudyEditSheet(record: record)
-                default: CultureEditSheet(record: record)
-                }
+        }
+    }
+
+    /// The split view's detail column: the selected record, or a prompt to
+    /// pick one. Reads the same selection the compact stack pushes, so
+    /// folding and unfolding keeps the record open.
+    @ViewBuilder
+    private var splitDetail: some View {
+        if let id = navigation.paths[.records]?.last {
+            RecordDetailScreen(recordID: id)
+                .id(id)
+        } else {
+            ContentUnavailableView(
+                "기록을 고르세요",
+                systemImage: "books.vertical",
+                description: Text("목록에서 기록을 고르면 여기에 열립니다.")
+            )
+            .prismWallBackground()
+        }
+    }
+
+    /// A card that opens a record: a push with a zoom from its cover in a
+    /// stack, a selection into the detail column in a split view.
+    @ViewBuilder
+    private func recordLink<Label: View>(_ id: UUID, @ViewBuilder label: () -> Label) -> some View {
+        if isSplit {
+            Button {
+                navigation.paths[.records] = [id]
+            } label: {
+                label()
             }
-            .sheet(item: $loggingProgress) { record in
-                switch record.category {
-                case .reading: ReadingProgressSheet(record: record)
-                case .study: StudyProgressSheet(record: record)
-                default: GameSessionSheet(record: record)
-                }
+        } else {
+            NavigationLink(value: id) {
+                label()
             }
+            .matchedTransitionSource(id: id, in: zoom)
         }
     }
 
@@ -147,7 +223,7 @@ struct RecordsScreen: View {
                         spacing: 14
                     ) {
                         ForEach(books) { book in
-                            NavigationLink(value: book.id) {
+                            recordLink(book.id) {
                                 ReadingShelfCard(book: book)
                             }
                             .buttonStyle(.plain)
@@ -158,7 +234,7 @@ struct RecordsScreen: View {
                 PrismGlassSection {
                     LazyVStack(spacing: 14) {
                         ForEach(books) { book in
-                            NavigationLink(value: book.id) {
+                            recordLink(book.id) {
                                 ReadingListCard(
                                     book: book,
                                     onEdit: { editing = book },
@@ -187,7 +263,7 @@ struct RecordsScreen: View {
                 PrismGlassSection {
                     LazyVStack(spacing: 14) {
                         ForEach(groups) { group in
-                            NavigationLink(value: group.id) {
+                            recordLink(group.id) {
                                 StudyListCard(
                                     group: group,
                                     onEdit: { editing = group.latest },
@@ -221,7 +297,7 @@ struct RecordsScreen: View {
                 PrismGlassSection {
                     LazyVStack(spacing: 14) {
                         ForEach(items) { item in
-                            NavigationLink(value: item.id) {
+                            recordLink(item.id) {
                                 CultureListCard(
                                     record: item,
                                     onEdit: { editing = item },
@@ -346,4 +422,5 @@ struct ReadingShelfCard: View {
 #Preview {
     RecordsScreen()
         .environment(PrismStore.preview())
+        .environment(AppNavigationModel())
 }

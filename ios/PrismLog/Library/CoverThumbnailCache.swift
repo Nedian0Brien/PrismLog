@@ -76,6 +76,10 @@ final class CoverMemoryCache: @unchecked Sendable {
         storage.object(forKey: key.fileStem as NSString)
     }
 
+    func removeAll() {
+        storage.removeAllObjects()
+    }
+
     func insert(_ image: UIImage, for key: CoverKey) {
         storage.setObject(image, forKey: key.fileStem as NSString, cost: Self.cost(of: image))
     }
@@ -235,6 +239,15 @@ actor CoverThumbnailCache {
     func storeGeneratedImage(_ image: UIImage, for key: CoverKey) {
         memory.insert(image, for: key)
         persist(image, to: directory.appending(path: key.fileName))
+    }
+
+    /// Empties memory and disk — the debug section's "clear cache" (spec §6.4).
+    /// URLs that failed get another chance too.
+    func removeAll() async {
+        memory.removeAll()
+        failedURLs.removeAll()
+        await flushDiskWrites()
+        try? FileManager.default.removeItem(at: directory)
     }
 
     /// Returns once every write queued so far has finished.

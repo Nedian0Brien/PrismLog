@@ -5,6 +5,8 @@ import SwiftUI
 struct PrismLogApp: App {
     private let container: ModelContainer
     @State private var store: PrismStore
+    /// One wall for the whole app, so its flow survives tab changes.
+    @State private var wall = LibraryWallModel()
 
     init() {
         let container = Self.makeContainer()
@@ -14,8 +16,9 @@ struct PrismLogApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            AppShell()
                 .environment(store)
+                .environment(wall)
                 .modelContainer(container)
                 .preferredColorScheme(.dark)
                 .tint(PrismAccent.reading.color)

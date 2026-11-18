@@ -20,6 +20,8 @@ struct TimelineScreen: View {
             eyebrow: "Timeline",
             title: "타임라인",
             focus: .movie,
+            // Spec §6.3: one column even on wide screens, the wall either side.
+            readableWidth: true,
             onRefresh: { await store.sync() }
         ) {
             VStack(spacing: 18) {
@@ -92,7 +94,15 @@ struct TimelineScreen: View {
 struct TimelineFeed: View {
     let days: [TimelineDay]
 
+    @Environment(AppNavigationModel.self) private var navigation: AppNavigationModel?
+    /// Days whose block is on screen, for the wall's period context.
+    @State private var visibleDays: Set<Date> = []
+
     private let spineX: CGFloat = 17
+
+    /// How long the feed has to rest before the wall follows it (spec §6.3),
+    /// so a fling doesn't reshuffle the wall at every day it passes.
+    static let wallSettleDelay: Duration = .milliseconds(600)
 
     var body: some View {
         PrismGlassSection {
@@ -120,6 +130,20 @@ struct TimelineFeed: View {
                 .offset(x: spineX)
             }
         }
+        .task(id: visibleDays) {
+            try? await Task.sleep(for: Self.wallSettleDelay)
+            guard !Task.isCancelled else { return }
+            navigation?.timelinePeriod = Self.period(covering: visibleDays)
+        }
+        .onDisappear { navigation?.timelinePeriod = nil }
+    }
+
+    /// The whole days on screen, start of the first to end of the last.
+    static func period(covering days: Set<Date>, calendar: Calendar = .current) -> DateInterval? {
+        guard let first = days.min(), let last = days.max(),
+              let end = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: last))
+        else { return nil }
+        return DateInterval(start: calendar.startOfDay(for: first), end: end)
     }
 
     private func dayBlock(_ day: TimelineDay) -> some View {
@@ -143,6 +167,13 @@ struct TimelineFeed: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("timeline.item")
+            }
+        }
+        .onScrollVisibilityChange(threshold: 0.2) { isVisible in
+            if isVisible {
+                visibleDays.insert(day.date)
+            } else {
+                visibleDays.remove(day.date)
             }
         }
         // The node marks the day on the spine. Placed against the header row,

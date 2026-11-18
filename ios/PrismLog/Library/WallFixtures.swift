@@ -6,9 +6,12 @@ import UIKit
 enum WallFixtureSource: String, CaseIterable, Identifiable {
     /// The user's own records.
     case library
+    /// No covers at all — the wall falls back to the bloom (spec §4.1).
+    case empty
     /// Ten near-white covers — the hardest case for text on glass (spec §4.7).
     case worstCase
     /// 30 and 200 synthetic covers for the performance budget (spec §9).
+    case synthetic5
     case synthetic30
     case synthetic200
 
@@ -17,7 +20,9 @@ enum WallFixtureSource: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .library: "내 기록"
+        case .empty: "0장"
         case .worstCase: "최악 조건"
+        case .synthetic5: "합성 5"
         case .synthetic30: "합성 30"
         case .synthetic200: "합성 200"
         }
@@ -30,7 +35,9 @@ enum WallFixtures {
     static func make(_ source: WallFixtureSource, maxPixel: Int) -> ([WallCover], [WallCover.ID: UIImage])? {
         switch source {
         case .library: nil
+        case .empty: ([], [:])
         case .worstCase: worstCase(maxPixel: maxPixel)
+        case .synthetic5: synthetic(count: 5, maxPixel: maxPixel)
         case .synthetic30: synthetic(count: 30, maxPixel: maxPixel)
         case .synthetic200: synthetic(count: 200, maxPixel: maxPixel)
         }

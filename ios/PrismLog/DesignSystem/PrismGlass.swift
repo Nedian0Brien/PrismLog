@@ -7,6 +7,11 @@ enum PrismGlassMetrics {
     /// Tint is a whisper, not a coat of paint. Enough to say "this is 독서",
     /// not enough to fight the content sitting on the glass.
     static let tintStrength: Double = 0.13
+    /// The library's "now in progress" lens cards (spec §5).
+    static let lensCorner: CGFloat = 28
+    /// Widest a column of body cards gets on a regular-width screen; the
+    /// wall shows either side of it (spec §5).
+    static let readableWidth: CGFloat = 640
 }
 
 // MARK: - Glass surfaces
@@ -26,6 +31,18 @@ extension View {
         self
             .padding(padding)
             .modifier(PrismGlassSurface(tint: tint, corner: corner))
+    }
+}
+
+extension View {
+    /// A lens card: clear glass with a large corner, so the wall behind it
+    /// refracts as much as possible (spec §5). Only for cards with little,
+    /// large text — over the brightest covers clear glass holds large text
+    /// at 3:1 but not body text at 4.5:1 (issue #19).
+    func prismLensCard(padding: CGFloat = 18) -> some View {
+        self
+            .padding(padding)
+            .glassEffect(.clear, in: .rect(cornerRadius: PrismGlassMetrics.lensCorner))
     }
 }
 

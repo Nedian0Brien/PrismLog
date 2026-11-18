@@ -1,7 +1,11 @@
 import SwiftUI
 
-struct HomeScreen: View {
+/// The library — the app's front page (spec §6.1): what's in progress,
+/// the spectrum of what's been logged, the trends, and the latest records,
+/// over the full library wall.
+struct LibraryScreen: View {
     @Environment(PrismStore.self) private var store
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var trendCumulative = true
     @State private var trendRange: TrendRange = .year
@@ -12,20 +16,73 @@ struct HomeScreen: View {
     var body: some View {
         PrismScreenScaffold(
             eyebrow: todayLabel,
-            title: "기록 대시보드",
+            title: "라이브러리",
             focus: .reading,
             onRefresh: { await store.sync() }
         ) {
             PrismGlassSection {
                 VStack(spacing: 14) {
                     statusBanner
-                    spectrumCard
-                    trendCard
-                    distributionCard
-                    heatmapCard
-                    recentSection
+
+                    if horizontalSizeClass == .regular {
+                        // Spec §6.1: on a wide screen the sections pair up in
+                        // two columns that meet at the fold, if there is one.
+                        FoldAwareColumns {
+                            inProgressSection
+                            spectrumCard
+                            recentSection
+                        } trailing: {
+                            trendCard
+                            distributionCard
+                            heatmapCard
+                        }
+                    } else {
+                        inProgressSection
+                        spectrumCard
+                        trendCard
+                        distributionCard
+                        heatmapCard
+                        recentSection
+                    }
                 }
             }
+            .navigationDestination(for: UUID.self) { id in
+                RecordDetailScreen(recordID: id)
+            }
+        }
+    }
+
+    // MARK: - In progress
+
+    /// Spec §6.1 item 2: lens cards for what's being read, watched, played,
+    /// and studied right now.
+    @ViewBuilder
+    private var inProgressSection: some View {
+        let items = LibraryMetrics.inProgress(from: store.records)
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("지금 진행 중")
+                    .font(.prismTitle)
+                    .foregroundStyle(PrismColor.text)
+                    .padding(.horizontal, 4)
+
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 12) {
+                        ForEach(items) { item in
+                            NavigationLink(value: item.record.id) {
+                                LensCard(item: item)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("library.inProgress")
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                .scrollTargetBehavior(.viewAligned)
+                .scrollIndicators(.hidden)
+                .scrollClipDisabled()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -36,6 +93,9 @@ struct HomeScreen: View {
             SpectrumRing(slices: slices, diameter: 150, lineWidth: 13)
 
             VStack(spacing: 0) {
+                streakRow
+                Divider().overlay(PrismColor.hairline)
+
                 ForEach(Array(slices.enumerated()), id: \.element.id) { index, slice in
                     HStack(spacing: 10) {
                         Image(systemName: slice.accent.symbol)
@@ -63,6 +123,26 @@ struct HomeScreen: View {
             }
         }
         .prismGlassCard(padding: 18)
+    }
+
+    private var streakRow: some View {
+        let days = LibraryMetrics.streakDays(from: store.records)
+        return HStack(spacing: 10) {
+            Image(systemName: "flame.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(PrismAccent.series.color)
+                .frame(width: 20)
+            Text("연속 기록")
+                .font(.prismCallout)
+                .foregroundStyle(PrismColor.text)
+            Spacer(minLength: 0)
+            Text("\(days)일")
+                .font(PrismFont.numeral(17, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(PrismColor.text)
+        }
+        .padding(.vertical, 9)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Trend
@@ -216,7 +296,7 @@ struct HomeScreen: View {
             PrismPlaceholderCard(
                 accent: .reading,
                 title: "아직 기록이 없습니다",
-                detail: "오른쪽 아래 + 버튼으로 첫 기록을 남겨 보세요."
+                detail: "+ 메뉴에서 첫 기록을 남겨 보세요."
             )
         }
     }
@@ -293,9 +373,51 @@ struct HomeScreen: View {
     }
 }
 
+/// A "now in progress" card: clear glass, the cover, and only large text —
+/// clear glass over the brightest covers holds large text at 3:1 but not
+/// small text at 4.5:1 (issue #19), so there is no small print here.
+struct LensCard: View {
+    let item: LibraryMetrics.InProgress
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            CoverImage(url: item.record.coverURL, accent: item.accent, title: item.title, cornerRadius: 10)
+                .frame(width: 64, height: 96)
+                .shadow(color: .black.opacity(0.25), radius: 10, y: 6)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(item.title)
+                    .font(.prismTitle)
+                    .foregroundStyle(PrismColor.text)
+                    .lineLimit(2)
+
+                Spacer(minLength: 0)
+
+                Text(item.detail)
+                    .font(PrismFont.numeral(19, weight: .bold))
+                    .monospacedDigit()
+                    .foregroundStyle(PrismColor.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                if let progress = item.progress {
+                    ProgressView(value: Double(progress), total: 100)
+                        .tint(item.accent.color)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(width: 268, height: 96)
+        .prismLensCard()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.title), \(item.accent.label), \(item.detail)")
+    }
+}
+
 #Preview {
-    HomeScreen()
+    LibraryScreen()
         .environment(PrismStore.preview())
+        .environment(AppNavigationModel())
 }
 
 /// Compact row used on the dashboard and the timeline.

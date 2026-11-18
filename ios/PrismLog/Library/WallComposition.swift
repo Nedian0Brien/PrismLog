@@ -7,9 +7,12 @@ struct WallCover: Identifiable, Hashable, Sendable {
     let accent: PrismAccent
     let title: String
     let coverURL: URL?
-    /// The entity's most recent record, for "recent first" ordering and the
-    /// timeline's period context.
+    /// The entity's most recent record, for "recent first" ordering.
     let lastActivity: Date
+    /// Every day the entity was logged, for the timeline's period context:
+    /// a book read last month belongs on the wall while last month is on
+    /// screen, even if it was read again since.
+    var activities: [Date] = []
 
     var source: CoverKey.Source {
         if let coverURL { return .remote(coverURL) }
@@ -50,10 +53,12 @@ enum WallComposition {
     static func covers(from records: [RecordItem]) -> [WallCover] {
         var newest: [String: RecordItem] = [:]
         var latest: [String: Date] = [:]
+        var activities: [String: [Date]] = [:]
         for record in records {
             let key = record.entityID?.uuidString ?? record.id.uuidString
             // The same clock the records hub orders shelves by.
             let activity = record.occurredAt
+            activities[key, default: []].append(activity)
             if let current = latest[key], current >= activity { continue }
             latest[key] = activity
             newest[key] = record
@@ -64,7 +69,8 @@ enum WallComposition {
                 accent: record.accent,
                 title: record.entityTitle ?? record.title,
                 coverURL: record.coverURL,
-                lastActivity: latest[key] ?? record.occurredAt
+                lastActivity: latest[key] ?? record.occurredAt,
+                activities: (activities[key] ?? []).sorted()
             )
         }
         .sorted { lhs, rhs in
@@ -82,7 +88,10 @@ enum WallComposition {
         case .category(let accent):
             return covers.filter { $0.accent == accent }
         case .period(let interval):
-            return covers.filter { interval.contains($0.lastActivity) }
+            return covers.filter { cover in
+                let days = cover.activities.isEmpty ? [cover.lastActivity] : cover.activities
+                return days.contains { interval.contains($0) }
+            }
         case .hero(let id):
             let match = covers.filter { $0.id == id }
             return match.isEmpty ? covers : match

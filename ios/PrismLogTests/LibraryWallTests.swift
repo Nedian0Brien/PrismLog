@@ -110,6 +110,29 @@ struct LibraryWallTests {
         #expect(WallComposition.covers(all, in: .hero("missing")) == all)
     }
 
+    @Test("기간 맥락은 마지막 활동이 아니라 그 기간에 기록된 적이 있는 표지를 고른다")
+    func periodContextMatchesAnyActivityInRange() {
+        let old = Date(timeIntervalSinceReferenceDate: 500_000)
+        let recent = Date(timeIntervalSinceReferenceDate: 1_000_000)
+        var reread = Self.cover("book-reread", .reading)
+        reread.activities = [old, recent]
+        let around = DateInterval(start: old.addingTimeInterval(-3_600), end: old.addingTimeInterval(3_600))
+        #expect(WallComposition.covers([reread], in: .period(around)).map(\.id) == ["book-reread"])
+    }
+
+    @Test("타임라인 기간은 화면에 보이는 첫날 시작부터 마지막 날 끝까지다")
+    @MainActor
+    func timelinePeriodSpansWholeVisibleDays() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        let first = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 2, hour: 15)))
+        let last = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 5, hour: 9)))
+        let period = try #require(TimelineFeed.period(covering: [last, first], calendar: calendar))
+        #expect(period.start == calendar.date(from: DateComponents(year: 2026, month: 11, day: 2)))
+        #expect(period.end == calendar.date(from: DateComponents(year: 2026, month: 11, day: 6)))
+        #expect(TimelineFeed.period(covering: [], calendar: calendar) == nil)
+    }
+
     // MARK: Rows
 
     @Test("배치 A의 행은 독서 → 영화 → 게임 → 시리즈 → 공부 순서로 돈다")

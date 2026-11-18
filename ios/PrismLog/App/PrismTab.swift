@@ -11,7 +11,7 @@ enum PrismTab: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .home: "홈"
+        case .home: "라이브러리"
         case .records: "기록"
         case .timeline: "타임라인"
         case .settings: "설정"
@@ -20,7 +20,7 @@ enum PrismTab: String, CaseIterable, Identifiable, Hashable {
 
     var symbol: String {
         switch self {
-        case .home: "house.fill"
+        case .home: "rectangle.stack.fill"
         case .records: "books.vertical.fill"
         case .timeline: "clock.fill"
         case .settings: "gearshape.fill"

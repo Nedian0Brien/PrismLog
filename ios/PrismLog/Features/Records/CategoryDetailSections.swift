@@ -839,9 +839,9 @@ struct GameSessionSheet: View {
             .navigationTitle(session == nil ? "플레이 기록" : "플레이 기록 수정")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("취소", systemImage: "xmark") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("저장") { Task { await save() } }
+                    Button("저장", systemImage: "checkmark") { Task { await save() } }
                         .disabled(totalMinutes <= 0 || saving)
                 }
             }

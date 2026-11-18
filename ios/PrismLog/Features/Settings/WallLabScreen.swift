@@ -214,7 +214,7 @@ struct WallLabScreen: View {
             Picker("표지", selection: $source) {
                 ForEach(WallFixtureSource.allCases) { Text($0.label).tag($0) }
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
 
             HStack {
                 Picker("맥락", selection: $contextChoice) {

@@ -7,6 +7,9 @@ struct SettingsScreen: View {
     @State private var draftUserID = ""
     @State private var backupState: BackupState = .idle
     @State private var showsWallLab = false
+    @State private var clearedCache = false
+    @AppStorage(LibraryWallView.flowSettingKey) private var wallFlows = true
+    @AppStorage(WallDimming.storageKey) private var wallDimming: WallDimming = .standard
 
     private enum BackupState: Equatable {
         case idle
@@ -26,6 +29,7 @@ struct SettingsScreen: View {
                     syncCard
                     compositionCard
                     accountCard
+                    displayCard
                     backupCard
                     aboutCard
                     #if DEBUG
@@ -55,9 +59,54 @@ struct SettingsScreen: View {
 
     // MARK: - Cards
 
+    /// Spec §6.4: how the library wall behaves.
+    private var displayCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("표시")
+                .font(.prismHeadline)
+                .foregroundStyle(PrismColor.text)
+
+            Toggle("표지 벽 흐름", isOn: $wallFlows)
+                .font(.prismCallout)
+                .foregroundStyle(PrismColor.text)
+                .tint(PrismAccent.reading.color)
+                .accessibilityIdentifier("settings.wallFlow")
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("표지 벽 밝기")
+                    .font(.prismCallout)
+                    .foregroundStyle(PrismColor.text)
+                Picker("표지 벽 밝기", selection: $wallDimming) {
+                    ForEach(WallDimming.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("settings.wallDimming")
+            }
+        }
+        .prismGlassCard()
+    }
+
     #if DEBUG
-    /// Debug builds only: the library wall prototype (v2 Phase 2).
+    /// Debug builds only: the library wall prototype (v2 Phase 2) and the
+    /// cover cache (spec §6.4).
     private var wallLabCard: some View {
+        VStack(spacing: 10) {
+            wallLabButton
+
+            Button(clearedCache ? "표지 캐시를 비웠습니다" : "표지 캐시 비우기", systemImage: "trash") {
+                Task {
+                    await CoverThumbnailCache.shared.removeAll()
+                    clearedCache = true
+                }
+            }
+            .font(.prismCallout)
+            .buttonStyle(.glass)
+            .disabled(clearedCache)
+            .accessibilityIdentifier("settings.clearCoverCache")
+        }
+    }
+
+    private var wallLabButton: some View {
         Button {
             showsWallLab = true
         } label: {

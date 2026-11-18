@@ -237,9 +237,9 @@ struct EditSheetScaffold<Content: View>: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("취소", systemImage: "xmark") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("저장") { Task { await onSave() } }
+                    Button("저장", systemImage: "checkmark") { Task { await onSave() } }
                         .disabled(!canSave)
                         .accessibilityIdentifier("edit.save")
                 }

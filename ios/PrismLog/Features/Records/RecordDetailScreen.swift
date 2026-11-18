@@ -9,6 +9,7 @@ struct RecordDetailScreen: View {
 
     @Environment(PrismStore.self) private var store
     @State private var loggingProgress = false
+    @State private var readingSession = false
     @State private var addingNote = false
     @State private var editing = false
     /// Captured on first appearance. A study detail anchors on one activity
@@ -27,8 +28,6 @@ struct RecordDetailScreen: View {
     var body: some View {
         ZStack {
             if let record {
-                SpectrumBloomBackground(focus: record.accent)
-
                 ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
@@ -86,7 +85,7 @@ struct RecordDetailScreen: View {
                         }
                     }
                     .padding(.horizontal, 18)
-                    .padding(.bottom, 130)
+                    .padding(.bottom, 24)
                 }
                 .scrollIndicators(.hidden)
                 .navigationTitle(record.title)
@@ -95,6 +94,10 @@ struct RecordDetailScreen: View {
                     ToolbarItem(placement: .primaryAction) {
                         Menu {
                             if record.category == .reading {
+                                Button("읽기 시작", systemImage: "book") {
+                                    readingSession = true
+                                }
+                                .accessibilityIdentifier("detail.readingSession")
                                 Button("진도 기록", systemImage: "chart.line.uptrend.xyaxis") {
                                     loggingProgress = true
                                 }
@@ -122,6 +125,9 @@ struct RecordDetailScreen: View {
                         ReadingProgressSheet(record: record)
                     }
                 }
+                .fullScreenCover(isPresented: $readingSession) {
+                    ReadingSessionScreen(record: record)
+                }
                 .sheet(isPresented: $addingNote) {
                     ReadingNoteSheet(record: record)
                 }
@@ -144,10 +150,12 @@ struct RecordDetailScreen: View {
                 }
                 }
             } else {
-                PrismColor.background.ignoresSafeArea()
                 ContentUnavailableView("기록을 찾을 수 없습니다", systemImage: "questionmark.folder")
             }
         }
+        // The shared library wall switches to this record's cover, blurred,
+        // as its hero (spec §4.5).
+        .prismWallBackground()
         .overlay(alignment: .top) {
             if let seriesToast {
                 SeriesProgressToastView(change: seriesToast)

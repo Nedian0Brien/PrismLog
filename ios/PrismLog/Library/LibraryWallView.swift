@@ -45,7 +45,10 @@ struct LibraryWallView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    /// Settings' "표지 벽 흐름" switch (spec §6.4).
+    @AppStorage(LibraryWallView.flowSettingKey) private var flowEnabled = true
 
+    static let flowSettingKey = "wall.flowEnabled"
     static let parallaxFactor: CGFloat = 0.35
 
     private var metrics: WallMetrics {
@@ -81,6 +84,7 @@ struct LibraryWallView: View {
         .onChange(of: scenePhase) { syncPauseReasons() }
         .onChange(of: reduceMotion) { syncPauseReasons() }
         .onChange(of: reduceTransparency) { syncPauseReasons() }
+        .onChange(of: flowEnabled) { syncPauseReasons() }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             syncPauseReasons()
         }
@@ -114,6 +118,7 @@ struct LibraryWallView: View {
         model.setPaused(reduceMotion, for: .reduceMotion)
         model.setPaused(reduceTransparency, for: .reduceTransparency)
         model.setPaused(ProcessInfo.processInfo.isLowPowerModeEnabled, for: .lowPowerMode)
+        model.setPaused(!flowEnabled, for: .disabledInSettings)
     }
 }
 
@@ -245,5 +250,41 @@ private struct WallTile: View {
         }
         .frame(width: metrics.coverWidth, height: metrics.coverHeight)
         .clipShape(.rect(cornerRadius: metrics.corner, style: .continuous))
+    }
+}
+
+// MARK: - Page background
+
+extension View {
+    /// Puts the library wall behind a page (spec §4.6, fallback layout).
+    ///
+    /// `TabView` paints an opaque background over anything laid beneath it
+    /// (checked on the iOS 27.2 iPhone Duo simulator, Phase 3), so the wall
+    /// can't be laid once at the root. Every page draws it instead, all from
+    /// the one shared `LibraryWallModel` — one clock, one set of decoded
+    /// covers — so moving between tabs and pushes never restarts the flow.
+    func prismWallBackground() -> some View {
+        modifier(PrismWallBackground())
+    }
+}
+
+private struct PrismWallBackground: ViewModifier {
+    @Environment(LibraryWallModel.self) private var wall: LibraryWallModel?
+    @Environment(AppNavigationModel.self) private var navigation: AppNavigationModel?
+    @Environment(\.prismTab) private var tab
+
+    func body(content: Content) -> some View {
+        content
+            .containerBackground(.clear, for: .navigation)
+            .background {
+                if let wall {
+                    LibraryWallView(
+                        model: wall,
+                        scrollOffset: tab.flatMap { navigation?.scrollOffsets[$0] } ?? 0
+                    )
+                } else {
+                    SpectrumBloomBackground()
+                }
+            }
     }
 }
