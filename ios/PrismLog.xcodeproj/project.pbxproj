@@ -35,7 +35,6 @@
 		55EBE291F0BEE1DC907B0FBC /* PrismTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93995DC3AD70921841B9EC6C /* PrismTab.swift */; };
 		57CEC5870E03C88EA26F923D /* WallLabScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C26F4ADACE8A0691C8F5759 /* WallLabScreen.swift */; };
 		5A8C667743B39EFC3816080B /* PrismWordmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42B4BE3B421AC0CD21F26ADC /* PrismWordmark.swift */; };
-		5BA868A5845DE2630D5787EF /* WallBackgroundStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF7F6444D513DDAB1E3B569E /* WallBackgroundStyles.swift */; };
 		5C71C430C64BC448CDF91C8A /* LibraryWallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E743B59B7B3BE4C1FBA25112 /* LibraryWallView.swift */; };
 		5CD0139641A612E73A00EB94 /* WallComposition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 170918D50FAAC4E8BFF6F11C /* WallComposition.swift */; };
 		5F7428A9B1133FABBD6B3281 /* WallLegibilityLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E24A518B9459337C2F6CA93 /* WallLegibilityLayer.swift */; };
@@ -62,7 +61,6 @@
 		9D51255BC0EB24B829A7E07C /* RecordsHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FAF1D89767ABCACD1B78BA8 /* RecordsHub.swift */; };
 		9F4ABB9BCACE8597A104E97E /* SpectrumRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77F051DE662F932880B953F0 /* SpectrumRing.swift */; };
 		A721706D81E437B137BD72C4 /* StudyGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45B9996E62550A64AE6D9DE1 /* StudyGrouping.swift */; };
-		A879D46F0D12157D66BAAA25 /* CoverPalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19FD840F0F32B4E04BED5E8A /* CoverPalette.swift */; };
 		A8DA3FFCA899D62628362E96 /* PrismDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8855042B1B0510A9C18E19CA /* PrismDTO.swift */; };
 		AB63C63D193BDED745FF6A99 /* PrismGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA7DB1275DA302B04D3004F /* PrismGlass.swift */; };
 		AD101E090723CF59D41E5D69 /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = D79AC3C7AC77AC06362729C7 /* Pretendard-Regular.otf */; };
@@ -151,7 +149,6 @@
 		177BBAD1C3AAD792B7CEFEA8 /* DistributionBars.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DistributionBars.swift; sourceTree = "<group>"; };
 		191A0B160303D5288BFABE39 /* PrismTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismTypography.swift; sourceTree = "<group>"; };
 		199DAE65F4402327298098BE /* PrismPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismPalette.swift; sourceTree = "<group>"; };
-		19FD840F0F32B4E04BED5E8A /* CoverPalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverPalette.swift; sourceTree = "<group>"; };
 		1D34B720803F2139EC6CB918 /* CoverPipelineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverPipelineTests.swift; sourceTree = "<group>"; };
 		1E684271C4069409533706F4 /* LibraryMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryMetrics.swift; sourceTree = "<group>"; };
 		20C5E8D43388B1DFFB98D56E /* TimelineBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineBuilderTests.swift; sourceTree = "<group>"; };
@@ -222,7 +219,6 @@
 		F65312B8D910FA56C9028570 /* PrismScreenScaffold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismScreenScaffold.swift; sourceTree = "<group>"; };
 		FCC139D329C7B50D4A8161EF /* PrismLogWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PrismLogWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		FEB52242E7D96DDB7134B701 /* Pretendard-Medium.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-Medium.otf"; sourceTree = "<group>"; };
-		FF7F6444D513DDAB1E3B569E /* WallBackgroundStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WallBackgroundStyles.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -298,12 +294,10 @@
 		5150B299F3D6BF407B73BEF3 /* Library */ = {
 			isa = PBXGroup;
 			children = (
-				19FD840F0F32B4E04BED5E8A /* CoverPalette.swift */,
 				B9273439E438E48EB688CF53 /* CoverThumbnailCache.swift */,
 				0F88011423EE723ED5AC84C0 /* GeneratedCover.swift */,
 				3587A4560FFFFF1C181D4B5F /* LibraryWallModel.swift */,
 				E743B59B7B3BE4C1FBA25112 /* LibraryWallView.swift */,
-				FF7F6444D513DDAB1E3B569E /* WallBackgroundStyles.swift */,
 				170918D50FAAC4E8BFF6F11C /* WallComposition.swift */,
 				29528522624AE72835D46B2D /* WallFixtures.swift */,
 				59B41A5F579041C2081FCD4C /* WallFrameMeter.swift */,
@@ -685,7 +679,6 @@
 				FA5D37AEB332EA5744EAED29 /* CategoryDetailSections.swift in Sources */,
 				4E280803F133415DA28DCA0F /* CategoryEditSheets.swift in Sources */,
 				C96473A97DE52A07180B337D /* CoverImage.swift in Sources */,
-				A879D46F0D12157D66BAAA25 /* CoverPalette.swift in Sources */,
 				F42491D0E48CD1C7DC436D4D /* CoverThumbnailCache.swift in Sources */,
 				2CF95E8AA2D338730CD69A34 /* CultureOptions.swift in Sources */,
 				3B44D6FF31968E790DBDEA4D /* DashboardMetrics.swift in Sources */,
@@ -737,7 +730,6 @@
 				4BA0527478D19E7980528117 /* TimelineBuilder.swift in Sources */,
 				34E06AB12A80C6C7C21BAEAA /* TimelineScreen.swift in Sources */,
 				1CC497134900E65EDCF56BA9 /* TrendChart.swift in Sources */,
-				5BA868A5845DE2630D5787EF /* WallBackgroundStyles.swift in Sources */,
 				5CD0139641A612E73A00EB94 /* WallComposition.swift in Sources */,
 				FAA2E5EA34E83A3EDD8DE8E5 /* WallFixtures.swift in Sources */,
 				7E1D1C76E45707BC44A8F8C9 /* WallFrameMeter.swift in Sources */,

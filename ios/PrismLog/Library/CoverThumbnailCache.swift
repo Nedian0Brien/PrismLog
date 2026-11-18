@@ -24,7 +24,7 @@ struct CoverKey: Hashable, Sendable {
 
     /// Bump when `GeneratedCover`'s look changes, so covers rendered by an
     /// older build are redrawn instead of read back from disk.
-    static let generatedDesignVersion = 2
+    static let generatedDesignVersion = 1
 
     /// The smallest bucket that covers `pixels`, capped at the largest — no
     /// cover in the app is drawn bigger than 1024px on its long edge.

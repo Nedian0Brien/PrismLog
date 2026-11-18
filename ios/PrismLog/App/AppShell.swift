@@ -54,12 +54,7 @@ struct AppShell: View {
             guard phase == .active else { return }
             Task { await store.sync() }
         }
-        .onChange(of: store.records, initial: true) {
-            wall.update(records: store.records)
-            wall.featuredID = LibraryMetrics.inProgress(from: store.records).first.map { item in
-                item.record.entityID?.uuidString ?? item.record.id.uuidString
-            }
-        }
+        .onChange(of: store.records, initial: true) { wall.update(records: store.records) }
         .onChange(of: wallContext, initial: true) { wall.context = wallContext }
         .onChange(of: navigation.tab) { storedTab = navigation.tab.rawValue }
         .onChange(of: navigation.recordsSection) { storedSection = navigation.recordsSection?.rawValue ?? "" }

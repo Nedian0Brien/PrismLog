@@ -1,28 +1,14 @@
 flowchart TD
-  REC[(PrismStore 기록)]:::done
   MODEL[LibraryWallModel]:::done
-  PAL[CoverPalette 표지 색]:::done
-  ACC[PrismPalette OKLCH]:::done
-  VIEW[LibraryWallView]:::done
-  COV[표지 벽 기존]:::done
-  FEAT[방향1 표지 히어로]:::done
-  SPEC[방향2 스펙트럼 빛]:::done
-  LEG[WallLegibilityLayer 디밍]:::done
-  D6{D6 배경 방향}:::decide
-  CLEAN[기본값 지정·정리]:::todo
-  D5{D5 main 머지}:::todo
-  REC --> MODEL
-  MODEL --> PAL
-  MODEL --> VIEW
-  ACC --> PAL
-  VIEW --> COV
-  VIEW --> FEAT
-  VIEW --> SPEC
-  FEAT --> LEG
-  SPEC --> LEG
-  FEAT --> D6
-  SPEC --> D6
-  D6 --> CLEAN --> D5
+  VIEW[LibraryWallView 표지 벽]:::done
+  LEG[WallLegibilityLayer]:::done
+  PAL[PrismPalette 기존 색]:::done
+  ALT[히어로·스펙트럼 빛]:::todo
+  D5{D5 main 머지}:::decide
+  MODEL --> VIEW --> LEG
+  PAL --> VIEW
+  ALT -. 되돌림 .-> VIEW
+  LEG --> D5
   classDef done fill:#d1fae5,stroke:#059669
   classDef doing fill:#fef3c7,stroke:#d97706
   classDef decide fill:#fee2e2,stroke:#dc2626

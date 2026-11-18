@@ -43,7 +43,6 @@ struct WallLegibilityLayer: ViewModifier {
     }
 
     let mode: Mode
-    var style: WallStyle = .covers
     /// Replaces the gradient's top and bottom opacity with one value — the
     /// debug lab's dimming slider.
     var dimmingOverride: Double?
@@ -72,11 +71,7 @@ struct WallLegibilityLayer: ViewModifier {
             return (dimmingOverride, dimmingOverride)
         }
         switch mode {
-        case .standard:
-            // The style sets the base; the brightness setting adds to it.
-            let extra = setting.values.top - WallDimming.standard.values.top
-            let base = style.baseDimming
-            return (min(base.top + extra, 0.9), min(base.bottom + extra, 0.9))
+        case .standard: return setting.values
         case .hero: return (Self.heroDimming, Self.heroDimming)
         }
     }
@@ -84,9 +79,7 @@ struct WallLegibilityLayer: ViewModifier {
     func body(content: Content) -> some View {
         let dimming = dimming
         content
-            // Desaturation tames artwork; the light styles are already in
-            // PrismLog's own tones and would only go muddy.
-            .saturation(style.saturation)
+            .saturation(Self.saturation)
             .blur(radius: mode == .hero ? Self.heroBlurRadius : 0, opaque: true)
             .overlay {
                 LinearGradient(
