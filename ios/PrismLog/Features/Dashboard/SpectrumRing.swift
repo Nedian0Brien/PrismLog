@@ -46,7 +46,7 @@ struct SpectrumRing: View {
             // read as if seen through the prism rather than printed on it.
             centerReadout
                 .frame(width: diameter - lineWidth * 3.4, height: diameter - lineWidth * 3.4)
-                .glassEffect(.regular, in: .circle)
+                .glassEffect(.prism, in: .circle)
         }
         .frame(width: diameter, height: diameter)
         .onAppear {

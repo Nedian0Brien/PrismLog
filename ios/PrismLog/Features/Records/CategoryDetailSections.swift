@@ -411,7 +411,7 @@ struct SeriesProgressToastView: View {
         }
         .padding(14)
         .glassEffect(
-            .regular.tint(PrismAccent.series.color.opacity(0.1)),
+            .prism(tint: PrismAccent.series.color),
             in: .rect(cornerRadius: 20)
         )
         .shadow(color: .black.opacity(0.28), radius: 22, y: 12)

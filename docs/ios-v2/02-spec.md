@@ -158,14 +158,15 @@ enum WallContext: Equatable {
 
 | 용도 | 재질 | 비고 |
 |---|---|---|
-| 글이 많은 카드 (통계, 상세 섹션, 목록 행) | `.regular` (+ 카테고리 tint 0.13) | 기본값 |
-| 글이 적은 히어로·렌즈 카드, 칩 | `.clear` | 반드시 가독성 층 위에서만 |
+| 모든 콘텐츠 카드 (렌즈 카드 포함) | `Glass.prism` = `.clear` + 검정 35% tint | 카테고리 tint는 검정에 26% 섞는다 |
 | 버튼 | `.buttonStyle(.glass)` / `.glassProminent` | §2.3 규칙 |
 | 모핑 (작성 메뉴, 카드 펼침) | `glassEffectID(_:in:)` + `GlassEffectContainer` | |
 | 사이드바·탭바·툴바 | 시스템 기본 | 커스텀 글래스를 덧칠하지 않는다 |
 
+- **2026-11-18 재질 통일**(사용자 결정): 카드마다 `.regular`와 `.clear`가 섞여 굴절이 보이는 카드와 안 보이는 카드가 생겼다. 모든 콘텐츠 글래스를 `Glass.prism` 하나로 모으고 `.clear`로 정했다. clear는 뒤를 어둡게 하지 않으므로 HIG(Materials)가 밝은 배경 위 clear에 권하는 35% 어두운 층을 tint로 넣었다. 실험실 비교 샘플만 `.regular`를 그대로 쓴다.
+  - 측정(듀오 펼침, 상세 화면, 흰 표지 히어로 배경): clear만 쓰면 본문 2.2–2.5:1, 보조 1.0–1.2:1. 35% tint를 넣으면 본문 4.7–4.8:1, 보조 1.9:1. 보조 글자는 여전히 4.5:1에 못 미친다(이슈 #19).
 - 새 토큰: `PrismGlassMetrics.lensCorner = 28`(히어로 렌즈 카드), 카드 최대 폭 `readableWidth = 640`(regular width에서 본문 카드의 최대 폭. 남는 양옆으로 벽이 드러난다).
-- 글래스 렌즈 카드: 라이브러리 상단 "지금 진행 중" 카드. 벽이 가장 잘 비치도록 `.clear` + 큰 모서리 + 최소한의 텍스트(제목, 진행률)만 둔다.
+- 글래스 렌즈 카드: 라이브러리 상단 "지금 진행 중" 카드. 다른 카드와 같은 재질에 큰 모서리(28)와 최소한의 텍스트(제목, 진행률)만 둔다.
 - 스크롤 가장자리: 시스템 scroll edge effect를 쓴다.
   - **[확인됨]** `scrollEdgeEffectStyle(_ style: ScrollEdgeEffectStyle?, for edges: Edge.Set)` (iOS 26.0+). 기본은 자동 효과다. 문서 예제에는 `.hard`만 나온다. `scrollEdgeEffectHidden(_:for:)`로 숨길 수 있다.
   - **[확인됨]** `ScrollEdgeEffectStyle`의 값은 `.automatic`, `.hard`, `.soft` 세 개다(iOS 27.2 SDK `SwiftUI.swiftinterface`).

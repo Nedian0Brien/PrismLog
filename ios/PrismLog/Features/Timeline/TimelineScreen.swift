@@ -249,7 +249,7 @@ struct TimelineEntryCard: View {
                         .stroke(item.accent.color.opacity(0.17), lineWidth: 1)
                 }
         }
-        .glassEffect(.regular, in: .rect(cornerRadius: PrismGlassMetrics.cardCorner))
+        .glassEffect(.prism, in: .rect(cornerRadius: PrismGlassMetrics.cardCorner))
         // Entries rise into place as you scroll to them, and the progress bar
         // fills at that moment — the same reveal the web drives with an
         // IntersectionObserver at a 0.24 threshold. Once revealed they stay

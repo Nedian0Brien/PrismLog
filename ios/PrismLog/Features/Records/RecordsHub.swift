@@ -124,7 +124,7 @@ struct RecordAreaCard: View {
             // accent the web uses; tinting the glass underneath as well stacks
             // two colorings and turns the card into a solid slab of category
             // color instead of a dark surface with a hint of one.
-            .glassEffect(.regular, in: .rect(cornerRadius: PrismGlassMetrics.cardCorner))
+            .glassEffect(.prism, in: .rect(cornerRadius: PrismGlassMetrics.cardCorner))
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
