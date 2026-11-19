@@ -178,34 +178,40 @@ extension PrismStore {
     }
 
     /// Moves the watched pointer to `episode`, or back to just before it when
-    /// the episode was already watched. Watch dates are recorded per episode.
+    /// the episode was already watched — the web's `commitEpisodeSelection`
+    /// (`recordsPage.jsx:1196`): every episode up to the pointer keeps its
+    /// watch date or gets today's, everything after loses it, and the status
+    /// follows the count.
     func setSeriesProgress(id: UUID, upTo episode: SeriesEpisode, at date: Date = .now) async {
         guard let record = record(id: id), let progress = record.seriesProgress else { return }
 
-        let target = episode.watched ? episode.absoluteNumber - 1 : episode.absoluteNumber
+        let target = max(0, episode.watched ? episode.absoluteNumber - 1 : episode.absoluteNumber)
+        let total = progress.totalEpisodes
 
         await updateRecord(id: id) { payload in
-            payload["watched_episode_count"] = .int(max(0, target))
+            payload["watched_episode_count"] = .int(target)
 
             var dates = payload["episode_watch_dates"]?.objectValue ?? [:]
-            if episode.watched {
-                // Un-watching drops the dates of everything after the new tip.
-                for season in progress.seasons {
-                    for candidate in season.episodes where candidate.absoluteNumber > target {
+            for season in progress.seasons {
+                for candidate in season.episodes {
+                    if candidate.absoluteNumber <= target {
+                        if dates[candidate.key]?.stringValue?.isEmpty ?? true {
+                            dates[candidate.key] = .string(Self.isoStamp(date))
+                        }
+                    } else {
                         dates.removeValue(forKey: candidate.key)
                     }
                 }
-            } else {
-                dates[episode.key] = .string(Self.isoStamp(date))
             }
             payload["episode_watch_dates"] = .object(dates)
 
-            if progress.totalEpisodes > 0 {
-                payload["progress"] = .int(
-                    min(100, Int((Double(max(0, target)) / Double(progress.totalEpisodes) * 100).rounded()))
-                )
+            payload["status"] = .string(
+                total > 0 && target >= total ? "시청 완료" : target > 0 ? "시청 중" : "기대 중"
+            )
+            if total > 0 {
+                payload["progress"] = .int(min(100, Int((Double(target) / Double(total) * 100).rounded())))
             }
-            payload["playtime"] = .string("\(max(0, target)) / \(progress.totalEpisodes)화")
+            payload["playtime"] = .string("\(target) / \(total)화")
         }
     }
 

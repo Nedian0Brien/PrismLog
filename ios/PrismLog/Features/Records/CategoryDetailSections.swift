@@ -5,9 +5,6 @@ import UIKit
 
 // MARK: - Series
 
-/// Season-by-season episode list. Tapping an episode moves the watched pointer
-/// to it — which also marks everything before it — because that is how the web
-/// stores progress (`watched_episode_count`, a count rather than a set).
 /// What one progress save changed — everything the floating toast shows.
 struct SeriesProgressChange: Identifiable, Equatable {
     let id = UUID()
@@ -20,247 +17,22 @@ struct SeriesProgressChange: Identifiable, Equatable {
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
 }
 
-struct SeriesProgressSection: View {
-    let record: RecordItem
-    let progress: SeriesProgress
-    /// Fired after a save so the screen can float the update toast — the toast
-    /// pins to the viewport, which a section buried in a scroll view can't do.
-    var onProgressSaved: ((SeriesProgressChange) -> Void)?
-
-    @Environment(PrismStore.self) private var store
-    @State private var expandedSeasons: Set<Int> = []
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            header
-
-            SeriesTrendCard(progress: progress)
-
-            ForEach(progress.seasons) { season in
-                seasonBlock(season)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .prismGlassCard(tint: PrismAccent.series.color)
-        .onAppear {
-            // Open the season the user is currently in.
-            if let next = progress.nextEpisode {
-                expandedSeasons.insert(next.seasonNumber)
-            } else if let first = progress.seasons.first {
-                expandedSeasons.insert(first.seasonNumber)
-            }
-        }
-    }
-
-    private var header: some View {
-        HStack(spacing: 16) {
-            ProgressDonut(value: Double(progress.progress) / 100, accent: .series)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(progress.playtimeLabel)
-                    .font(.prismHeadline)
-                    .foregroundStyle(PrismColor.text)
-
-                if let next = progress.nextEpisode {
-                    Text("다음 S\(next.seasonNumber)E\(next.episodeNumber)")
-                        .font(.prismCaption)
-                        .foregroundStyle(PrismAccent.series.color)
-                } else if progress.totalEpisodes > 0 {
-                    Text("시청 완료")
-                        .font(.prismCaption)
-                        .foregroundStyle(PrismAccent.series.color)
-                }
-            }
-
-            Spacer(minLength: 0)
-        }
-    }
-
-    private func seasonBlock(_ season: SeriesSeason) -> some View {
-        let isOpen = expandedSeasons.contains(season.seasonNumber)
-
-        return VStack(alignment: .leading, spacing: 8) {
-            Button {
-                withAnimation(PrismMotion.snappy) {
-                    if isOpen {
-                        expandedSeasons.remove(season.seasonNumber)
-                    } else {
-                        expandedSeasons.insert(season.seasonNumber)
-                    }
-                }
-            } label: {
-                HStack {
-                    Text(season.name ?? "시즌 \(season.seasonNumber)")
-                        .font(.prismCallout)
-                        .foregroundStyle(PrismColor.text)
-
-                    Spacer(minLength: 0)
-
-                    Text("\(season.watchedCount)/\(season.episodes.count)")
-                        .font(.prismMicro)
-                        .monospacedDigit()
-                        .prismMuted()
-
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .bold))
-                        .prismMuted()
-                        .rotationEffect(.degrees(isOpen ? 0 : -90))
-                }
-            }
-            .buttonStyle(.plain)
-
-            // The season's own bar, as on the web's season rows — the total
-            // percent hides which season you're actually stuck in.
-            if !season.episodes.isEmpty {
-                let seasonProgress = season.watchedCount * 100 / season.episodes.count
-
-                HStack(spacing: 8) {
-                    ProgressMeter(
-                        value: Double(season.watchedCount) / Double(season.episodes.count),
-                        accent: .series,
-                        height: 6
-                    )
-
-                    Text("\(seasonProgress)%")
-                        .font(PrismFont.numeral(11, weight: .bold))
-                        .monospacedDigit()
-                        .foregroundStyle(PrismAccent.series.color)
-                }
-            }
-
-            if isOpen {
-                ForEach(season.episodes) { episode in
-                    episodeRow(episode)
-                        .id(progress.nextEpisode?.key == episode.key ? "series.currentEpisode" : episode.key)
-                }
-            }
-        }
-    }
-
-    private func episodeRow(_ episode: SeriesEpisode) -> some View {
-        let isCurrent = progress.nextEpisode?.key == episode.key
-
-        return Button {
-            Task {
-                PrismHaptics.impact(episode.watched ? .light : .medium)
-
-                let before = progress.progress
-                await store.setSeriesProgress(id: record.id, upTo: episode)
-
-                // Re-read: the store's record now carries the moved pointer.
-                if let updated = store.record(id: record.id),
-                   let after = updated.seriesProgress {
-                    onProgressSaved?(SeriesProgressChange(
-                        title: updated.title,
-                        posterURL: updated.coverURL,
-                        previousProgress: before,
-                        nextProgress: after.progress,
-                        seasons: after.seasons.map { season in
-                            (
-                                name: season.name ?? "시즌 \(season.seasonNumber)",
-                                progress: season.episodes.isEmpty
-                                    ? 0
-                                    : season.watchedCount * 100 / season.episodes.count
-                            )
-                        }
-                    ))
-                }
-            }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: episode.watched ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 17))
-                    .foregroundStyle(episode.watched
-                                     ? PrismAccent.series.color
-                                     : PrismColor.textMuted.opacity(0.5))
-
-                // The still puts a face on the row; the code slab stands in
-                // when TMDB has none, so rows stay the same shape either way.
-                ZStack {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    PrismAccent.series.color.opacity(0.16),
-                                    Color.white.opacity(0.04),
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-
-                    if let still = episode.stillURL {
-                        AsyncImage(url: still) { phase in
-                            if case .success(let image) = phase {
-                                image.resizable().scaledToFill()
-                            } else {
-                                Color.clear
-                            }
-                        }
-                    } else {
-                        Text("E\(episode.episodeNumber)")
-                            .font(PrismFont.numeral(11, weight: .bold))
-                            .monospacedDigit()
-                            .prismMuted()
-                    }
-                }
-                .frame(width: 54, height: 32)
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(episode.displayName)
-                        .font(.prismCaption)
-                        .foregroundStyle(episode.watched || isCurrent ? PrismColor.text : PrismColor.textMuted)
-                        .lineLimit(1)
-
-                    if isCurrent {
-                        Text("다음 에피소드")
-                            .font(.prismMicro)
-                            .foregroundStyle(PrismAccent.series.color)
-                    }
-                }
-
-                Spacer(minLength: 0)
-
-                if let watchedAt = episode.watchedAt {
-                    Text(watchedAt, format: .dateTime.month().day())
-                        .font(.prismMicro)
-                        .monospacedDigit()
-                        .prismMuted()
-                }
-            }
-            .padding(.vertical, 4)
-            .padding(.horizontal, isCurrent ? 8 : 0)
-            .background {
-                if isCurrent {
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .fill(PrismAccent.series.color.opacity(0.09))
-                }
-            }
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("시즌 \(episode.seasonNumber) \(episode.episodeNumber)화")
-        .accessibilityValue(episode.watched ? "시청함" : "미시청")
-    }
-}
-
-/// Cumulative progress over the days episodes were watched. Ported from
-/// `buildSeriesProgressTrend` (`recordsPage.jsx:502`).
+/// Cumulative share watched by day — the web's `SeriesProgressTrendChart`
+/// (`recordsPage.jsx:949`): a dashed 0·50·100 grid, the line over a soft
+/// fill, a ring at each day, the date range above and the latest percent
+/// below.
 struct SeriesTrendCard: View {
     let progress: SeriesProgress
 
-    private struct Point: Identifiable {
+    struct Point: Identifiable, Equatable {
         let date: Date
         let progress: Int
 
         var id: Date { date }
     }
 
-    private var points: [Point] {
+    static func points(for progress: SeriesProgress, calendar: Calendar = .current) -> [Point] {
         guard progress.totalEpisodes > 0 else { return [] }
-
-        let calendar = Calendar.current
         let countsByDay = Dictionary(
             grouping: progress.seasons.flatMap(\.episodes).compactMap(\.watchedAt)
         ) { calendar.startOfDay(for: $0) }
@@ -277,77 +49,92 @@ struct SeriesTrendCard: View {
             }
     }
 
+    private var accent: Color { PrismAccent.series.color }
+
     var body: some View {
-        // One data point draws as a dot floating in an empty chart; the season
-        // list below carries the same information better until there are two.
-        if points.count >= 2 {
+        let points = Self.points(for: progress)
+        if let first = points.first, let last = points.last {
             VStack(alignment: .leading, spacing: 8) {
-                HStack {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text("Progress Trend")
-                        .font(.prismMicro)
-                        .tracking(1.0)
+                        .font(PrismFont.text(11, .semiBold))
+                        .tracking(1)
                         .textCase(.uppercase)
-                        .foregroundStyle(PrismAccent.series.color)
-
+                        .foregroundStyle(accent)
                     Spacer(minLength: 0)
+                    Text("\(SeriesDates.monthDay(first.date)) → \(SeriesDates.monthDay(last.date))")
+                        .font(PrismFont.text(11))
+                        .prismMuted()
+                }
 
-                    Text("\(points.last?.progress ?? 0)%")
-                        .font(PrismFont.numeral(13, weight: .bold))
+                chart(points)
+                    .aspectRatio(220.0 / 104.0, contentMode: .fit)
+                    .accessibilityLabel("시청 진행률 추세")
+
+                HStack {
+                    Text(SeriesDates.monthDay(first.date))
+                        .font(PrismFont.text(11))
+                        .prismMuted()
+                    Spacer(minLength: 0)
+                    Text("\(last.progress)%")
+                        .font(PrismFont.numeral(11, weight: .semibold))
                         .monospacedDigit()
-                        .foregroundStyle(PrismAccent.series.color)
+                        .foregroundStyle(accent)
+                        .contentTransition(.numericText(value: Double(last.progress)))
+                        .animation(.easeOut(duration: 0.46), value: last.progress)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color.white.opacity(0.03), in: .rect(cornerRadius: 18, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(accent.opacity(0.13)) }
+        }
+    }
+
+    /// Drawn in the web's 220×104 frame with 14pt insets, scaled to fit.
+    private func chart(_ points: [Point]) -> some View {
+        GeometryReader { proxy in
+            let scale = proxy.size.width / 220
+            let inset = 14 * scale
+            let width = proxy.size.width - inset * 2
+            let height = proxy.size.height - inset * 2
+            let last = max(points.count - 1, 1)
+            let spots = points.enumerated().map { index, point in
+                CGPoint(
+                    x: inset + width * (points.count == 1 ? 0.5 : CGFloat(index) / CGFloat(last)),
+                    y: inset + height - CGFloat(point.progress) / 100 * height
+                )
+            }
+
+            ZStack {
+                ForEach([0, 50, 100], id: \.self) { value in
+                    Path { path in
+                        let y = inset + height - CGFloat(value) / 100 * height
+                        path.move(to: CGPoint(x: inset, y: y))
+                        path.addLine(to: CGPoint(x: inset + width, y: y))
+                    }
+                    .stroke(Color.white.opacity(0.07), style: StrokeStyle(lineWidth: 1, dash: [3, 5]))
                 }
 
-                Chart {
-                    ForEach(points) { point in
-                        AreaMark(
-                            x: .value("날짜", point.date, unit: .day),
-                            y: .value("진행률", point.progress)
-                        )
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    PrismAccent.series.color.opacity(0.3),
-                                    PrismAccent.series.color.opacity(0.02),
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .interpolationMethod(.linear)
+                Path { path in
+                    guard let start = spots.first, let end = spots.last else { return }
+                    path.addLines(spots)
+                    path.addLine(to: CGPoint(x: end.x, y: inset + height))
+                    path.addLine(to: CGPoint(x: start.x, y: inset + height))
+                    path.closeSubpath()
+                }
+                .fill(LinearGradient(colors: [accent.opacity(0.33), accent.opacity(0.02)], startPoint: .top, endPoint: .bottom))
 
-                        LineMark(
-                            x: .value("날짜", point.date, unit: .day),
-                            y: .value("진행률", point.progress)
-                        )
-                        .foregroundStyle(PrismAccent.series.color)
-                        .interpolationMethod(.linear)
-                        .lineStyle(StrokeStyle(lineWidth: 2.4, lineCap: .round))
+                Path { path in path.addLines(spots) }
+                    .stroke(accent, style: StrokeStyle(lineWidth: 3 * scale, lineCap: .round, lineJoin: .round))
 
-                        PointMark(
-                            x: .value("날짜", point.date, unit: .day),
-                            y: .value("진행률", point.progress)
-                        )
-                        .foregroundStyle(PrismAccent.series.color)
-                        .symbolSize(24)
-                    }
+                ForEach(Array(spots.enumerated()), id: \.offset) { _, spot in
+                    Circle()
+                        .fill(PrismColor.background)
+                        .overlay { Circle().strokeBorder(accent, lineWidth: 2 * scale) }
+                        .frame(width: 9 * scale, height: 9 * scale)
+                        .position(spot)
                 }
-                .chartYScale(domain: 0...100)
-                .chartYAxis {
-                    AxisMarks(position: .leading, values: [0, 50, 100]) {
-                        AxisValueLabel().font(.prismMicro).foregroundStyle(PrismColor.textMuted)
-                        AxisGridLine().foregroundStyle(PrismColor.hairline)
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks { _ in
-                        AxisValueLabel(format: .dateTime.month(.defaultDigits).day())
-                            .font(.prismMicro)
-                            .foregroundStyle(PrismColor.textMuted)
-                        AxisGridLine().foregroundStyle(PrismColor.hairline)
-                    }
-                }
-                .frame(height: 96)
-                .accessibilityLabel("시청 진행률 추세")
             }
         }
     }
