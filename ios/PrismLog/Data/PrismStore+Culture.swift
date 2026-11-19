@@ -100,15 +100,81 @@ extension PrismStore {
             "name": season.name.map(JSONValue.string) ?? .null,
             "air_date": season.airDate.map(JSONValue.string) ?? .null,
             "episode_count": .int(season.episodeCount ?? season.episodes.count),
-            "episodes": .array(season.episodes.map { episode in
-                .object([
-                    "season_number": .int(episode.seasonNumber),
-                    "episode_number": .int(episode.episodeNumber),
-                    "name": episode.name.map(JSONValue.string) ?? .null,
-                    "air_date": episode.airDate.map(JSONValue.string) ?? .null,
-                ])
-            }),
+            "episodes": .array(season.episodes.map(episodeJSON)),
         ])
+    }
+
+    /// One episode as the web stores it (`normalizeSeriesEpisode`,
+    /// `core.jsx:538`), still and synopsis included.
+    private static func episodeJSON(_ episode: MediaEpisodeInfo) -> JSONValue {
+        .object([
+            "season_number": .int(episode.seasonNumber),
+            "episode_number": .int(episode.episodeNumber),
+            "name": episode.name.map(JSONValue.string) ?? .null,
+            "air_date": episode.airDate.map(JSONValue.string) ?? .null,
+            "runtime": episode.runtime.map(JSONValue.int) ?? .null,
+            "overview": episode.overview.map(JSONValue.string) ?? .null,
+            "still_url": episode.stillUrl.map(JSONValue.string) ?? .null,
+        ])
+    }
+
+    /// Series saved before episode stills were kept — every one added on
+    /// iOS, and those the web stored without them — get the stills, and the
+    /// synopses and titles they're missing, from TMDB the first time their
+    /// detail opens. What was watched, and when, stays as it was.
+    func fillSeriesEpisodeDetails(id: UUID) async {
+        guard let record = record(id: id),
+              let tmdbID = record.payload.int("tmdb_id"),
+              let progress = record.seriesProgress,
+              progress.seasons.flatMap(\.episodes).contains(where: { $0.stillURL == nil }),
+              episodeDetailsRequested.insert(id).inserted,
+              let enrichment = try? await api.enrichMedia(tmdbID: tmdbID, type: "series")
+        else { return }
+
+        let stored = record.payload.array("seasons") ?? []
+        let filled = Self.fillingEpisodeDetails(stored, from: enrichment.seasons)
+        guard filled != stored else { return }
+        await updateRecord(id: id, flash: false) { payload in
+            payload["seasons"] = .array(filled)
+        }
+    }
+
+    /// `stored` seasons with what TMDB knows filled in: missing stills,
+    /// synopses, titles and runtimes, matched by season and episode number.
+    /// Seasons stored without episodes take TMDB's list; a record with no
+    /// seasons at all takes TMDB's seasons.
+    static func fillingEpisodeDetails(_ stored: [JSONValue], from remote: [MediaSeasonInfo]) -> [JSONValue] {
+        if stored.isEmpty { return remote.map(seasonJSON) }
+        let remoteSeasons = Dictionary(remote.map { ($0.seasonNumber, $0) }, uniquingKeysWith: { first, _ in first })
+
+        return stored.map { season in
+            guard var fields = season.objectValue,
+                  let number = fields.int("season_number"),
+                  let remoteSeason = remoteSeasons[number]
+            else { return season }
+
+            let remoteEpisodes = Dictionary(
+                remoteSeason.episodes.map { ($0.episodeNumber, $0) },
+                uniquingKeysWith: { first, _ in first }
+            )
+            let episodes = fields.array("episodes") ?? []
+            if episodes.isEmpty {
+                fields["episodes"] = .array(remoteSeason.episodes.map(episodeJSON))
+                return .object(fields)
+            }
+            fields["episodes"] = .array(episodes.map { episode in
+                guard var details = episode.objectValue,
+                      let episodeNumber = details.int("episode_number"),
+                      let match = remoteEpisodes[episodeNumber]
+                else { return episode }
+                if details.string("still_url") == nil, let still = match.stillUrl { details["still_url"] = .string(still) }
+                if details.string("overview") == nil, let overview = match.overview { details["overview"] = .string(overview) }
+                if details.string("name") == nil, let name = match.name { details["name"] = .string(name) }
+                if details.int("runtime") == nil, let runtime = match.runtime { details["runtime"] = .int(runtime) }
+                return .object(details)
+            })
+            return .object(fields)
+        }
     }
 
     /// Moves the watched pointer to `episode`, or back to just before it when

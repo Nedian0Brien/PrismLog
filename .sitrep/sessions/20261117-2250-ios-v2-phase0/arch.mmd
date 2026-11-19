@@ -1,14 +1,20 @@
 flowchart TD
-  MODEL[LibraryWallModel]:::done
-  VIEW[LibraryWallView 표지 벽]:::done
-  LEG[WallLegibilityLayer]:::done
-  PAL[PrismPalette 기존 색]:::done
-  ALT[히어로·스펙트럼 빛]:::todo
-  D5{D5 main 머지}:::decide
-  MODEL --> VIEW --> LEG
-  PAL --> VIEW
-  ALT -. 되돌림 .-> VIEW
-  LEG --> D5
+  App[iOS 앱]
+  Sheet[책 추가 화면]:::done
+  Wall[표지 벽]:::done
+  TL[타임라인 밝기 전환]:::done
+  API[FastAPI 백엔드]:::done
+  Books[책 검색]:::done
+  Kakao[카카오 책 검색]:::decide
+  Google[구글 도서]:::done
+  Featured[/media/featured/]:::done
+  TMDB[TMDB·IGDB]:::done
+  App --> Sheet --> API
+  App --> Wall --> TL
+  Wall --> Featured
+  API --> Books --> Kakao
+  Books --> Google
+  API --> Featured --> TMDB
   classDef done fill:#d1fae5,stroke:#059669
   classDef doing fill:#fef3c7,stroke:#d97706
   classDef decide fill:#fee2e2,stroke:#dc2626

@@ -67,6 +67,7 @@ struct RecordDetailScreen: View {
                                         progress: seriesProgress,
                                         onProgressSaved: showSeriesToast
                                     )
+                                    .task(id: record.id) { await store.fillSeriesEpisodeDetails(id: record.id) }
                                 }
 
                                 if record.cultureType == .game {

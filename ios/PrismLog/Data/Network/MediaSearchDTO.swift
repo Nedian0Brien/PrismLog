@@ -50,13 +50,17 @@ struct MediaEpisodeInfo: Codable, Sendable, Hashable {
     let name: String?
     let airDate: String?
     let runtime: Int?
+    var overview: String? = nil
+    /// TMDB still, the episode's thumbnail.
+    var stillUrl: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case seasonNumber = "season_number"
         case episodeNumber = "episode_number"
         case name
         case airDate = "air_date"
-        case runtime
+        case runtime, overview
+        case stillUrl = "still_url"
     }
 }
 

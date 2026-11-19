@@ -43,7 +43,10 @@ final class PrismStore {
     private let container: ModelContainer
     /// Internal so the per-category write helpers can live in their own files.
     let context: ModelContext
-    private let api: PrismAPIClient
+    /// Read by the store's extensions in other files (culture enrichment).
+    let api: PrismAPIClient
+    /// Series whose episode details were already asked of TMDB this launch.
+    @ObservationIgnored var episodeDetailsRequested: Set<UUID> = []
 
     init(container: ModelContainer, api: PrismAPIClient = .shared) {
         self.container = container
@@ -243,7 +246,9 @@ final class PrismStore {
     ///
     /// `mutate` receives the record's full payload — including every field the
     /// web wrote — and whatever it leaves in place is sent back verbatim.
-    func updateRecord(id: UUID, mutate: (inout [String: JSONValue]) -> Void) async {
+    /// `flash` shows the saved flash; a write the person didn't make — data
+    /// filled in behind the screen — leaves it off.
+    func updateRecord(id: UUID, flash: Bool = true, mutate: (inout [String: JSONValue]) -> Void) async {
         guard let log = storedLog(id: id) else { return }
 
         var payload = log.payload
@@ -254,7 +259,7 @@ final class PrismStore {
 
         try? context.save()
         reload()
-        flashSaved(record(id: id)?.accent)
+        if flash { flashSaved(record(id: id)?.accent) }
 
         await sync()
     }

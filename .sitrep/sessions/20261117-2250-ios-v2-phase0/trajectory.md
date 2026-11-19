@@ -283,3 +283,22 @@
 - `backend/app/services/books.py`: 네이버 제거, `_search_google_books` 추가, ISBN 입력은 두 API 모두 ISBN 검색, 카카오는 전체 필드 검색(저자 이름으로도 찾음). 설정에서 네이버 키 제거, `extra="ignore"`
 - 백엔드 테스트 16개 통과(`tests/test_book_search.py` 7개 추가). 서버 구글 키로 "한강" 검색 시 한국 책 6건 응답 확인
 - iOS: `WallComposition.highlighting`·`layoutContext`, `WallRelight`(0.6초 제자리 밝기 전환), 타일 밝기를 프레임마다 계산
+
+### 21:21 · T36 완료 · main 병합과 배포
+- ios-v2를 main에 병합(68d8740), 서버 pull 후 백엔드 컨테이너 재빌드, deploy.sh로 웹 배포
+- 서버 작업 트리의 AGENTS.md 수정본은 ~/prismlog-AGENTS-server-edit-20261119.patch로 백업 후 되돌림(main의 같은 줄 변경으로 대체)
+- 운영 확인: /media/featured 40건(TMDB 27, IGDB 13), 책 검색 "한강"·ISBN 결과 응답
+
+### 21:25 · T37 완료 · 구글 도서 표지
+- 시뮬레이터 확인 중 검색 결과 표지가 비어 보임: http 표지를 ATS가 차단. 백엔드에서 https 변환·edge=curl 제거, 앱 DTO도 PrismMedia 사용(ce226f5), 재배포
+- #21 원인·조치 기록 후 닫음, 카카오 키 추가는 #22로 등록
+
+### 21:30 · 보고 · 완료
+- 완료됨 100%. 도서 검색·외부 표지 운영 반영, 타임라인 제자리 밝기 전환
+
+### ~21:50 · T38 완료 · 시리즈 회차 썸네일
+- 원인: iOS가 시리즈를 추가할 때 회차 정보를 저장하며 TMDB still_url·줄거리를 뺌. 운영 시리즈 기록 5개 모두 썸네일 없음(TMDB에는 있음)
+- 결정: 저장 수정 + 상세를 처음 열 때 TMDB에서 받아 빠진 값만 채움(사용자). 본 회차·날짜는 그대로
+- `MediaEpisodeInfo`에 overview·still_url, `PrismStore.fillingEpisodeDetails`, `fillSeriesEpisodeDetails`(실행당 한 번, 저장 표시 없음)
+- 단위 108개 중 106 통과·2 건너뜀(iPhone·듀오), 듀오에서 동궁 1~8화 썸네일 확인, 서버 기록에 still_url 저장·시청 7화 유지 확인
+- 사용자 요청 접수: 스플래시(T40), 워드마크 시안(T39)
