@@ -40,7 +40,26 @@ struct RecordDetailScreen: View {
                 ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        hero(record)
+                        if let seriesProgress = record.seriesProgress {
+                            // A series is laid out as the web lays it out
+                            // (`SeriesDetailPage`), with its own hero.
+                            PrismGlassSection {
+                                SeriesDetailContent(
+                                    record: record,
+                                    progress: seriesProgress,
+                                    onEdit: { editing = true },
+                                    onRevealSeason: { season in
+                                        withAnimation(PrismMotion.screen) {
+                                            proxy.scrollTo("series.season.\(season)", anchor: UnitPoint(x: 0.5, y: 0.2))
+                                        }
+                                    },
+                                    onProgressSaved: showSeriesToast
+                                )
+                            }
+                            .task(id: record.id) { await store.fillSeriesEpisodeDetails(id: record.id) }
+                        } else {
+                            hero(record)
+                        }
 
                         PrismGlassSection {
                             VStack(spacing: 14) {
@@ -61,20 +80,12 @@ struct RecordDetailScreen: View {
                                     studyReflection(record)
                                 }
 
-                                if let seriesProgress = record.seriesProgress {
-                                    SeriesProgressSection(
-                                        record: record,
-                                        progress: seriesProgress,
-                                        onProgressSaved: showSeriesToast
-                                    )
-                                    .task(id: record.id) { await store.fillSeriesEpisodeDetails(id: record.id) }
-                                }
-
                                 if record.cultureType == .game {
                                     GameSessionsSection(record: record)
                                 }
 
-                                if let overview = record.overview, !overview.isEmpty {
+                                // A series shows its synopsis in its hero.
+                                if record.cultureType != .series, let overview = record.overview, !overview.isEmpty {
                                     overviewCard(overview)
                                 }
 
@@ -153,16 +164,6 @@ struct RecordDetailScreen: View {
                     case .reading: ReadingEditSheet(record: record)
                     case .study: StudyEditSheet(record: record)
                     default: CultureEditSheet(record: record)
-                    }
-                }
-                // Land on the episode you'd watch next, the way the web
-                // scrolls its season list — a long series otherwise opens on
-                // season 1 episode 1 every time.
-                .task {
-                    guard record.seriesProgress?.nextEpisode != nil else { return }
-                    try? await Task.sleep(for: .milliseconds(650))
-                    withAnimation(PrismMotion.screen) {
-                        proxy.scrollTo("series.currentEpisode", anchor: .center)
                     }
                 }
                 }

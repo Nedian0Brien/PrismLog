@@ -62,6 +62,7 @@
 		9CE07716CF1F10EC571CAE1F /* StudyDetailSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82E0F994A9D2DC9759F281C /* StudyDetailSections.swift */; };
 		9D51255BC0EB24B829A7E07C /* RecordsHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FAF1D89767ABCACD1B78BA8 /* RecordsHub.swift */; };
 		9F4ABB9BCACE8597A104E97E /* SpectrumRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77F051DE662F932880B953F0 /* SpectrumRing.swift */; };
+		A1DD57A6237E04C42DDE15A9 /* SeriesDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B74678EE7A287A6342B0F3CB /* SeriesDetailView.swift */; };
 		A721706D81E437B137BD72C4 /* StudyGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45B9996E62550A64AE6D9DE1 /* StudyGrouping.swift */; };
 		A8DA3FFCA899D62628362E96 /* PrismDTO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8855042B1B0510A9C18E19CA /* PrismDTO.swift */; };
 		AB63C63D193BDED745FF6A99 /* PrismGlass.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA7DB1275DA302B04D3004F /* PrismGlass.swift */; };
@@ -204,6 +205,7 @@
 		9C5409EB54C011E202B28E6B /* DashboardMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardMetrics.swift; sourceTree = "<group>"; };
 		B060E806D1AFE72F23C886FA /* PrismLogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismLogApp.swift; sourceTree = "<group>"; };
 		B19B76FDA9001B68CCE0B8EF /* TrendChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendChart.swift; sourceTree = "<group>"; };
+		B74678EE7A287A6342B0F3CB /* SeriesDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeriesDetailView.swift; sourceTree = "<group>"; };
 		B9273439E438E48EB688CF53 /* CoverThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverThumbnailCache.swift; sourceTree = "<group>"; };
 		BF259ADC94FBB06342979EBF /* CoverImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverImage.swift; sourceTree = "<group>"; };
 		BFE6817737610450B850922B /* CategoryEditSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryEditSheets.swift; sourceTree = "<group>"; };
@@ -392,6 +394,7 @@
 				E5AE5EC93BC6B245782401A6 /* RecordListCards.swift */,
 				6FAF1D89767ABCACD1B78BA8 /* RecordsHub.swift */,
 				7966B0305E656C4DC5A601E6 /* RecordsScreen.swift */,
+				B74678EE7A287A6342B0F3CB /* SeriesDetailView.swift */,
 				E82E0F994A9D2DC9759F281C /* StudyDetailSections.swift */,
 				4D77F5D42B7DAA285B58B674 /* StudyProgressSheet.swift */,
 			);
@@ -734,6 +737,7 @@
 				81F403EDC62892FC453184AE /* RecordListCards.swift in Sources */,
 				9D51255BC0EB24B829A7E07C /* RecordsHub.swift in Sources */,
 				CD660C5494C947E483CB942C /* RecordsScreen.swift in Sources */,
+				A1DD57A6237E04C42DDE15A9 /* SeriesDetailView.swift in Sources */,
 				AEE4F403267812B7838C93A8 /* SettingsScreen.swift in Sources */,
 				D73C77F8378D5EDE1DF4EE1E /* SpectrumBloomBackground.swift in Sources */,
 				9F4ABB9BCACE8597A104E97E /* SpectrumRing.swift in Sources */,

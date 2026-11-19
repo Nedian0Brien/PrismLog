@@ -25,6 +25,10 @@ struct SeriesEpisode: Identifiable, Hashable, Sendable {
     let overview: String?
     /// TMDB still. Often absent — the timeline falls back to the code label.
     let stillURL: URL?
+    /// "2026-07-17", as TMDB gives it.
+    var airDate: String? = nil
+    /// Minutes.
+    var runtime: Int? = nil
 
     /// Matches the web's map key: `"{season}-{episode}"`.
     var key: String { "\(seasonNumber)-\(episodeNumber)" }
@@ -39,6 +43,7 @@ struct SeriesSeason: Identifiable, Hashable, Sendable {
     let seasonNumber: Int
     let name: String?
     let episodes: [SeriesEpisode]
+    var airDate: String? = nil
 
     var id: Int { seasonNumber }
     var watchedCount: Int { episodes.filter(\.watched).count }
@@ -111,14 +116,17 @@ struct SeriesProgress: Sendable {
                     watched: cursor <= watched,
                     watchedAt: watchDates.string(key).flatMap(PrismDateCoding.parse),
                     overview: info?.string("overview"),
-                    stillURL: info?.string("still_url").flatMap(PrismMedia.url(for:))
+                    stillURL: info?.string("still_url").flatMap(PrismMedia.url(for:)),
+                    airDate: info?.string("air_date"),
+                    runtime: info?.int("runtime").flatMap { $0 > 0 ? $0 : nil }
                 ))
             }
 
             built.append(SeriesSeason(
                 seasonNumber: seasonNumber,
                 name: fields.string("name"),
-                episodes: episodes
+                episodes: episodes,
+                airDate: fields.string("air_date")
             ))
         }
 

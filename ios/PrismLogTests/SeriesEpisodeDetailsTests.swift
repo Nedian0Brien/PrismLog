@@ -1,10 +1,12 @@
 import Foundation
+import SwiftData
 import Testing
 
 @testable import PrismLog
 
 /// Episode stills: a series saved without them gets them from TMDB, and
 /// nothing the person recorded changes on the way.
+@Suite(.serialized)
 @MainActor
 struct SeriesEpisodeDetailsTests {
     static let remote = [
@@ -75,5 +77,72 @@ struct SeriesEpisodeDetailsTests {
             "https://image.tmdb.org/t/p/w500/b.jpg",
         ])
         #expect(episodes.map(\.watched) == [true, false])
+    }
+
+    // MARK: Marking episodes (web `commitEpisodeSelection`)
+
+    private func seriesStore(watched: Int, dates: [String: JSONValue]) throws -> (PrismStore, UUID) {
+        let container = try ModelContainer(
+            for: StoredLog.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let store = PrismStore(container: container, api: PrismAPIClient(baseURL: URL(string: "http://127.0.0.1:9")!))
+        let id = UUID()
+        let episodes: [JSONValue] = (1...4).map { .object(["season_number": .int(1), "episode_number": .int($0)]) }
+        store.context.insert(StoredLog(
+            id: id,
+            userID: store.userID,
+            category: "culture",
+            title: "시리즈",
+            payloadData: StoredLog.encodeObject([
+                "type": .string("시리즈"),
+                "status": .string("시청 중"),
+                "episode_count": .int(4),
+                "watched_episode_count": .int(watched),
+                "episode_watch_dates": .object(dates),
+                "seasons": .array([.object(["season_number": .int(1), "episode_count": .int(4), "episodes": .array(episodes)])]),
+            ]),
+            occurredAt: .now
+        ))
+        store.reload()
+        return (store, id)
+    }
+
+    @Test("회차를 보면 그 앞 회차에도 날짜가 채워지고, 다 보면 시청 완료가 된다")
+    func markingFillsEarlierDatesAndFinishes() async throws {
+        let (store, id) = try seriesStore(watched: 1, dates: ["1-1": .string("2026-11-01T00:00:00.000Z")])
+        let fourth = try #require(store.record(id: id)?.seriesProgress?.seasons.first?.episodes.last)
+        let now = try #require(PrismDateCoding.parse("2026-11-19T12:00:00.000Z"))
+
+        await store.setSeriesProgress(id: id, upTo: fourth, at: now)
+
+        let record = try #require(store.record(id: id))
+        let dates = try #require(record.payload.object("episode_watch_dates"))
+        #expect(dates.keys.sorted() == ["1-1", "1-2", "1-3", "1-4"])
+        // The date already there stays.
+        #expect(dates["1-1"]?.stringValue == "2026-11-01T00:00:00.000Z")
+        #expect(record.status == "시청 완료")
+        #expect(record.payload.int("watched_episode_count") == 4)
+        #expect(record.payload.int("progress") == 100)
+    }
+
+    @Test("본 회차를 해제하면 그 뒤 날짜가 지워지고, 하나도 안 남으면 기대 중이 된다")
+    func unwatchingClearsLaterDatesAndStatus() async throws {
+        let (store, id) = try seriesStore(watched: 2, dates: [
+            "1-1": .string("2026-11-01T00:00:00.000Z"), "1-2": .string("2026-11-02T00:00:00.000Z"),
+        ])
+        let first = try #require(store.record(id: id)?.seriesProgress?.seasons.first?.episodes.first)
+
+        await store.setSeriesProgress(id: id, upTo: first)
+
+        let record = try #require(store.record(id: id))
+        #expect(record.payload.object("episode_watch_dates")?.isEmpty == true)
+        #expect(record.status == "기대 중")
+        #expect(record.payload.int("watched_episode_count") == 0)
+    }
+
+    @Test func monthDayLabelsMatchTheWeb() {
+        #expect(SeriesDates.monthDay("2026-07-17") == "7월 17일")
+        #expect(SeriesDates.monthDay("2014-05") == nil)
     }
 }
