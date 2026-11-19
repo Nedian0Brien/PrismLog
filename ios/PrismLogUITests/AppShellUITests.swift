@@ -37,10 +37,10 @@ final class AppShellUITests: XCTestCase {
         button.tap()
     }
 
-    /// The tab bar's `+` (a prominent tab).
+    /// The `+` button above the tab bar.
     private var composeTab: XCUIElement { app.buttons["기록 작성"].firstMatch }
 
-    /// Opens the tab bar's `+` and picks a composer.
+    /// Opens the `+` above the tab bar and picks a composer.
     private func compose(_ accent: String, label: String) {
         let menu = composeTab
         XCTAssertTrue(menu.waitForExistence(timeout: 10), "작성 메뉴 버튼이 없음")
@@ -66,7 +66,7 @@ final class AppShellUITests: XCTestCase {
         }
     }
 
-    /// The tab bar's `+` offers all five composers, closing the picker
+    /// The `+` above the tab bar offers all five composers, closing the picker
     /// hands touches back to the tabs, and the page stays where it was.
     func testComposerMenuListsEveryCategoryAndReleasesTouches() {
         openTab("타임라인")
@@ -228,7 +228,7 @@ final class AppShellUITests: XCTestCase {
         XCTAssertTrue(app.buttons["booksearch.save"].exists, "기록 시작 버튼이 없음")
     }
 
-    /// The `+` sits in the tab bar, so every tab offers it — settings too.
+    /// The `+` sits above the tab bar, so every tab offers it — settings too.
     func testComposerIsInTheTabBarOnEveryTab() {
         openTab("설정")
         XCTAssertTrue(app.staticTexts["설정"].waitForExistence(timeout: 5))

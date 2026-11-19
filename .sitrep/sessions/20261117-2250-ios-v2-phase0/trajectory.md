@@ -336,3 +336,9 @@
 - ③ `prismWallDrawnByContainer` + 분할 화면 뒤 벽 하나, 칸 배경 `.navigationSplitView`까지 비움
 - ④ `TabRole.prominent` + 탭(공식: WWDC26 What's new in SwiftUI), 선택을 가로채 종류 시트 → 작성 시트. UI 테스트 2개 갱신(설정 탭에서도 보임)
 - 단위·UI 117개 중 114 통과·2 건너뜀·1 실패 → UI 테스트 식별자·시트 닫기 고친 뒤 UI 8/8(iPhone·듀오)
+
+### ~02:15 · T46 완료 · + 위치와 검은 화면
+- 사용자 보고: + 를 탭 바 위쪽으로, 누를 때 화면이 까매짐. 원인: prominent 탭은 누르는 순간 빈 페이지 탭으로 바뀜(시뮬레이터에선 짧아 안 보였고 실기기에서 보임)
+- 탭 막대 바로 위 버튼으로 결정(사용자). `tabViewBottomAccessory`(가운데·전체 폭)·`tabViewSidebarHeader`(세로 막대에 안 보임) 시험 후 폐기, 위치 직접 계산하는 `ComposeButton`
+- iPhone·듀오 접음·펼침에서 위치 확인, 누를 때 녹화 밝기 51→36(시트 어둡게)로 검은 프레임 없음
+- 단위·UI 117개 중 115 통과·2 건너뜀(iPhone·듀오)

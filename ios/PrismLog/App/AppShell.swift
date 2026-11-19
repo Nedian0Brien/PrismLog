@@ -25,7 +25,7 @@ struct AppShell: View {
     @State private var contextChange: Task<Void, Never>?
     /// Off once the first screen's covers are ready, or the splash gave up.
     @State private var showsSplash = true
-    /// The `+` tab's kind picker, and the kind picked in it — opened once
+    /// The `+` button's kind picker, and the kind picked in it — opened once
     /// the picker has gone, so one sheet follows the other.
     @State private var choosingComposer = false
     @State private var chosenComposer: PrismAccent?
@@ -42,15 +42,15 @@ struct AppShell: View {
                     Tab(tab.title, systemImage: tab.symbol, value: ShellTab.page(tab)) {
                         content(for: tab)
                             .environment(\.prismTab, tab)
+                            // Inside the tab, so its safe area knows where the
+                            // tab bar is.
+                            .overlay {
+                                ComposeButton {
+                                    PrismHaptics.selection()
+                                    choosingComposer = true
+                                }
+                            }
                     }
-                }
-                // `+` rides at the tab bar's end (iOS 27 prominent tab) —
-                // bottom right on iPhone, the foot of iPhone Duo's vertical
-                // bar — instead of floating in each screen's top bar
-                // (user decision 2026-11-20). It opens the kind picker and
-                // never becomes the selected tab.
-                Tab("기록 작성", systemImage: "plus", value: ShellTab.compose, role: .prominent) {
-                    Color.clear
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
@@ -149,23 +149,16 @@ struct AppShell: View {
         onLibraryPage && navigation.libraryRevealed
     }
 
-    /// The tab bar's selection: one of the four pages, or the `+` tab.
+    /// The tab bar's selection.
     private enum ShellTab: Hashable {
         case page(PrismTab)
-        case compose
     }
 
-    /// Picking `+` opens the kind picker and leaves the page where it was.
     private var selection: Binding<ShellTab> {
         Binding(
             get: { .page(navigation.tab) },
             set: { picked in
-                switch picked {
-                case .page(let tab): navigation.tab = tab
-                case .compose:
-                    PrismHaptics.selection()
-                    choosingComposer = true
-                }
+                if case .page(let tab) = picked { navigation.tab = tab }
             }
         )
     }
@@ -226,3 +219,56 @@ struct AppShell: View {
         .environment(LibraryWallModel())
 }
 #endif
+
+/// `+`, right above the tab bar (user decision 2026-11-20): at the bar's
+/// trailing end on iPhone, above the top of iPhone Duo's vertical bar. A
+/// button, not a tab — as a prominent tab, tapping it switched to an empty
+/// page for a moment, which showed black on device.
+///
+/// The system doesn't report where the bar's capsule is, only the safe
+/// area it reserves, so the vertical bar's capsule height and inset are
+/// measured (iOS 27.2, iPhone Duo, four tabs) and checked in each posture.
+private struct ComposeButton: View {
+    var action: () -> Void
+
+    static let diameter: CGFloat = 52
+    static let gap: CGFloat = 12
+    /// The vertical bar's capsule: its height, its distance from the bottom
+    /// edge, and its centre from the trailing edge.
+    static let verticalBarHeight: CGFloat = 213
+    static let verticalBarBottom: CGFloat = 22
+    static let verticalBarCentreFromTrailing: CGFloat = 48
+
+    var body: some View {
+        GeometryReader { proxy in
+            let insets = proxy.safeAreaInsets
+            let full = CGSize(
+                width: proxy.size.width + insets.leading + insets.trailing,
+                height: proxy.size.height + insets.top + insets.bottom
+            )
+            let vertical = insets.trailing > insets.bottom
+            let centre = vertical
+                ? CGPoint(
+                    x: full.width - Self.verticalBarCentreFromTrailing,
+                    y: full.height - Self.verticalBarBottom - Self.verticalBarHeight - Self.gap - Self.diameter / 2
+                )
+                : CGPoint(
+                    x: full.width - 20 - Self.diameter / 2,
+                    y: full.height - insets.bottom - Self.gap - Self.diameter / 2
+                )
+
+            Button(action: action) {
+                Image(systemName: "plus")
+                    .font(.system(size: 22, weight: .semibold))
+                    .frame(width: Self.diameter, height: Self.diameter)
+                    .contentShape(.circle)
+            }
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .tint(PrismColor.text)
+            .accessibilityLabel("기록 작성")
+            .accessibilityIdentifier("composer.open")
+            .position(x: centre.x - insets.leading, y: centre.y - insets.top)
+        }
+    }
+}
