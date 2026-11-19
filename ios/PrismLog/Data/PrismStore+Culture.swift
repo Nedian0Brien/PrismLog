@@ -6,6 +6,9 @@ struct CultureDraft: Sendable {
     var rating: Int = 0
     var watchedEpisodes: Int = 0
     var playtime: String = ""
+    /// The web's `platform_key` (series only); `platformLabel` is the name
+    /// typed for 기타.
+    var platformKey: String = ""
     var platformLabel: String = ""
     var tags: [String] = []
 }
@@ -45,8 +48,10 @@ extension PrismStore {
         if let overview = media.overview { payload["overview"] = .string(overview) }
         if let tmdbID = media.tmdbId { payload["tmdb_id"] = .int(tmdbID) }
         if let igdbID = media.igdbId { payload["igdb_id"] = .int(igdbID) }
-        if !draft.platformLabel.isEmpty {
-            payload["platform_label"] = .string(draft.platformLabel)
+        // The web keeps a platform for series alone (`core.jsx:743`).
+        if draft.type == .series, !draft.platformKey.isEmpty {
+            payload["platform_key"] = .string(draft.platformKey)
+            payload["platform_label"] = .string(SeriesPlatformOption.label(key: draft.platformKey, custom: draft.platformLabel))
         }
 
         switch draft.type {
@@ -293,6 +298,7 @@ extension PrismStore {
         title: String,
         status: String,
         rating: Int,
+        platformKey: String,
         platformLabel: String,
         tags: [String]
     ) async {
@@ -305,10 +311,15 @@ extension PrismStore {
         var payload = log.payload
         payload["status"] = .string(status)
         payload["rating"] = .int(min(max(rating, 0), 5))
-        if platformLabel.isEmpty {
-            payload["platform_label"] = nil
-        } else {
-            payload["platform_label"] = .string(platformLabel)
+        // Only a series has a platform to pick; other types keep what they have.
+        if record(id: id)?.cultureType == .series {
+            if platformKey.isEmpty {
+                payload["platform_key"] = nil
+                payload["platform_label"] = nil
+            } else {
+                payload["platform_key"] = .string(platformKey)
+                payload["platform_label"] = .string(SeriesPlatformOption.label(key: platformKey, custom: platformLabel))
+            }
         }
         log.payload = payload
         log.updatedAt = .now

@@ -11,7 +11,8 @@ struct CultureEditSheet: View {
     @State private var title: String
     @State private var status: String
     @State private var rating: Int
-    @State private var platform: String
+    @State private var platformKey: String
+    @State private var platformLabel: String
     @State private var tagInput: String
     @State private var confirmingDelete = false
     @State private var saving = false
@@ -22,7 +23,9 @@ struct CultureEditSheet: View {
         _title = State(initialValue: record.title)
         _status = State(initialValue: record.status ?? CultureStatus.default(for: type))
         _rating = State(initialValue: record.rating)
-        _platform = State(initialValue: record.platformLabel ?? "")
+        let platform = SeriesPlatformOption.of(record)
+        _platformKey = State(initialValue: platform?.key ?? "")
+        _platformLabel = State(initialValue: platform == .other ? (record.platformLabel ?? "") : "")
         _tagInput = State(initialValue: record.tags.map { "#\($0)" }.joined(separator: " "))
     }
 
@@ -40,11 +43,14 @@ struct CultureEditSheet: View {
                 VStack(alignment: .leading, spacing: 12) {
                     EditField(label: "제목", text: $title, placeholder: "제목")
                     Divider().overlay(PrismColor.hairline)
-                    EditField(label: "플랫폼", text: $platform, placeholder: "예: 넷플릭스")
-                    Divider().overlay(PrismColor.hairline)
                     EditField(label: "태그", text: $tagInput, placeholder: "#SF #드라마")
                 }
                 .prismGlassCard()
+
+                if record.cultureType == .series {
+                    SeriesPlatformPicker(key: $platformKey, customLabel: $platformLabel)
+                        .prismGlassCard()
+                }
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("상태").font(.prismHeadline).foregroundStyle(PrismColor.text)
@@ -80,7 +86,8 @@ struct CultureEditSheet: View {
             title: title,
             status: status,
             rating: rating,
-            platformLabel: platform.trimmingCharacters(in: .whitespacesAndNewlines),
+            platformKey: platformKey,
+            platformLabel: platformLabel.trimmingCharacters(in: .whitespacesAndNewlines),
             tags: parseTagInput(tagInput)
         )
         PrismHaptics.saved()

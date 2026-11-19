@@ -108,15 +108,18 @@ struct NewReadingSheet: View {
         guard trimmed.count >= 2 else {
             results = []
             searchError = nil
+            searching = false
             return
         }
+        // Placeholders from the first keystroke, so "nothing found" never
+        // shows for a query that hasn't been searched yet.
+        searching = true
 
         // Debounce — `.task(id:)` restarts on every keystroke, and this sleep
         // gets cancelled with it.
         try? await Task.sleep(for: .milliseconds(350))
         guard !Task.isCancelled else { return }
 
-        searching = true
         searchError = nil
         defer { searching = false }
 

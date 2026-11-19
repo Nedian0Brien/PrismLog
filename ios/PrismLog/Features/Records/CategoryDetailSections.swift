@@ -1,4 +1,3 @@
-import Charts
 import PhotosUI
 import SwiftUI
 import UIKit
@@ -17,10 +16,7 @@ struct SeriesProgressChange: Identifiable, Equatable {
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
 }
 
-/// Cumulative share watched by day — the web's `SeriesProgressTrendChart`
-/// (`recordsPage.jsx:949`): a dashed 0·50·100 grid, the line over a soft
-/// fill, a ring at each day, the date range above and the latest percent
-/// below.
+/// Cumulative share watched by day, in the web's trend chart.
 struct SeriesTrendCard: View {
     let progress: SeriesProgress
 
@@ -49,94 +45,10 @@ struct SeriesTrendCard: View {
             }
     }
 
-    private var accent: Color { PrismAccent.series.color }
-
     var body: some View {
-        let points = Self.points(for: progress)
-        if let first = points.first, let last = points.last {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text("Progress Trend")
-                        .font(PrismFont.text(11, .semiBold))
-                        .tracking(1)
-                        .textCase(.uppercase)
-                        .foregroundStyle(accent)
-                    Spacer(minLength: 0)
-                    Text("\(SeriesDates.monthDay(first.date)) → \(SeriesDates.monthDay(last.date))")
-                        .font(PrismFont.text(11))
-                        .prismMuted()
-                }
-
-                chart(points)
-                    .aspectRatio(220.0 / 104.0, contentMode: .fit)
-                    .accessibilityLabel("시청 진행률 추세")
-
-                HStack {
-                    Text(SeriesDates.monthDay(first.date))
-                        .font(PrismFont.text(11))
-                        .prismMuted()
-                    Spacer(minLength: 0)
-                    Text("\(last.progress)%")
-                        .font(PrismFont.numeral(11, weight: .semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(accent)
-                        .contentTransition(.numericText(value: Double(last.progress)))
-                        .animation(.easeOut(duration: 0.46), value: last.progress)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(Color.white.opacity(0.03), in: .rect(cornerRadius: 18, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(accent.opacity(0.13)) }
-        }
-    }
-
-    /// Drawn in the web's 220×104 frame with 14pt insets, scaled to fit.
-    private func chart(_ points: [Point]) -> some View {
-        GeometryReader { proxy in
-            let scale = proxy.size.width / 220
-            let inset = 14 * scale
-            let width = proxy.size.width - inset * 2
-            let height = proxy.size.height - inset * 2
-            let last = max(points.count - 1, 1)
-            let spots = points.enumerated().map { index, point in
-                CGPoint(
-                    x: inset + width * (points.count == 1 ? 0.5 : CGFloat(index) / CGFloat(last)),
-                    y: inset + height - CGFloat(point.progress) / 100 * height
-                )
-            }
-
-            ZStack {
-                ForEach([0, 50, 100], id: \.self) { value in
-                    Path { path in
-                        let y = inset + height - CGFloat(value) / 100 * height
-                        path.move(to: CGPoint(x: inset, y: y))
-                        path.addLine(to: CGPoint(x: inset + width, y: y))
-                    }
-                    .stroke(Color.white.opacity(0.07), style: StrokeStyle(lineWidth: 1, dash: [3, 5]))
-                }
-
-                Path { path in
-                    guard let start = spots.first, let end = spots.last else { return }
-                    path.addLines(spots)
-                    path.addLine(to: CGPoint(x: end.x, y: inset + height))
-                    path.addLine(to: CGPoint(x: start.x, y: inset + height))
-                    path.closeSubpath()
-                }
-                .fill(LinearGradient(colors: [accent.opacity(0.33), accent.opacity(0.02)], startPoint: .top, endPoint: .bottom))
-
-                Path { path in path.addLines(spots) }
-                    .stroke(accent, style: StrokeStyle(lineWidth: 3 * scale, lineCap: .round, lineJoin: .round))
-
-                ForEach(Array(spots.enumerated()), id: \.offset) { _, spot in
-                    Circle()
-                        .fill(PrismColor.background)
-                        .overlay { Circle().strokeBorder(accent, lineWidth: 2 * scale) }
-                        .frame(width: 9 * scale, height: 9 * scale)
-                        .position(spot)
-                }
-            }
-        }
+        ProgressTrendCard(points: Self.points(for: progress).map {
+            TrendPoint(id: $0.date.formatted(.iso8601), label: SeriesDates.monthDay($0.date), progress: $0.progress)
+        })
     }
 }
 
@@ -254,7 +166,6 @@ struct GameSessionsSection: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            metricsCard
             GamePlayCalendar(sessions: sessions)
             feedCard
         }
@@ -266,64 +177,14 @@ struct GameSessionsSection: View {
         }
     }
 
-    /// The three numbers the web's hero shows: total time, session count,
-    /// last played (`GameDetailPage`, `recordsPage.jsx:4785`).
-    private var metricsCard: some View {
-        HStack(spacing: 10) {
-            metric("누적 플레이", value: durationLabel(record.totalGameMinutes))
-            metric("플레이 횟수", value: "\(sessions.count)회")
-            metric(
-                "최근 플레이",
-                value: lastPlayedAt?.formatted(.dateTime.month().day()) ?? "기록 대기"
-            )
-        }
-        .prismGlassCard(tint: PrismAccent.game.color, padding: 14)
-    }
-
-    private func metric(_ label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.prismMicro)
-                .prismMuted()
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-
-            Text(value)
-                .font(PrismFont.numeral(16, weight: .bold))
-                .monospacedDigit()
-                .foregroundStyle(PrismColor.text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     private var feedCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Play Feed")
-                        .font(.prismMicro)
-                        .tracking(1.0)
-                        .textCase(.uppercase)
-                        .foregroundStyle(PrismAccent.game.color)
-
-                    Text("플레이 로그")
-                        .font(.prismTitle)
-                        .foregroundStyle(PrismColor.text)
-                }
-
-                Spacer(minLength: 0)
-
-                Button {
-                    addingSession = true
-                } label: {
-                    Label("추가", systemImage: "plus")
-                        .font(.prismCaption)
-                }
-                .tint(PrismAccent.game.color)
-                .accessibilityIdentifier("game.addSession")
-            }
+            DetailParts.sectionHeader(
+                eyebrow: "Play Feed",
+                title: "플레이 로그",
+                accent: PrismAccent.game.color,
+                action: (label: "+ 게임 기록", identifier: "game.addSession", run: { addingSession = true })
+            )
 
             if sessions.isEmpty {
                 Text("아직 플레이 로그가 없습니다.")
@@ -346,15 +207,15 @@ struct GameSessionsSection: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(session.durationLabel)
-                        .font(PrismFont.numeral(15, weight: .bold))
+                        .font(PrismFont.numeral(16, weight: .bold))
                         .monospacedDigit()
                         .foregroundStyle(PrismColor.text)
 
                     Spacer(minLength: 0)
 
                     if let playedAt = session.playedAt {
-                        Text(playedAt, format: .dateTime.month().day().hour().minute())
-                            .font(.prismMicro)
+                        Text("\(SeriesDates.monthDay(playedAt)) · \(DetailParts.time(playedAt))")
+                            .font(PrismFont.text(12))
                             .monospacedDigit()
                             .prismMuted()
                     }
@@ -389,12 +250,6 @@ struct GameSessionsSection: View {
         .accessibilityIdentifier("game.session")
     }
 
-    private func durationLabel(_ minutes: Int) -> String {
-        guard minutes > 0 else { return "0분" }
-        return minutes >= 60
-            ? "\(minutes / 60)시간 \(String(format: "%02d", minutes % 60))분"
-            : "\(minutes)분"
-    }
 }
 
 /// Months of play, one lit cell per day at the controller. Ported from
@@ -416,17 +271,10 @@ struct GamePlayCalendar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Play Calendar")
-                    .font(.prismMicro)
-                    .tracking(1.0)
-                    .textCase(.uppercase)
-                    .foregroundStyle(PrismAccent.game.color)
-
-                Text("플레이 캘린더")
-                    .font(.prismTitle)
-                    .foregroundStyle(PrismColor.text)
-            }
+            DetailParts.sectionHeader(eyebrow: "Play Calendar", title: "플레이 캘린더", accent: PrismAccent.game.color)
+            Text("기록한 날짜마다 칸이 진해집니다.")
+                .font(PrismFont.text(12))
+                .prismMuted()
 
             ForEach(months) { month in
                 VStack(alignment: .leading, spacing: 8) {
