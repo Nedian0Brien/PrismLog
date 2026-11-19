@@ -61,6 +61,11 @@ struct RecordsScreen: View {
         }
         .navigationSplitViewStyle(.balanced)
         .containerBackground(.clear, for: .navigationSplitView)
+        // Expanded, one wall runs behind both columns, so the posters line
+        // up across iPhone Duo's fold; collapsed, the stack's screens each
+        // draw it as everywhere else.
+        .environment(\.prismWallDrawnByContainer, !isCompact)
+        .prismWallBackground()
         .onGeometryChange(for: CGFloat?.self) { proxy in
             let width = proxy.size.width
             let divisions = proxy.reservedRegions(kind: .division, options: .includeInactive).map(\.frame)

@@ -25,6 +25,10 @@ struct AppShell: View {
     @State private var contextChange: Task<Void, Never>?
     /// Off once the first screen's covers are ready, or the splash gave up.
     @State private var showsSplash = true
+    /// The `+` tab's kind picker, and the kind picked in it — opened once
+    /// the picker has gone, so one sheet follows the other.
+    @State private var choosingComposer = false
+    @State private var chosenComposer: PrismAccent?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -33,12 +37,20 @@ struct AppShell: View {
         return ZStack {
             PrismColor.background.ignoresSafeArea()
 
-            TabView(selection: $navigation.tab) {
+            TabView(selection: selection) {
                 ForEach(PrismTab.allCases) { tab in
-                    Tab(tab.title, systemImage: tab.symbol, value: tab) {
+                    Tab(tab.title, systemImage: tab.symbol, value: ShellTab.page(tab)) {
                         content(for: tab)
                             .environment(\.prismTab, tab)
                     }
+                }
+                // `+` rides at the tab bar's end (iOS 27 prominent tab) —
+                // bottom right on iPhone, the foot of iPhone Duo's vertical
+                // bar — instead of floating in each screen's top bar
+                // (user decision 2026-11-20). It opens the kind picker and
+                // never becomes the selected tab.
+                Tab("기록 작성", systemImage: "plus", value: ShellTab.compose, role: .prominent) {
+                    Color.clear
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
@@ -62,6 +74,17 @@ struct AppShell: View {
         .saveRefractionPulse(store.lastSavedAccent)
         .sheet(item: $navigation.pendingComposer) { accent in
             composerSheet(for: accent)
+        }
+        .sheet(isPresented: $choosingComposer, onDismiss: {
+            if let kind = chosenComposer {
+                chosenComposer = nil
+                navigation.pendingComposer = kind
+            }
+        }) {
+            ComposerKindPicker { kind in
+                chosenComposer = kind
+                choosingComposer = false
+            }
         }
         #if DEBUG
         .fullScreenCover(isPresented: $showsWallLab) { WallLabScreen() }
@@ -124,6 +147,27 @@ struct AppShell: View {
 
     private var libraryRevealed: Bool {
         onLibraryPage && navigation.libraryRevealed
+    }
+
+    /// The tab bar's selection: one of the four pages, or the `+` tab.
+    private enum ShellTab: Hashable {
+        case page(PrismTab)
+        case compose
+    }
+
+    /// Picking `+` opens the kind picker and leaves the page where it was.
+    private var selection: Binding<ShellTab> {
+        Binding(
+            get: { .page(navigation.tab) },
+            set: { picked in
+                switch picked {
+                case .page(let tab): navigation.tab = tab
+                case .compose:
+                    PrismHaptics.selection()
+                    choosingComposer = true
+                }
+            }
+        )
     }
 
     /// The wall lights up as the splash fades away.

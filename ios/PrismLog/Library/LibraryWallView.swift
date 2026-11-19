@@ -469,7 +469,16 @@ extension View {
     }
 }
 
+extension EnvironmentValues {
+    /// Set inside a container that draws one wall behind all its columns —
+    /// the records split view on iPhone Duo — so the columns don't each draw
+    /// their own and meet at the fold out of line and at different
+    /// brightness.
+    @Entry var prismWallDrawnByContainer = false
+}
+
 private struct PrismWallBackground: ViewModifier {
+    @Environment(\.prismWallDrawnByContainer) private var drawnByContainer
     @Environment(LibraryWallModel.self) private var wall: LibraryWallModel?
     @Environment(AppNavigationModel.self) private var navigation: AppNavigationModel?
     @Environment(\.prismTab) private var tab
@@ -484,8 +493,13 @@ private struct PrismWallBackground: ViewModifier {
     func body(content: Content) -> some View {
         content
             .containerBackground(.clear, for: .navigation)
+            // A split view's columns paint their own backgrounds over the
+            // wall its container draws; clear them too.
+            .containerBackground(.clear, for: .navigationSplitView)
             .background {
-                if let wall {
+                if drawnByContainer {
+                    // The container's wall shows through.
+                } else if let wall {
                     LibraryWallView(
                         model: wall,
                         scrollOffset: tab.flatMap { navigation?.scrollOffsets[$0] } ?? 0,
