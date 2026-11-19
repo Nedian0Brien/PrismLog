@@ -133,7 +133,7 @@ def _enrich_with_google_books(normalized_isbn: str, settings: Settings) -> BookE
             publisher=_clean_text(volume_info.get("publisher")) or None,
             published_date=_format_date(volume_info.get("publishedDate")),
             description=_clean_text(volume_info.get("description")) or None,
-            cover_url=image_links.get("thumbnail") or image_links.get("smallThumbnail") or None,
+            cover_url=_https(image_links.get("thumbnail") or image_links.get("smallThumbnail")),
             source_metadata={
                 "google_preview_link": volume_info.get("previewLink") or None,
                 "google_info_link": volume_info.get("infoLink") or None,
@@ -324,7 +324,7 @@ def _search_google_books(query: str, limit: int, settings: Settings) -> list[Boo
                 publisher=_clean_text(info.get("publisher")) or None,
                 isbn=isbn10,
                 isbn13=isbn13,
-                cover_url=image_links.get("thumbnail") or image_links.get("smallThumbnail") or None,
+                cover_url=_https(image_links.get("thumbnail") or image_links.get("smallThumbnail")),
                 published_date=_format_date(info.get("publishedDate")),
                 description=_clean_text(info.get("description")) or None,
                 pages_total=int(page_count) if isinstance(page_count, int) and page_count > 0 else None,
@@ -349,6 +349,18 @@ def _request_json(url: str, params: dict[str, object], headers: dict[str, str], 
         raise BookSearchError(str(error.reason)) from error
     except TimeoutError as error:
         raise BookSearchError("timeout") from error
+
+
+def _https(url: object) -> str | None:
+    """A Google Books cover link as the apps should load it: over TLS (the
+    same path is served there, and the iOS app can't load plain HTTP
+    images), without `edge=curl`, which paints a page curl on the cover."""
+    if not url:
+        return None
+    text = str(url)
+    if text.startswith("http://"):
+        text = "https://" + text[len("http://"):]
+    return text.replace("&edge=curl", "").replace("edge=curl&", "")
 
 
 def _build_dedupe_key(item: BookSearchItem) -> str:

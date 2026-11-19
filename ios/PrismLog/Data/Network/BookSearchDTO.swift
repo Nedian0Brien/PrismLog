@@ -19,7 +19,7 @@ struct BookSearchItem: Codable, Sendable, Hashable, Identifiable {
     var id: String { sourceId }
 
     var authorLine: String { authors.joined(separator: ", ") }
-    var coverURL: URL? { coverUrl.flatMap(URL.init(string:)) }
+    var coverURL: URL? { coverUrl.flatMap(PrismMedia.url(for:)) }
 
     enum CodingKeys: String, CodingKey {
         case sourceProvider = "source_provider"
