@@ -26,7 +26,7 @@ GOOGLE = {"items": [
     {"id": "g1", "volumeInfo": {
         "title": "소년이 온다", "authors": ["한강"], "publishedDate": "2014-05",
         "industryIdentifiers": [{"type": "ISBN_13", "identifier": "9788936434120"}],
-        "imageLinks": {"thumbnail": "http://g/1.jpg"}, "pageCount": 216}},
+        "imageLinks": {"thumbnail": "http://g/1?id=x&img=1&edge=curl&source=gbs_api"}, "pageCount": 216}},
     {"id": "g2", "volumeInfo": {
         "title": "채식주의자", "authors": ["한강"], "publishedDate": "2007",
         "industryIdentifiers": [{"type": "ISBN_10", "identifier": "89-364-3354-5"}], "pageCount": 247}},
@@ -61,6 +61,8 @@ def test_google_alone_works_while_kakao_key_is_missing(monkeypatch):
     assert [item.source_id for item in items] == ["google_books:9788936434120", "google_books:8936433545"]
     assert items[0].published_date == "2014-05-01"
     assert items[0].pages_total == 216
+    # Google's http cover links come back over TLS, without the page curl.
+    assert items[0].cover_url == "https://g/1?id=x&img=1&source=gbs_api"
 
 
 def test_isbn_query_searches_by_isbn(monkeypatch):
