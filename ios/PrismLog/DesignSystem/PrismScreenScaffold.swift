@@ -129,12 +129,6 @@ struct PrismScreenScaffold<Content: View>: View {
                 // The wordmark is a label, not a control — without this iOS 26
                 // wraps it in the toolbar's glass capsule.
                 .sharedBackgroundVisibility(.hidden)
-
-                if tab != .settings, let navigation {
-                    ToolbarItem(placement: .topBarPinnedTrailing) {
-                        PrismComposerMenu { navigation.pendingComposer = $0 }
-                    }
-                }
             }
             .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
     }
@@ -221,28 +215,49 @@ struct PrismScreenScaffold<Content: View>: View {
     }
 }
 
-/// The toolbar's `+`: one menu of the five composers (spec §3, §6.5).
-///
-/// A system `Menu` in the toolbar rather than the v1 floating button: the
-/// toolbar morphs the menu out of its glass on its own, keeps it clear of
-/// iPhone Duo's fold, and carries it into the vertical bar on the outer
-/// screen — which needs an icon and a title on every item.
-struct PrismComposerMenu: View {
-    var onSelect: (PrismAccent) -> Void
+/// The five kinds of record, picked after tapping the tab bar's `+`.
+struct ComposerKindPicker: View {
+    var onPick: (PrismAccent) -> Void
 
     var body: some View {
-        Menu {
-            ForEach(PrismAccent.allCases) { accent in
-                Button(accent.label, systemImage: accent.symbol) {
-                    PrismHaptics.selection()
-                    onSelect(accent)
+        VStack(alignment: .leading, spacing: 14) {
+            Text("기록 작성")
+                .font(.prismTitle)
+                .foregroundStyle(PrismColor.text)
+                .accessibilityIdentifier("composer.picker.title")
+
+            VStack(spacing: 8) {
+                ForEach(PrismAccent.allCases) { accent in
+                    Button {
+                        PrismHaptics.selection()
+                        onPick(accent)
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: accent.symbol)
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(accent.color)
+                                .frame(width: 40, height: 40)
+                                .background(accent.color.opacity(0.14), in: .rect(cornerRadius: 12, style: .continuous))
+                            Text(accent.label)
+                                .font(.prismHeadline)
+                                .foregroundStyle(PrismColor.text)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("composer.\(accent.rawValue)")
                 }
-                .accessibilityIdentifier("composer.\(accent.rawValue)")
             }
-        } label: {
-            Label("기록 작성", systemImage: "plus")
         }
-        .accessibilityIdentifier("composer.menu")
+        .padding(.horizontal, 20)
+        .padding(.top, 24)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .presentationDetents([.height(388)])
+        .presentationDragIndicator(.visible)
     }
 }
 

@@ -329,3 +329,10 @@
 - `FeatureDetailViews.swift`: 공통 히어로, `ProgressTrendCard`(시리즈·도서 공용), 도서·영화 상세, 게임 히어로. 게임 캘린더·로그 머리말 웹과 같게, 기존 독서 카드 5개 삭제
 - 시뮬레이터 발견·수정: 세션 카드 % 줄바꿈, 검색 전 "결과 없음" 깜빡임, "시리즈이" 조사
 - 단위 117개 중 115 통과·2 건너뜀(iPhone·듀오, `DetailParityTests` 5개 추가)
+
+### ~01:55 · T44 완료 · 듀오 펼친 화면 ③④
+- app-resizability 사전 점검: 실행 화면·iPad 네 방향 있음, UIRequiresFullScreen 없음. 레거시 API는 SwiftUI의 반응형 safeAreaInsets 읽기 하나뿐이라 교체 대상 없음
+- 세 자세 점검 후 사용자에게 ①~④ 제시, ③④ 선택(사용자). ①② 배치는 두 판으로 결정만 해 둠
+- ③ `prismWallDrawnByContainer` + 분할 화면 뒤 벽 하나, 칸 배경 `.navigationSplitView`까지 비움
+- ④ `TabRole.prominent` + 탭(공식: WWDC26 What's new in SwiftUI), 선택을 가로채 종류 시트 → 작성 시트. UI 테스트 2개 갱신(설정 탭에서도 보임)
+- 단위·UI 117개 중 114 통과·2 건너뜀·1 실패 → UI 테스트 식별자·시트 닫기 고친 뒤 UI 8/8(iPhone·듀오)
