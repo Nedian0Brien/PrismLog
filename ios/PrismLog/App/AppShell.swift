@@ -20,9 +20,12 @@ struct AppShell: View {
 
     #if DEBUG
     @State private var showsWallLab = WallLabScreen.opensOnLaunch
+    #endif
     /// A wall context change waiting for the timeline's scroll to settle.
     @State private var contextChange: Task<Void, Never>?
-    #endif
+    /// Off once the first screen's covers are ready, or the splash gave up.
+    @State private var showsSplash = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         @Bindable var navigation = navigation
@@ -41,6 +44,19 @@ struct AppShell: View {
             .tabViewStyle(.sidebarAdaptable)
             .tabBarMinimizeBehavior(.onScrollDown)
             .tint(navigation.tab.tintColor)
+
+            if showsSplash {
+                LaunchSplash()
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
+        }
+        .onChange(of: wall.isReadyForLaunch, initial: true) { _, ready in
+            if ready { liftSplash() }
+        }
+        .task {
+            try? await Task.sleep(for: LaunchSplash.longestWait)
+            liftSplash()
         }
         .environment(navigation)
         .saveRefractionPulse(store.lastSavedAccent)
@@ -110,6 +126,12 @@ struct AppShell: View {
         onLibraryPage && navigation.libraryRevealed
     }
 
+    /// The wall lights up as the splash fades away.
+    private func liftSplash() {
+        guard showsSplash else { return }
+        withAnimation(.easeInOut(duration: reduceMotion ? 0.2 : 0.6)) { showsSplash = false }
+    }
+
     /// What the wall shows behind the current screen (spec §3, §4.5).
     private var wallContext: WallContext {
         // A pushed record on any tab puts its cover behind it as the hero.
@@ -152,8 +174,11 @@ struct AppShell: View {
     }
 }
 
+// `PrismStore.preview()` exists in debug builds only.
+#if DEBUG
 #Preview {
     AppShell()
         .environment(PrismStore.preview())
         .environment(LibraryWallModel())
 }
+#endif

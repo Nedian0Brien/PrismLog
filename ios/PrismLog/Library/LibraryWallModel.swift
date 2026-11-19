@@ -223,6 +223,35 @@ final class LibraryWallModel {
 
     private(set) var covers: [WallCover] = []
     private(set) var images: [WallCover.ID: UIImage] = [:]
+
+    // MARK: Launch
+
+    /// Set once the outside covers are known — from the saved list, or after
+    /// the first fetch, failed or not.
+    private(set) var discoverySettled = false
+
+    /// The rows and columns of the wall the first screen can show, a little
+    /// more than the tallest and widest screen.
+    static let launchRows = 8
+    static let launchColumns = 6
+
+    /// The covers on the wall's first screen: the start of each of the top
+    /// rows, and the end too, since a row's first slot can show its last
+    /// cover as it flows in.
+    var launchCoverIDs: Set<WallCover.ID> {
+        let rows = WallComposition.rows(from: visibleCovers, count: WallRowsPattern.rowCount)
+        return Set(rows.prefix(Self.launchRows).flatMap { row in
+            Array(row.prefix(Self.launchColumns)) + Array(row.suffix(1))
+        }.map(\.id))
+    }
+
+    /// The splash lifts when this turns true: the outside covers are known
+    /// and every cover on the first screen has its image (2026-11-19, user
+    /// decision; the splash gives up after `LaunchSplash.longestWait`).
+    var isReadyForLaunch: Bool {
+        guard discoverySettled || isFixture else { return false }
+        return launchCoverIDs.allSatisfy { images[$0] != nil }
+    }
     private(set) var pauseReasons: Set<WallPauseReason> = []
 
     private var clock = WallClock()
@@ -267,12 +296,16 @@ final class LibraryWallModel {
     /// Shows the last list straight away, then fetches a fresh one when it
     /// is more than half a day old. A failed fetch keeps what's there.
     func loadDiscovery(api: PrismAPIClient = .shared) async {
+        // Whatever happens below, the wall knows its outside covers by then.
+        defer { discoverySettled = true }
         let file = Self.discoveryFile
         let saved = try? Data(contentsOf: file)
         if let saved, let items = try? JSONDecoder().decode([MediaSearchItem].self, from: saved) {
             discoveryItems = items
             discovery = items.compactMap(Self.wallCover(from:))
         }
+        // A saved list is enough to show; a refresh can land later.
+        if saved != nil { discoverySettled = true }
         let age = (try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate)
             .map { Date.now.timeIntervalSince($0) } ?? .infinity
         guard saved == nil || age > Self.discoveryLifetime else { return }

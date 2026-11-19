@@ -32,6 +32,7 @@
 		3F7641ED9593DE590DA9DB52 /* LibraryWallModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3587A4560FFFFF1C181D4B5F /* LibraryWallModel.swift */; };
 		4BA0527478D19E7980528117 /* TimelineBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6243573F72558C90669229DE /* TimelineBuilder.swift */; };
 		4E280803F133415DA28DCA0F /* CategoryEditSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE6817737610450B850922B /* CategoryEditSheets.swift */; };
+		50815A6BBFAB0D5269012BEC /* LaunchSplash.swift in Sources */ = {isa = PBXBuildFile; fileRef = 436646BC84B3B67E04274F1D /* LaunchSplash.swift */; };
 		556459F24BECAA9C4601E699 /* OfflineBehaviourTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51208707E83C2E6E04149802 /* OfflineBehaviourTests.swift */; };
 		55EBE291F0BEE1DC907B0FBC /* PrismTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93995DC3AD70921841B9EC6C /* PrismTab.swift */; };
 		57CEC5870E03C88EA26F923D /* WallLabScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C26F4ADACE8A0691C8F5759 /* WallLabScreen.swift */; };
@@ -167,6 +168,7 @@
 		398C9DE5A24530799A96565C /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		3B55AC8439ED4BF41E2E39BE /* WidgetRefresher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetRefresher.swift; sourceTree = "<group>"; };
 		42B4BE3B421AC0CD21F26ADC /* PrismWordmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismWordmark.swift; sourceTree = "<group>"; };
+		436646BC84B3B67E04274F1D /* LaunchSplash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchSplash.swift; sourceTree = "<group>"; };
 		4420F18602ED6C61D97E01C5 /* PrismAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrismAPIClient.swift; sourceTree = "<group>"; };
 		44DC8DFEA57031D1BDFC3052 /* LibraryScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScreen.swift; sourceTree = "<group>"; };
 		45B9996E62550A64AE6D9DE1 /* StudyGrouping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyGrouping.swift; sourceTree = "<group>"; };
@@ -433,6 +435,7 @@
 			children = (
 				09509FCDF5ACD634BBC6CBA8 /* AppNavigationModel.swift */,
 				4D754B02716FCC57E9F1FEA0 /* AppShell.swift */,
+				436646BC84B3B67E04274F1D /* LaunchSplash.swift */,
 				B060E806D1AFE72F23C886FA /* PrismLogApp.swift */,
 				93995DC3AD70921841B9EC6C /* PrismTab.swift */,
 			);
@@ -699,6 +702,7 @@
 				38E2CFA6896FFCAB0897FFF8 /* GeneratedCover.swift in Sources */,
 				1500A577C2F578655D47A00C /* ImageCompressor.swift in Sources */,
 				7E8F3A3054D3DD7F20B26C1B /* JSONValue.swift in Sources */,
+				50815A6BBFAB0D5269012BEC /* LaunchSplash.swift in Sources */,
 				2087CFCF6A2F6052A1B736B7 /* LibraryMetrics.swift in Sources */,
 				1B77CA7DAE503F806487988C /* LibraryScreen.swift in Sources */,
 				3F7641ED9593DE590DA9DB52 /* LibraryWallModel.swift in Sources */,

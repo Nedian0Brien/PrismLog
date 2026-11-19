@@ -671,11 +671,14 @@ private struct PageDots: View {
     }
 }
 
+// `PrismStore.preview()` exists in debug builds only.
+#if DEBUG
 #Preview {
     LibraryScreen()
         .environment(PrismStore.preview())
         .environment(AppNavigationModel())
 }
+#endif
 
 /// Compact row used on the dashboard and the timeline.
 struct RecordSummaryRow: View {
