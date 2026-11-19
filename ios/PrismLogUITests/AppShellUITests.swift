@@ -37,12 +37,9 @@ final class AppShellUITests: XCTestCase {
         button.tap()
     }
 
-    /// The `+` button above the tab bar.
-    private var composeTab: XCUIElement { app.buttons["기록 작성"].firstMatch }
-
-    /// Opens the `+` above the tab bar and picks a composer.
+    /// Opens the toolbar's `+` menu and picks a composer.
     private func compose(_ accent: String, label: String) {
-        let menu = composeTab
+        let menu = app.buttons["composer.menu"]
         XCTAssertTrue(menu.waitForExistence(timeout: 10), "작성 메뉴 버튼이 없음")
         menu.tap()
         let byID = app.buttons["composer.\(accent)"]
@@ -66,35 +63,31 @@ final class AppShellUITests: XCTestCase {
         }
     }
 
-    /// The `+` above the tab bar offers all five composers, closing the picker
-    /// hands touches back to the tabs, and the page stays where it was.
+    /// The toolbar `+` menu offers all five composers, and closing it hands
+    /// touches back to the tabs.
     func testComposerMenuListsEveryCategoryAndReleasesTouches() {
-        openTab("타임라인")
-        XCTAssertTrue(app.staticTexts["타임라인"].waitForExistence(timeout: 5))
-
-        let menu = composeTab
+        let menu = app.buttons["composer.menu"]
         XCTAssertTrue(menu.waitForExistence(timeout: 10), "작성 메뉴 버튼이 없음")
         menu.tap()
 
-        for kind in ["reading", "study", "movie", "series", "game"] {
-            XCTAssertTrue(app.buttons["composer.\(kind)"].waitForExistence(timeout: 3), "\(kind) 작성 항목이 없음")
+        for label in ["독서", "공부", "영화", "시리즈", "게임"] {
+            XCTAssertTrue(app.buttons[label].firstMatch.waitForExistence(timeout: 3), "\(label) 작성 항목이 없음")
         }
 
-        // Drag the picker away by its title — an offset in points, not a
-        // normalized screen coordinate, which iPhone Duo's inner display
-        // doesn't map where the app is.
-        let title = app.staticTexts["composer.picker.title"].firstMatch
-        let grip = title.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        grip.press(forDuration: 0.1, thenDragTo: grip.withOffset(CGVector(dx: 0, dy: 600)))
+        // Tapping outside the menu closes it — on the screen title, an
+        // element rather than a screen coordinate: iPhone Duo's inner
+        // display doesn't map normalized coordinates where the app is.
+        app.staticTexts["screen.title"].firstMatch.tap()
+        // Hittable, not existing: in a vertical bar the closed menu's items
+        // can stay in the accessibility tree, off screen.
         let readingItem = app.buttons["composer.reading"]
         let closed = NSPredicate { _, _ in !readingItem.exists || !readingItem.isHittable }
         expectation(for: closed, evaluatedWith: nil)
-        waitForExpectations(timeout: 5)
+        waitForExpectations(timeout: 3)
 
-        XCTAssertTrue(app.staticTexts["타임라인"].exists, "작성 메뉴를 연 뒤 탭이 바뀜")
-        openTab("기록")
+        openTab("타임라인")
         XCTAssertTrue(
-            app.staticTexts["기록 허브"].waitForExistence(timeout: 5),
+            app.staticTexts["타임라인"].waitForExistence(timeout: 5),
             "메뉴를 닫은 뒤 탭 전환이 되지 않음"
         )
     }
@@ -228,10 +221,10 @@ final class AppShellUITests: XCTestCase {
         XCTAssertTrue(app.buttons["booksearch.save"].exists, "기록 시작 버튼이 없음")
     }
 
-    /// The `+` sits above the tab bar, so every tab offers it — settings too.
-    func testComposerIsInTheTabBarOnEveryTab() {
+    /// Settings is the one tab without the composer.
+    func testComposerIsHiddenOnSettings() {
         openTab("설정")
         XCTAssertTrue(app.staticTexts["설정"].waitForExistence(timeout: 5))
-        XCTAssertTrue(composeTab.waitForExistence(timeout: 5), "설정 탭에서 작성 버튼이 보이지 않음")
+        XCTAssertFalse(app.buttons["composer.menu"].exists, "설정 탭에서 작성 메뉴가 보임")
     }
 }
