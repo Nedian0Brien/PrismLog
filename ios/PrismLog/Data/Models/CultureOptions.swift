@@ -160,11 +160,8 @@ struct GameSession: Identifiable, Hashable, Sendable {
     let note: String
     let photos: [URL]
 
-    var durationLabel: String {
-        durationMinutes >= 60
-            ? "\(durationMinutes / 60)시간 \(String(format: "%02d", durationMinutes % 60))분"
-            : "\(durationMinutes)분"
-    }
+    /// The web's `formatDurationLabel`: "45분", "2시간", "1시간 5분".
+    var durationLabel: String { DetailParts.duration(durationMinutes) }
 }
 
 extension RecordItem {

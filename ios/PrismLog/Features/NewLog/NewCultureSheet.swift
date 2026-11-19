@@ -23,7 +23,8 @@ struct NewCultureSheet: View {
     @State private var status: String
     @State private var rating = 0
     @State private var watchedEpisodes = "0"
-    @State private var platform = ""
+    @State private var platformKey = ""
+    @State private var platformLabel = ""
     @State private var tagInput = ""
     @State private var saving = false
 
@@ -77,7 +78,7 @@ struct NewCultureSheet: View {
                         }
                     }
                 } else if isSearching {
-                    Text("‘\(query.trimmingCharacters(in: .whitespacesAndNewlines))’에 맞는 \(type.rawValue)이 없습니다.")
+                    Text("‘\(query.trimmingCharacters(in: .whitespacesAndNewlines))’에 맞는 \(type.rawValue)\(type == .game ? "이" : "가") 없습니다.")
                         .font(.prismCallout)
                         .prismMuted()
                         .frame(maxWidth: .infinity)
@@ -132,13 +133,16 @@ struct NewCultureSheet: View {
         guard trimmed.count >= 2 else {
             results = []
             searchError = nil
+            searching = false
             return
         }
+        // Placeholders from the first keystroke, so "nothing found" never
+        // shows for a query that hasn't been searched yet.
+        searching = true
 
         try? await Task.sleep(for: .milliseconds(350))
         guard !Task.isCancelled else { return }
 
-        searching = true
         searchError = nil
         defer { searching = false }
 
@@ -220,12 +224,13 @@ struct NewCultureSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .prismGlassCard()
 
-                VStack(alignment: .leading, spacing: 12) {
-                    field("플랫폼", text: $platform, placeholder: type == .game ? "예: Steam" : "예: 넷플릭스")
-                    Divider().overlay(PrismColor.hairline)
-                    field("태그", text: $tagInput, placeholder: "#SF #드라마")
+                if type == .series {
+                    SeriesPlatformPicker(key: $platformKey, customLabel: $platformLabel)
+                        .prismGlassCard()
                 }
-                .prismGlassCard()
+
+                field("태그", text: $tagInput, placeholder: "#SF #드라마")
+                    .prismGlassCard()
 
                 Button {
                     Task { await save(item) }
@@ -282,7 +287,8 @@ struct NewCultureSheet: View {
                 status: status,
                 rating: rating,
                 watchedEpisodes: Int(watchedEpisodes) ?? 0,
-                platformLabel: platform.trimmingCharacters(in: .whitespacesAndNewlines),
+                platformKey: platformKey,
+                platformLabel: platformLabel.trimmingCharacters(in: .whitespacesAndNewlines),
                 tags: parseTagInput(tagInput)
             )
         )

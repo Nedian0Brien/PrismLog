@@ -1,4 +1,3 @@
-import Charts
 import SwiftUI
 
 /// Detail for a single record. Pushed inside the tab's existing
@@ -57,20 +56,27 @@ struct RecordDetailScreen: View {
                                 )
                             }
                             .task(id: record.id) { await store.fillSeriesEpisodeDetails(id: record.id) }
+                        } else if record.category == .reading {
+                            // Book, film and game details follow the web's
+                            // pages too (`ReadingDetailPage`, `MediaDetailPage`,
+                            // `GameDetailPage`).
+                            PrismGlassSection {
+                                ReadingDetailContent(
+                                    record: record,
+                                    onAddProgress: { loggingProgress = true },
+                                    onAddNote: { addingNote = true }
+                                )
+                            }
+                        } else if record.cultureType == .movie {
+                            PrismGlassSection { MediaDetailContent(record: record) }
+                        } else if record.cultureType == .game {
+                            PrismGlassSection { GameDetailHero(record: record) }
                         } else {
                             hero(record)
                         }
 
                         PrismGlassSection {
                             VStack(spacing: 14) {
-                                if record.category == .reading {
-                                    progressCard(record)
-
-                                    if record.readingSessions.count >= 2 {
-                                        trendCard(record)
-                                    }
-                                }
-
                                 if record.category == .study {
                                     let activities = StudyGrouping.activities(for: record, in: store.records)
                                     StudyStatusCard(record: record, activities: activities)
@@ -84,21 +90,15 @@ struct RecordDetailScreen: View {
                                     GameSessionsSection(record: record)
                                 }
 
-                                // A series shows its synopsis in its hero.
-                                if record.cultureType != .series, let overview = record.overview, !overview.isEmpty {
+                                // Books, films, games and series show their
+                                // synopsis in their hero; a book its review too.
+                                if record.cultureType == nil, record.category != .reading,
+                                   let overview = record.overview, !overview.isEmpty {
                                     overviewCard(overview)
                                 }
 
-                                if !record.review.isEmpty {
+                                if record.category != .reading, !record.review.isEmpty {
                                     reviewCard(record)
-                                }
-
-                                if !record.readingNotes.isEmpty {
-                                    notesCard(record)
-                                }
-
-                                if !record.readingSessions.isEmpty {
-                                    sessionsCard(record)
                                 }
 
                                 metaCard(record)
@@ -276,85 +276,9 @@ struct RecordDetailScreen: View {
         }
     }
 
-    private func trendCard(_ record: RecordItem) -> some View {
-        let points = record.readingSessions
-            .compactMap { session -> (Date, Int)? in
-                guard let date = session.date else { return nil }
-                return (date, session.toProgress)
-            }
-            .sorted { $0.0 < $1.0 }
-
-        return VStack(alignment: .leading, spacing: 10) {
-            cardTitle("진행 추세")
-
-            Chart {
-                ForEach(Array(points.enumerated()), id: \.offset) { _, point in
-                    LineMark(
-                        x: .value("날짜", point.0),
-                        y: .value("진도", point.1),
-                        series: .value("진도", "progress")
-                    )
-                    .foregroundStyle(record.accent.color)
-                    .interpolationMethod(.monotone)
-                    .lineStyle(StrokeStyle(lineWidth: 2.2, lineCap: .round))
-
-                    PointMark(
-                        x: .value("날짜", point.0),
-                        y: .value("진도", point.1)
-                    )
-                    .foregroundStyle(record.accent.color)
-                    .symbolSize(28)
-                }
-            }
-            .chartYScale(domain: 0...100)
-            .chartYAxis {
-                AxisMarks(position: .leading, values: [0, 50, 100]) {
-                    AxisValueLabel().font(.prismMicro).foregroundStyle(PrismColor.textMuted)
-                    AxisGridLine().foregroundStyle(PrismColor.hairline)
-                }
-            }
-            .chartXAxis {
-                AxisMarks { _ in
-                    AxisValueLabel(format: .dateTime.month(.defaultDigits).day())
-                        .font(.prismMicro)
-                        .foregroundStyle(PrismColor.textMuted)
-                    AxisGridLine().foregroundStyle(PrismColor.hairline)
-                }
-            }
-            .frame(height: 130)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .prismGlassCard()
-    }
 
     // MARK: - Cards
 
-    private func progressCard(_ record: RecordItem) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("\(record.progress)")
-                    .font(PrismFont.numeral(38, weight: .heavy))
-                    .monospacedDigit()
-                    .foregroundStyle(record.accent.color)
-                Text("%")
-                    .font(PrismFont.numeral(20, weight: .bold))
-                    .foregroundStyle(record.accent.color.opacity(0.7))
-
-                Spacer(minLength: 0)
-
-                if record.pagesTotal > 0 {
-                    Text("\(record.pagesRead) / \(record.pagesTotal)p")
-                        .font(.prismCallout)
-                        .monospacedDigit()
-                        .prismMuted()
-                }
-            }
-
-            ProgressMeter(value: Double(record.progress) / 100, accent: record.accent)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .prismGlassCard(tint: record.accent.color)
-    }
 
     @ViewBuilder
     private func studyReflection(_ record: RecordItem) -> some View {
@@ -416,85 +340,7 @@ struct RecordDetailScreen: View {
         .prismGlassCard()
     }
 
-    private func notesCard(_ record: RecordItem) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            cardTitle("메모 · 필사 \(record.readingNotes.count)개")
 
-            ForEach(record.readingNotes) { note in
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(note.text)
-                        .font(.prismBody)
-                        .foregroundStyle(PrismColor.text)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: 6) {
-                        if note.page > 0 {
-                            Text("\(note.page)p")
-                                .font(.prismMicro)
-                                .monospacedDigit()
-                                .foregroundStyle(record.accent.color)
-                        }
-                        if let date = note.date {
-                            Text(date, format: .dateTime.year().month().day())
-                                .font(.prismMicro)
-                                .prismMuted()
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 12)
-                .overlay(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(record.accent.color.opacity(0.5))
-                        .frame(width: 3)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .prismGlassCard()
-    }
-
-    private func sessionsCard(_ record: RecordItem) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            cardTitle("독서 세션 \(record.readingSessions.count)회")
-
-            ForEach(record.readingSessions) { session in
-                HStack(spacing: 12) {
-                    Circle()
-                        .fill(record.accent.color)
-                        .frame(width: 7, height: 7)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(sessionHeadline(session))
-                            .font(.prismCallout)
-                            .foregroundStyle(PrismColor.text)
-
-                        if let date = session.date {
-                            Text(date, format: .dateTime.year().month().day())
-                                .font(.prismMicro)
-                                .prismMuted()
-                        }
-                    }
-
-                    Spacer(minLength: 0)
-
-                    if session.durationMinutes > 0 {
-                        Text("\(session.durationMinutes)분")
-                            .font(.prismMicro)
-                            .monospacedDigit()
-                            .prismMuted()
-                    }
-                }
-
-                if !session.photos.isEmpty {
-                    PhotoStrip(photos: session.photos, accent: record.accent, height: 84)
-                        .padding(.leading, 19)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .prismGlassCard()
-    }
 
     private func metaCard(_ record: RecordItem) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -535,13 +381,6 @@ struct RecordDetailScreen: View {
         }
     }
 
-    private func sessionHeadline(_ session: ReadingSession) -> String {
-        if session.pagesRead > 0 {
-            "\(session.fromPages)p → \(session.toPages)p · \(session.pagesRead)쪽"
-        } else {
-            "\(session.fromProgress)% → \(session.toProgress)%"
-        }
-    }
 }
 
 // MARK: - Shared bits
