@@ -42,10 +42,10 @@ struct NewStudySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") { dismiss() }
+                    Button("취소", systemImage: "xmark") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("저장") { Task { await save() } }
+                    Button("저장", systemImage: "checkmark") { Task { await save() } }
                         .disabled(!isValid || saving)
                         .accessibilityIdentifier("study.save")
                 }

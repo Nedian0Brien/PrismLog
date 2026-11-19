@@ -9,6 +9,7 @@ struct RecordDetailScreen: View {
 
     @Environment(PrismStore.self) private var store
     @State private var loggingProgress = false
+    @Environment(AppNavigationModel.self) private var navigation: AppNavigationModel?
     @State private var addingNote = false
     @State private var editing = false
     /// Captured on first appearance. A study detail anchors on one activity
@@ -17,6 +18,15 @@ struct RecordDetailScreen: View {
     @State private var fallbackEntityID: UUID?
     @State private var seriesToast: SeriesProgressChange?
     @State private var toastDismissTask: Task<Void, Never>?
+
+    private var readingSessionPresented: Binding<Bool> {
+        Binding(
+            get: { navigation?.readingSession?.recordID == (record?.id ?? recordID) },
+            set: { presented in
+                if !presented { navigation?.readingSession = nil }
+            }
+        )
+    }
 
     private var record: RecordItem? {
         if let direct = store.record(id: recordID) { return direct }
@@ -27,8 +37,6 @@ struct RecordDetailScreen: View {
     var body: some View {
         ZStack {
             if let record {
-                SpectrumBloomBackground(focus: record.accent)
-
                 ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
@@ -86,7 +94,7 @@ struct RecordDetailScreen: View {
                         }
                     }
                     .padding(.horizontal, 18)
-                    .padding(.bottom, 130)
+                    .padding(.bottom, 24)
                 }
                 .scrollIndicators(.hidden)
                 .navigationTitle(record.title)
@@ -95,6 +103,15 @@ struct RecordDetailScreen: View {
                     ToolbarItem(placement: .primaryAction) {
                         Menu {
                             if record.category == .reading {
+                                Button("읽기 시작", systemImage: "book") {
+                                    navigation?.readingSession = ReadingSessionState(
+                                        recordID: record.id,
+                                        startedAt: .now,
+                                        currentPage: record.pagesRead > 0 ? String(record.pagesRead) : "",
+                                        note: ""
+                                    )
+                                }
+                                .accessibilityIdentifier("detail.readingSession")
                                 Button("진도 기록", systemImage: "chart.line.uptrend.xyaxis") {
                                     loggingProgress = true
                                 }
@@ -122,6 +139,11 @@ struct RecordDetailScreen: View {
                         ReadingProgressSheet(record: record)
                     }
                 }
+                // Presented from the model's session, so rebuilding this
+                // screen on a fold or rotation keeps the session open.
+                .fullScreenCover(isPresented: readingSessionPresented) {
+                    ReadingSessionScreen(record: record)
+                }
                 .sheet(isPresented: $addingNote) {
                     ReadingNoteSheet(record: record)
                 }
@@ -144,10 +166,12 @@ struct RecordDetailScreen: View {
                 }
                 }
             } else {
-                PrismColor.background.ignoresSafeArea()
                 ContentUnavailableView("기록을 찾을 수 없습니다", systemImage: "questionmark.folder")
             }
         }
+        // The shared library wall switches to this record's cover, blurred,
+        // as its hero (spec §4.5).
+        .prismWallBackground()
         .overlay(alignment: .top) {
             if let seriesToast {
                 SeriesProgressToastView(change: seriesToast)
@@ -182,7 +206,7 @@ struct RecordDetailScreen: View {
             // The web's detail hero shows the artwork untouched at 2:3 and
             // leaves progress to the meter below
             // (`src/features/prismlog/pages/recordsPage.jsx:700`).
-            CoverImage(url: record.coverURL, accent: record.accent, cornerRadius: 18)
+            CoverImage(url: record.coverURL, accent: record.accent, title: record.title, cornerRadius: 18)
                 .frame(width: 118, height: 177)
                 .shadow(color: .black.opacity(0.24), radius: 16, y: 10)
 

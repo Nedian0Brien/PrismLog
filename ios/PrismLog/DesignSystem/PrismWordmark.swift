@@ -33,6 +33,7 @@ struct PrismScreenHeader: View {
             Text(title)
                 .font(.prismDisplay)
                 .foregroundStyle(PrismColor.text)
+                .accessibilityIdentifier("screen.title")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

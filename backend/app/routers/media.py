@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.config import Settings, get_settings
 from app.schemas import MediaEnrichResponse, MediaSearchResponse
-from app.services.media import MediaSearchConfigError, MediaSearchError, enrich_media_by_tmdb_id, search_media
+from app.services.media import MediaSearchConfigError, MediaSearchError, enrich_media_by_tmdb_id, featured_media, search_media
 
 
 router = APIRouter(prefix="/media", tags=["media"])
@@ -36,3 +36,18 @@ def enrich_media_endpoint(
         raise HTTPException(status_code=503, detail=str(error)) from error
     except MediaSearchError as error:
         raise HTTPException(status_code=502, detail=f"media enrich unavailable: {error}") from error
+
+
+@router.get("/featured", response_model=MediaSearchResponse)
+def featured_media_endpoint(
+    limit: int = Query(default=40, ge=1, le=60),
+    settings: Settings = Depends(get_settings),
+) -> MediaSearchResponse:
+    """This week's films and series and recent games, for the library wall."""
+    try:
+        items = featured_media(settings=settings, limit=limit)
+    except MediaSearchConfigError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except MediaSearchError as error:
+        raise HTTPException(status_code=502, detail=f"featured media unavailable: {error}") from error
+    return MediaSearchResponse(items=items)

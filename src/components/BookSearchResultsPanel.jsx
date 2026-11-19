@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
 const PROVIDER_LABELS = {
-  naver: "Naver",
   kakao: "Kakao",
+  google_books: "Google Books",
 };
 
 export default function BookSearchResultsPanel({

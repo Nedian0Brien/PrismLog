@@ -1,31 +1,80 @@
 import SwiftUI
 
-/// Book cover / poster art with a graceful empty state.
+/// Book cover / poster art, decoded at the size it's drawn.
+///
+/// Artwork comes from `CoverThumbnailCache`. A record with no artwork — or
+/// whose artwork can't be fetched — gets a `GeneratedCover` from its title,
+/// so every record shows a cover rather than a placeholder glyph.
 struct CoverImage: View {
     let url: URL?
     let accent: PrismAccent
+    /// Lettered onto the generated cover. Pass it wherever the record's title
+    /// is at hand; without it the generated cover shows only the category.
+    var title: String? = nil
     var cornerRadius: CGFloat = 10
 
+    @Environment(\.displayScale) private var displayScale
+    @State private var longEdge: CGFloat = 0
+    @State private var loaded: Loaded?
+
+    private struct Request: Hashable {
+        let url: URL?
+        let accent: PrismAccent
+        let title: String?
+        let maxPixel: Int
+
+        var generatedKey: CoverKey {
+            CoverKey(source: .generated(accent, title: title), maxPixel: maxPixel)
+        }
+
+        /// The key the finished cover is most likely cached under.
+        var preferredKey: CoverKey {
+            guard let url else { return generatedKey }
+            return CoverKey(source: .remote(url), maxPixel: maxPixel)
+        }
+    }
+
+    private struct Loaded {
+        let request: Request
+        let image: UIImage
+    }
+
+    /// `nil` until layout reports a size — a cover can't be decoded for a
+    /// frame it doesn't have yet.
+    private var request: Request? {
+        guard longEdge > 0 else { return nil }
+        return Request(
+            url: url,
+            accent: accent,
+            title: title,
+            maxPixel: CoverKey.bucket(forPixels: longEdge * displayScale)
+        )
+    }
+
     var body: some View {
+        let request = request
+        let image = displayedImage(for: request)
+
         Rectangle()
             .fill(Color.white.opacity(0.04))
             .overlay {
-                if let url {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().scaledToFill()
-                        case .failure:
-                            fallback
-                        case .empty:
-                            ProgressView().controlSize(.small)
-                        @unknown default:
-                            fallback
-                        }
-                    }
-                } else {
-                    fallback
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .transition(.opacity)
+                } else if url != nil, request != nil {
+                    ProgressView().controlSize(.small)
                 }
+            }
+            .onGeometryChange(for: CGFloat.self) { geometry in
+                max(geometry.size.width, geometry.size.height)
+            } action: { newValue in
+                longEdge = newValue
+            }
+            .task(id: request) {
+                guard let request else { return }
+                await load(request)
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .overlay {
@@ -34,10 +83,30 @@ struct CoverImage: View {
             }
     }
 
-    private var fallback: some View {
-        Image(systemName: accent.symbol)
-            .font(.system(size: 22, weight: .semibold))
-            .foregroundStyle(accent.color.opacity(0.5))
+    /// A cover already in memory shows in the first frame, with no fade. While
+    /// a larger size loads, the smaller one stays up instead of blanking.
+    private func displayedImage(for request: Request?) -> UIImage? {
+        if let request {
+            if let loaded, loaded.request == request { return loaded.image }
+            if let cached = CoverThumbnailCache.shared.memory.image(for: request.preferredKey) {
+                return cached
+            }
+        }
+        return loaded?.image
+    }
+
+    private func load(_ request: Request) async {
+        var image: UIImage?
+        if let url = request.url {
+            image = await CoverThumbnailCache.shared.image(for: url, maxPixel: request.maxPixel)
+        }
+        if image == nil {
+            image = await GeneratedCover.image(for: request.generatedKey)
+        }
+        guard let image, !Task.isCancelled else { return }
+        withAnimation(.easeOut(duration: 0.2)) {
+            loaded = Loaded(request: request, image: image)
+        }
     }
 }
 
@@ -48,6 +117,7 @@ struct CoverImage: View {
 /// (`src/features/prismlog/pages/recordsPage.jsx:3179`).
 struct HalfDonutCoverChart: View {
     let url: URL?
+    var title: String? = nil
     let progress: Int
     var accent: PrismAccent = .reading
 
@@ -69,7 +139,7 @@ struct HalfDonutCoverChart: View {
             ZStack(alignment: .top) {
                 arc(size: size, lineWidth: 14 * scale)
 
-                CoverImage(url: url, accent: accent, cornerRadius: 12 * scale)
+                CoverImage(url: url, accent: accent, title: title, cornerRadius: 12 * scale)
                     .frame(width: 62 * scale, height: 88 * scale)
                     .shadow(color: .black.opacity(0.25), radius: 9 * scale, y: 8 * scale)
                     .padding(.top, 37 * scale)

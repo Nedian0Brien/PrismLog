@@ -124,7 +124,7 @@ struct RecordAreaCard: View {
             // accent the web uses; tinting the glass underneath as well stacks
             // two colorings and turns the card into a solid slab of category
             // color instead of a dark surface with a hint of one.
-            .glassEffect(.regular, in: .rect(cornerRadius: PrismGlassMetrics.cardCorner))
+            .glassEffect(.prism, in: .rect(cornerRadius: PrismGlassMetrics.cardCorner))
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
@@ -212,7 +212,7 @@ struct RecordAreaCard: View {
             // Laid out so the middle cover sits in front — a hand of cards,
             // not a staircase. Web order: [1, 0, 2] with z-index 2/3/1.
             ForEach(Array(arranged.enumerated()), id: \.element.id) { index, preview in
-                CoverImage(url: preview.coverURL, accent: section.accent, cornerRadius: 14)
+                CoverImage(url: preview.coverURL, accent: section.accent, title: preview.title, cornerRadius: 14)
                     .frame(width: previewSize.width, height: previewSize.height)
                     .shadow(color: .black.opacity(0.24), radius: 10, y: 6)
                     .rotationEffect(.degrees(rotations[index]), anchor: .center)

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Book lookup results proxied by the backend (네이버 · 카카오 for search,
+/// Book lookup results proxied by the backend (카카오 · 구글북스 for search,
 /// 구글북스 · 국립중앙도서관 for enrichment). The provider keys live on the
 /// server, so the app cannot search these sources directly.
 struct BookSearchItem: Codable, Sendable, Hashable, Identifiable {

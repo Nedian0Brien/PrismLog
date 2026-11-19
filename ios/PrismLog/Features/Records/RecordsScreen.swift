@@ -6,16 +6,110 @@ import SwiftUI
 struct RecordsScreen: View {
     @Environment(PrismStore.self) private var store
 
+    @Environment(AppNavigationModel.self) private var navigation
+
     /// `nil` is the hub. Kept as state rather than a navigation push so the
     /// hub↔shelf move can cross-fade the way the web's pane transition does.
-    @State private var section: PrismAccent?
+    /// Held by the navigation model so it survives folding and unfolding.
+    private var section: PrismAccent? {
+        get { navigation.recordsSection }
+        nonmutating set { navigation.recordsSection = newValue }
+    }
     @State private var hubColumns = 1
     @State private var readingGrid = false
 
     @State private var editing: RecordItem?
     @State private var loggingProgress: RecordItem?
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var isCompact: Bool { horizontalSizeClass != .regular }
+
+    /// The sidebar width that puts the split on iPhone Duo's fold. The
+    /// system doesn't snap a split view's columns to the fold on its own
+    /// (checked on the iOS 27.2 iPhone Duo simulator, Phase 7), so the
+    /// sidebar is offered the fold's leading edge as its ideal width.
+    /// `nil` without a fold.
+    @State private var foldSidebarWidth: CGFloat?
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    /// Which column a collapsed (compact) split view shows.
+    @State private var compactColumn: NavigationSplitViewColumn = .sidebar
+    /// Set while the shell re-stacks the detail on the sidebar after a
+    /// collapse, so the brief trip through `.sidebar` isn't read as "back".
+    @State private var restacking = false
+    static let defaultSidebarWidth: CGFloat = 340
+
+    /// Always a split view (spec §6.2), never swapped for a stack.
+    ///
+    /// Folding iPhone Duo changes the size class. Swapping a stack for a
+    /// split view at that moment rebuilt the whole tab, which dismissed any
+    /// sheet or session open on a record and lost what was typed into it
+    /// (Phase 7). A split view collapses to a stack by itself in compact
+    /// width and keeps its columns' views — and their presentations —
+    /// across the change. The cost is the list-to-detail zoom, which a
+    /// split view doesn't offer.
     var body: some View {
+        NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: $compactColumn) {
+            scaffold
+                .navigationSplitViewColumnWidth(
+                    min: 280,
+                    ideal: foldSidebarWidth ?? Self.defaultSidebarWidth,
+                    max: max(foldSidebarWidth ?? 0, 480)
+                )
+        } detail: {
+            splitDetail
+        }
+        .navigationSplitViewStyle(.balanced)
+        .containerBackground(.clear, for: .navigationSplitView)
+        .onGeometryChange(for: CGFloat?.self) { proxy in
+            let width = proxy.size.width
+            let divisions = proxy.reservedRegions(kind: .division, options: .includeInactive).map(\.frame)
+            let split = ColumnSplit.make(width: width, height: proxy.size.height, divisions: divisions, spacing: 0)
+            return split.followsFold ? split.leadingWidth : nil
+        } action: { width in
+            foldSidebarWidth = width
+        }
+        // Selection drives the collapsed column: a record shows its detail,
+        // none shows the hub. Coming back to the sidebar in compact clears it.
+        .onChange(of: navigation.paths[.records], initial: true) {
+            compactColumn = navigation.paths[.records]?.last == nil ? .sidebar : .detail
+        }
+        .onChange(of: compactColumn) { _, column in
+            guard isCompact, column == .sidebar, !restacking else { return }
+            navigation.paths[.records] = []
+        }
+        .onChange(of: isCompact) { _, nowCompact in
+            // Collapsing an expanded split view with a record selected shows
+            // the detail as the stack's root, with no way back to the list
+            // (iOS 27.2 iPhone Duo simulator, Phase 7). Showing the sidebar
+            // and then the detail again stacks the detail on the sidebar,
+            // which brings the back button.
+            guard nowCompact, navigation.paths[.records]?.last != nil else { return }
+            restacking = true
+            compactColumn = .sidebar
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(80))
+                compactColumn = .detail
+                restacking = false
+            }
+        }
+        .sheet(item: $editing) { record in
+            switch record.category {
+            case .reading: ReadingEditSheet(record: record)
+            case .study: StudyEditSheet(record: record)
+            default: CultureEditSheet(record: record)
+            }
+        }
+        .sheet(item: $loggingProgress) { record in
+            switch record.category {
+            case .reading: ReadingProgressSheet(record: record)
+            case .study: StudyProgressSheet(record: record)
+            default: GameSessionSheet(record: record)
+            }
+        }
+    }
+
+    private var scaffold: some View {
         PrismScreenScaffold(
             eyebrow: "Records",
             title: section?.label ?? "기록 허브",
@@ -23,6 +117,7 @@ struct RecordsScreen: View {
             backLabel: section == nil ? nil : "기록 허브",
             onBack: { section = nil },
             headerAccessory: section == nil ? AnyView(columnToggle) : nil,
+            embedsInStack: false,
             onRefresh: { await store.sync() }
         ) {
             Group {
@@ -41,25 +136,34 @@ struct RecordsScreen: View {
                 }
             }
             .animation(PrismMotion.screen, value: section)
-            .navigationDestination(for: UUID.self) { id in
-                if let record = store.record(id: id) {
-                    RecordDetailScreen(recordID: record.id)
-                }
-            }
-            .sheet(item: $editing) { record in
-                switch record.category {
-                case .reading: ReadingEditSheet(record: record)
-                case .study: StudyEditSheet(record: record)
-                default: CultureEditSheet(record: record)
-                }
-            }
-            .sheet(item: $loggingProgress) { record in
-                switch record.category {
-                case .reading: ReadingProgressSheet(record: record)
-                case .study: StudyProgressSheet(record: record)
-                default: GameSessionSheet(record: record)
-                }
-            }
+        }
+    }
+
+    /// The split view's detail column: the selected record, or a prompt to
+    /// pick one. Reads the same selection the compact stack pushes, so
+    /// folding and unfolding keeps the record open.
+    @ViewBuilder
+    private var splitDetail: some View {
+        if let id = navigation.paths[.records]?.last {
+            RecordDetailScreen(recordID: id)
+                .id(id)
+        } else {
+            ContentUnavailableView(
+                "기록을 고르세요",
+                systemImage: "books.vertical",
+                description: Text("목록에서 기록을 고르면 여기에 열립니다.")
+            )
+            .prismWallBackground()
+        }
+    }
+
+    /// A card that opens a record: it selects it, and the split view shows
+    /// it beside the list or, collapsed, on top of it.
+    private func recordLink<Label: View>(_ id: UUID, @ViewBuilder label: () -> Label) -> some View {
+        Button {
+            navigation.paths[.records] = [id]
+        } label: {
+            label()
         }
     }
 
@@ -147,7 +251,7 @@ struct RecordsScreen: View {
                         spacing: 14
                     ) {
                         ForEach(books) { book in
-                            NavigationLink(value: book.id) {
+                            recordLink(book.id) {
                                 ReadingShelfCard(book: book)
                             }
                             .buttonStyle(.plain)
@@ -158,7 +262,7 @@ struct RecordsScreen: View {
                 PrismGlassSection {
                     LazyVStack(spacing: 14) {
                         ForEach(books) { book in
-                            NavigationLink(value: book.id) {
+                            recordLink(book.id) {
                                 ReadingListCard(
                                     book: book,
                                     onEdit: { editing = book },
@@ -187,7 +291,7 @@ struct RecordsScreen: View {
                 PrismGlassSection {
                     LazyVStack(spacing: 14) {
                         ForEach(groups) { group in
-                            NavigationLink(value: group.id) {
+                            recordLink(group.id) {
                                 StudyListCard(
                                     group: group,
                                     onEdit: { editing = group.latest },
@@ -221,7 +325,7 @@ struct RecordsScreen: View {
                 PrismGlassSection {
                     LazyVStack(spacing: 14) {
                         ForEach(items) { item in
-                            NavigationLink(value: item.id) {
+                            recordLink(item.id) {
                                 CultureListCard(
                                     record: item,
                                     onEdit: { editing = item },
@@ -302,6 +406,7 @@ struct ReadingShelfCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HalfDonutCoverChart(
                 url: book.coverURL,
+                title: book.title,
                 progress: book.progress,
                 accent: .reading
             )
@@ -345,4 +450,5 @@ struct ReadingShelfCard: View {
 #Preview {
     RecordsScreen()
         .environment(PrismStore.preview())
+        .environment(AppNavigationModel())
 }

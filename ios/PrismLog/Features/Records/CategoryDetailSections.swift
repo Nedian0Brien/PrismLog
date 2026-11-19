@@ -367,7 +367,7 @@ struct SeriesProgressToastView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            CoverImage(url: change.posterURL, accent: .series, cornerRadius: 10)
+            CoverImage(url: change.posterURL, accent: .series, title: change.title, cornerRadius: 10)
                 .frame(width: 46, height: 64)
 
             VStack(alignment: .leading, spacing: 5) {
@@ -411,7 +411,7 @@ struct SeriesProgressToastView: View {
         }
         .padding(14)
         .glassEffect(
-            .regular.tint(PrismAccent.series.color.opacity(0.1)),
+            .prism(tint: PrismAccent.series.color),
             in: .rect(cornerRadius: 20)
         )
         .shadow(color: .black.opacity(0.28), radius: 22, y: 12)
@@ -839,9 +839,9 @@ struct GameSessionSheet: View {
             .navigationTitle(session == nil ? "플레이 기록" : "플레이 기록 수정")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("취소", systemImage: "xmark") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("저장") { Task { await save() } }
+                    Button("저장", systemImage: "checkmark") { Task { await save() } }
                         .disabled(totalMinutes <= 0 || saving)
                 }
             }

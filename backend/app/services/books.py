@@ -222,71 +222,49 @@ def _build_provider_entries(
     provider: BookProvider | None,
     settings: Settings,
 ) -> list[tuple[BookProvider, Callable[[str, int], list[BookSearchItem]]]]:
+    # The Naver book search API was shut down on 2026-07-31 (HTTP 404, SE05),
+    # so Kakao leads and Google Books fills in what Kakao doesn't return.
     entries: list[tuple[BookProvider, Callable[[str, int], list[BookSearchItem]]]] = []
-
-    if provider in (None, "naver") and settings.naver_client_id and settings.naver_client_secret:
-        entries.append(("naver", lambda query, limit: _search_naver(query, limit, settings)))
-    elif provider == "naver":
-        raise BookSearchConfigError("네이버 책 검색 API 키가 설정되지 않았습니다.")
 
     if provider in (None, "kakao") and settings.kakao_rest_api_key:
         entries.append(("kakao", lambda query, limit: _search_kakao(query, limit, settings)))
     elif provider == "kakao":
         raise BookSearchConfigError("카카오 책 검색 API 키가 설정되지 않았습니다.")
 
+    if provider in (None, "google_books") and settings.google_books_api_key:
+        entries.append(("google_books", lambda query, limit: _search_google_books(query, limit, settings)))
+    elif provider == "google_books":
+        raise BookSearchConfigError("구글 도서 API 키가 설정되지 않았습니다.")
+
     return entries
 
 
-def _search_naver(query: str, limit: int, settings: Settings) -> list[BookSearchItem]:
-    payload = _request_json(
-        "https://openapi.naver.com/v1/search/book.json",
-        {"query": query, "display": min(limit, 10), "start": 1, "sort": "sim"},
-        {
-            "X-Naver-Client-Id": settings.naver_client_id,
-            "X-Naver-Client-Secret": settings.naver_client_secret,
-        },
-        settings.book_search_timeout_seconds,
-    )
-
-    items: list[BookSearchItem] = []
-    for item in payload.get("items", []):
-        isbn, isbn13 = _split_isbns(item.get("isbn"))
-        title = _clean_text(item.get("title"))
-        author = _clean_text(item.get("author"))
-        authors = [name for name in re.split(r"\|+", author) if name]
-        source_id = isbn13 or isbn or item.get("link") or title
-        items.append(
-            BookSearchItem(
-                source_provider="naver",
-                source_id=f"naver:{source_id}",
-                title=title,
-                authors=authors,
-                publisher=_clean_text(item.get("publisher")) or None,
-                isbn=isbn,
-                isbn13=isbn13,
-                cover_url=item.get("image") or None,
-                published_date=_format_date(item.get("pubdate")),
-                description=_clean_text(item.get("description")) or None,
-                pages_total=None,
-                preview_link=item.get("link") or None,
-            )
-        )
-    return items
+def _isbn_query(query: str) -> str | None:
+    """The query as an ISBN, when that's what someone typed."""
+    digits = _normalize_isbn(query)
+    if len(digits) in (10, 13) and len(digits) >= len(re.sub(r"[\s-]", "", query)):
+        return digits
+    return None
 
 
 def _search_kakao(query: str, limit: int, settings: Settings) -> list[BookSearchItem]:
+    # https://developers.kakao.com/docs/latest/ko/daum-search/dev-guide#search-book
+    params: dict[str, object] = {"query": query, "size": min(limit, 10)}
+    isbn = _isbn_query(query)
+    if isbn:
+        params = {"query": isbn, "size": min(limit, 10), "target": "isbn"}
     payload = _request_json(
         "https://dapi.kakao.com/v3/search/book",
-        {"query": query, "size": min(limit, 10), "target": "title"},
+        params,
         {"Authorization": f"KakaoAK {settings.kakao_rest_api_key}"},
         settings.book_search_timeout_seconds,
     )
 
     items: list[BookSearchItem] = []
     for item in payload.get("documents", []):
-        isbn, isbn13 = _split_isbns(item.get("isbn"))
+        isbn10, isbn13 = _split_isbns(item.get("isbn"))
         title = _clean_text(item.get("title"))
-        source_id = isbn13 or isbn or item.get("url") or title
+        source_id = isbn13 or isbn10 or item.get("url") or title
         items.append(
             BookSearchItem(
                 source_provider="kakao",
@@ -294,13 +272,63 @@ def _search_kakao(query: str, limit: int, settings: Settings) -> list[BookSearch
                 title=title,
                 authors=[_clean_text(author) for author in item.get("authors", []) if _clean_text(author)],
                 publisher=_clean_text(item.get("publisher")) or None,
-                isbn=isbn,
+                isbn=isbn10,
                 isbn13=isbn13,
                 cover_url=item.get("thumbnail") or None,
                 published_date=_format_date(item.get("datetime")),
                 description=_clean_text(item.get("contents")) or None,
                 pages_total=None,
                 preview_link=item.get("url") or None,
+            )
+        )
+    return items
+
+
+def _search_google_books(query: str, limit: int, settings: Settings) -> list[BookSearchItem]:
+    # https://developers.google.com/books/docs/v1/using#PerformingSearch
+    isbn = _isbn_query(query)
+    payload = _request_json(
+        "https://www.googleapis.com/books/v1/volumes",
+        {
+            "q": f"isbn:{isbn}" if isbn else query,
+            "maxResults": min(limit, 10),
+            "printType": "books",
+            "key": settings.google_books_api_key,
+        },
+        {},
+        settings.book_search_timeout_seconds,
+    )
+
+    items: list[BookSearchItem] = []
+    for item in payload.get("items", []):
+        info = item.get("volumeInfo") or {}
+        title = _clean_text(info.get("title"))
+        if not title:
+            continue
+        isbn10 = isbn13 = None
+        for identifier in info.get("industryIdentifiers") or []:
+            code = _normalize_isbn(identifier.get("identifier"))
+            if identifier.get("type") == "ISBN_13" and len(code) == 13:
+                isbn13 = code
+            elif identifier.get("type") == "ISBN_10" and len(code) == 10:
+                isbn10 = code
+        image_links = info.get("imageLinks") or {}
+        page_count = info.get("pageCount")
+        source_id = isbn13 or isbn10 or item.get("id") or title
+        items.append(
+            BookSearchItem(
+                source_provider="google_books",
+                source_id=f"google_books:{source_id}",
+                title=title,
+                authors=[_clean_text(author) for author in info.get("authors", []) if _clean_text(author)],
+                publisher=_clean_text(info.get("publisher")) or None,
+                isbn=isbn10,
+                isbn13=isbn13,
+                cover_url=image_links.get("thumbnail") or image_links.get("smallThumbnail") or None,
+                published_date=_format_date(info.get("publishedDate")),
+                description=_clean_text(info.get("description")) or None,
+                pages_total=int(page_count) if isinstance(page_count, int) and page_count > 0 else None,
+                preview_link=info.get("infoLink") or info.get("previewLink") or None,
             )
         )
     return items
@@ -392,6 +420,8 @@ def _format_date(raw_value: object) -> str | None:
         return f"{text[:4]}-{text[4:6]}-{text[6:8]}"
     if re.fullmatch(r"\d{4}", text):
         return f"{text}-01-01"
+    if re.fullmatch(r"\d{4}-\d{2}", text):
+        return f"{text}-01"
     if "T" in text:
         return text[:10]
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):

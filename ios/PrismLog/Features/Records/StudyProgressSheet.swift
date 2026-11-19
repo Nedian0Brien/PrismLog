@@ -67,10 +67,10 @@ struct StudyProgressSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") { dismiss() }
+                    Button("취소", systemImage: "xmark") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("저장") { Task { await save() } }
+                    Button("저장", systemImage: "checkmark") { Task { await save() } }
                         .disabled(!isValid || saving)
                         .accessibilityIdentifier("study.progress.save")
                 }
@@ -80,7 +80,7 @@ struct StudyProgressSheet: View {
 
     private var preview: some View {
         HStack(spacing: 14) {
-            CoverImage(url: record.coverURL, accent: .study, cornerRadius: 12)
+            CoverImage(url: record.coverURL, accent: .study, title: record.title, cornerRadius: 12)
                 .frame(width: 66, height: 96)
 
             VStack(alignment: .leading, spacing: 6) {

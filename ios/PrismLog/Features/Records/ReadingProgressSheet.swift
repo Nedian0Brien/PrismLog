@@ -4,14 +4,25 @@ import UIKit
 
 /// Log today's reading: where you got to, and anything worth keeping.
 struct ReadingProgressSheet: View {
+    /// A reading session timed in session mode (spec §6.6), handed over to
+    /// be saved through this sheet like any other progress entry.
+    struct SessionDraft: Identifiable, Hashable {
+        let id = UUID()
+        let startedAt: Date
+        let endedAt: Date
+        let currentPage: Int?
+        let note: String
+    }
+
     let record: RecordItem
+    var onSaved: (() -> Void)?
 
     @Environment(PrismStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     @State private var currentPage: String
     @State private var totalPages: String
-    @State private var note = ""
+    @State private var note: String
     @State private var startedAt: Date
     @State private var endedAt: Date
     @State private var picked: [PhotosPickerItem] = []
@@ -19,13 +30,15 @@ struct ReadingProgressSheet: View {
     @State private var uploading = false
     @State private var saving = false
 
-    init(record: RecordItem) {
+    init(record: RecordItem, session: SessionDraft? = nil, onSaved: (() -> Void)? = nil) {
         self.record = record
-        _currentPage = State(initialValue: String(record.pagesRead))
+        self.onSaved = onSaved
+        _currentPage = State(initialValue: String(session?.currentPage ?? record.pagesRead))
         _totalPages = State(initialValue: String(max(record.pagesTotal, 0)))
+        _note = State(initialValue: session?.note ?? "")
         let now = Date.now
-        _endedAt = State(initialValue: now)
-        _startedAt = State(initialValue: now.addingTimeInterval(-30 * 60))
+        _endedAt = State(initialValue: session?.endedAt ?? now)
+        _startedAt = State(initialValue: session?.startedAt ?? now.addingTimeInterval(-30 * 60))
     }
 
     private var durationMinutes: Int {
@@ -66,10 +79,10 @@ struct ReadingProgressSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") { dismiss() }
+                    Button("취소", systemImage: "xmark") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("저장") { Task { await save() } }
+                    Button("저장", systemImage: "checkmark") { Task { await save() } }
                         .disabled(!isValid || saving)
                 }
             }
@@ -81,7 +94,7 @@ struct ReadingProgressSheet: View {
             // The web's progress modal previews the cover as-is; the numbers
             // beside it carry the change
             // (`src/features/prismlog/pages/recordsPage.jsx:2126`).
-            CoverImage(url: record.coverURL, accent: .reading, cornerRadius: 14)
+            CoverImage(url: record.coverURL, accent: .reading, title: record.title, cornerRadius: 14)
                 .frame(width: 78, height: 117)
 
             VStack(alignment: .leading, spacing: 6) {
@@ -280,5 +293,6 @@ struct ReadingProgressSheet: View {
 
         PrismHaptics.saved()
         dismiss()
+        onSaved?()
     }
 }
