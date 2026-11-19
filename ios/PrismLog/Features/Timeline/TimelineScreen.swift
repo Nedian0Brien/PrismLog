@@ -761,7 +761,10 @@ struct TimelineCalendar: View {
     }
 }
 
+// `PrismStore.preview()` exists in debug builds only.
+#if DEBUG
 #Preview {
     TimelineScreen()
         .environment(PrismStore.preview())
 }
+#endif

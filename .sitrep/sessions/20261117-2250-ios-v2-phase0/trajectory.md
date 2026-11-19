@@ -302,3 +302,13 @@
 - `MediaEpisodeInfo`에 overview·still_url, `PrismStore.fillingEpisodeDetails`, `fillSeriesEpisodeDetails`(실행당 한 번, 저장 표시 없음)
 - 단위 108개 중 106 통과·2 건너뜀(iPhone·듀오), 듀오에서 동궁 1~8화 썸네일 확인, 서버 기록에 still_url 저장·시청 7화 유지 확인
 - 사용자 요청 접수: 스플래시(T40), 워드마크 시안(T39)
+
+### ~22:25 · T39·T40 완료 · 워드마크와 스플래시
+- 워드마크 시안 A·B·C → A 선택, 빛 물듦 L1·L2·L3 → L3, 은은함 S1~S4 → S2 (사용자)
+- `PrismWordmark`·`PrismMark`(아이콘 SVG 좌표 이식), 헤더에도 적용
+- `LaunchSplash` + `LibraryWallModel.isReadyForLaunch`(외부 표지 확정 + 첫 화면 표지 이미지), 최대 3초
+- 실행 화면 색을 벽 색으로 바꿨으나 iOS가 실행 화면을 캐시해 이전 색이 남음 → 실행 화면은 그대로 두고 스플래시를 #1A1816에 맞춤. 녹화로 이음매 없음 확인
+- 기존 Release 빌드 오류 수정: `contextChange`가 DEBUG 안에만 선언, `#Preview`의 DEBUG 전용 `PrismStore.preview()` 5곳
+- 단위 109개 중 107 통과·2 건너뜀(iPhone·듀오), Release 시뮬레이터 빌드 성공
+- 발견: 디버그 빌드 시뮬레이터에서 첫 프레임까지 약 3초(시스템 실행 화면). 실기기 Release 측정 필요(#20)
+- D7 질문(시리즈 상세 웹 패리티 범위) 사용자 답 대기

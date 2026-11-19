@@ -429,4 +429,12 @@ struct LibraryWallTests {
         #expect(model.relight != nil)
         #expect(model.shift == nil)
     }
+
+    @Test @MainActor func theSplashWaitsForTheOutsideCovers() {
+        // Before the outside covers are known the first screen isn't
+        // settled, even with nothing of the person's own to show.
+        let model = LibraryWallModel()
+        #expect(model.launchCoverIDs.isEmpty)
+        #expect(!model.isReadyForLaunch)
+    }
 }

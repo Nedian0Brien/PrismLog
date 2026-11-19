@@ -447,8 +447,11 @@ struct ReadingShelfCard: View {
     }
 }
 
+// `PrismStore.preview()` exists in debug builds only.
+#if DEBUG
 #Preview {
     RecordsScreen()
         .environment(PrismStore.preview())
         .environment(AppNavigationModel())
 }
+#endif

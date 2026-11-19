@@ -357,7 +357,10 @@ extension Bundle {
     }
 }
 
+// `PrismStore.preview()` exists in debug builds only.
+#if DEBUG
 #Preview {
     SettingsScreen()
         .environment(PrismStore.preview())
 }
+#endif
