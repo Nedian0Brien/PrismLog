@@ -171,6 +171,19 @@ final class LibraryWallModel {
             setPaused(context == .still, for: .stillContext)
             guard context != oldValue, Self.drawsRows(oldValue), Self.drawsRows(context),
                   !pauseReasons.contains(.reduceMotion) else { return }
+            // The timeline lights covers on the whole wall rather than
+            // laying out a wall of its own: its covers relight in place.
+            if WallComposition.layoutContext(context) == WallComposition.layoutContext(oldValue) {
+                let relight = WallRelight(
+                    darkBefore: Set(covers(for: oldValue).filter(\.isFiller).map(\.id)),
+                    start: .now
+                )
+                self.relight = relight
+                scheduleSettle(at: relight.end) { [weak self] in
+                    if self?.relight == relight { self?.relight = nil }
+                }
+                return
+            }
             let departing = covers(for: oldValue)
             guard !departing.isEmpty else { return }
             let shift = WallShift(departing: departing, departingContext: oldValue, start: .now)
@@ -183,6 +196,8 @@ final class LibraryWallModel {
 
     /// The wall changing context: the old rows pulling out, the new pulling in.
     private(set) var shift: WallShift?
+    /// The timeline's period changing: covers brightening and dimming in place.
+    private(set) var relight: WallRelight?
 
     /// Contexts drawn as flowing rows, rather than one record's cover.
     static func drawsRows(_ context: WallContext) -> Bool {
@@ -226,6 +241,9 @@ final class LibraryWallModel {
     /// The covers a context puts on the wall: its own, topped up from the
     /// person's other records, with outside covers mixed in.
     func covers(for context: WallContext) -> [WallCover] {
+        if case .period(let interval) = context {
+            return WallComposition.highlighting(covers(for: .all), in: interval)
+        }
         let own = WallComposition.filled(WallComposition.covers(covers, in: context), from: covers, context: context)
         return WallComposition.mixingIn(discovery, with: own, ownedCount: covers.count, context: context)
     }

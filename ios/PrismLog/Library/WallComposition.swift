@@ -94,14 +94,37 @@ enum WallComposition {
         case .category(let accent):
             return covers.filter { $0.accent == accent }
         case .period(let interval):
-            return covers.filter { cover in
-                let days = cover.activities.isEmpty ? [cover.lastActivity] : cover.activities
-                return days.contains { interval.contains($0) }
-            }
+            return covers.filter { isActive($0, in: interval) }
         case .hero(let id):
             let match = covers.filter { $0.id == id }
             return match.isEmpty ? covers : match
         }
+    }
+
+    /// Whether the entity was logged on a day inside `interval`.
+    static func isActive(_ cover: WallCover, in interval: DateInterval) -> Bool {
+        let days = cover.activities.isEmpty ? [cover.lastActivity] : cover.activities
+        return days.contains { interval.contains($0) }
+    }
+
+    /// The timeline's wall: the whole wall, in the same places, with only
+    /// the covers active in the visible period lit. Swapping the covers as
+    /// the timeline scrolled was too restless (user decision, 2026-11-19),
+    /// so scrolling changes brightness and nothing moves.
+    static func highlighting(_ wall: [WallCover], in interval: DateInterval) -> [WallCover] {
+        wall.map { cover in
+            guard !cover.isFiller, !isActive(cover, in: interval) else { return cover }
+            var dark = cover
+            dark.isFiller = true
+            return dark
+        }
+    }
+
+    /// The context whose rows a context draws: the timeline lays out the
+    /// whole wall and only lights part of it.
+    static func layoutContext(_ context: WallContext) -> WallContext {
+        if case .period = context { return .all }
+        return context
     }
 
     /// How many cover slots a row needs before it reads as a row of
@@ -166,15 +189,12 @@ enum WallComposition {
     static let discoveryShare = 0.15
 
     /// The covers a context draws, topped up when there are too few to
-    /// fill the screen: a timeline week with three records would otherwise
-    /// repeat those three across every row. The rest come from outside the
+    /// fill the screen: a shelf with three records would otherwise repeat
+    /// those three across every row. The rest come from outside the
     /// context, most recent first, marked as filler so the wall draws them
     /// dark (user decision, 2026-11-19).
     static func filled(_ inContext: [WallCover], from all: [WallCover], context: WallContext, target: Int = fullRowLength) -> [WallCover] {
-        switch context {
-        case .period, .category: break
-        default: return inContext
-        }
+        guard case .category = context else { return inContext }
         guard !inContext.isEmpty, inContext.count < target else { return inContext }
         let present = Set(inContext.map(\.id))
         let fillers = all
@@ -520,6 +540,30 @@ enum WallTrain: Equatable, Sendable {
         case .leaving(let shift, let date): shift.leaving(slot: slot, at: date)
         case .arriving(let shift, let date): -shift.arriving(slot: slot, at: date)
         }
+    }
+}
+
+/// The timeline's period changing: covers that stay put on the wall
+/// brighten or dim in place. Worked out per frame from the cover, not left
+/// to an implicit animation, because the wall draws by slot and a slot
+/// takes the next cover each time its row moves on by one.
+struct WallRelight: Equatable, Sendable {
+    /// The covers drawn dark before the change.
+    let darkBefore: Set<WallCover.ID>
+    let start: Date
+
+    static let duration: TimeInterval = 0.6
+
+    var end: Date { start.addingTimeInterval(Self.duration) }
+
+    func isMoving(at date: Date) -> Bool { date < end }
+
+    /// How dark to draw `cover`, 0 lit to 1 dark, at `date`.
+    func darkness(of cover: WallCover, at date: Date) -> Double {
+        let target: Double = cover.isFiller ? 1 : 0
+        let before: Double = darkBefore.contains(cover.id) ? 1 : 0
+        let t = WallFocus.easeInOut(WallFocus.unit(date.timeIntervalSince(start) / Self.duration))
+        return before + (target - before) * t
     }
 }
 

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Search a book, then start tracking it.
 ///
-/// Search runs through the backend because the 네이버/카카오 keys live there —
+/// Search runs through the backend because the 카카오/구글북스 keys live there —
 /// the app cannot query those providers directly.
 struct NewReadingSheet: View {
     @Environment(PrismStore.self) private var store

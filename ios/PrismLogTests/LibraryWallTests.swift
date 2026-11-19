@@ -386,4 +386,47 @@ struct LibraryWallTests {
         #expect(model.nudge(row: 2, at: now) == -20)
         #expect(model.nudge(row: 3, at: now) == 0)
     }
+
+    @Test("타임라인은 전체 벽을 같은 자리에 두고, 보이는 기간의 표지만 밝힌다")
+    func timelineLightsItsPeriodOnTheWholeWall() {
+        let lastTwoDays = DateInterval(
+            start: Date(timeIntervalSinceReferenceDate: 1_000_000 - 2.5 * 86_400),
+            end: Date(timeIntervalSinceReferenceDate: 1_000_000)
+        )
+        let lit = WallComposition.highlighting(Self.mixed, in: lastTwoDays)
+        #expect(lit.map(\.id) == Self.mixed.map(\.id))
+        #expect(Set(lit.filter { !$0.isFiller }.map(\.id)) == ["book-1", "film-1"])
+        // Same covers in the same order: the rows come out in the same places.
+        let rows = WallComposition.rows(from: lit, count: 6, minimumLength: 1).map { $0.map(\.id) }
+        let allRows = WallComposition.rows(from: Self.mixed, count: 6, minimumLength: 1).map { $0.map(\.id) }
+        #expect(rows == allRows)
+        #expect(WallComposition.layoutContext(.period(lastTwoDays)) == .all)
+        #expect(WallComposition.layoutContext(.category(.movie)) == .category(.movie))
+    }
+
+    @Test func relightingEasesEachCoverFromItsOldBrightness() {
+        let start = Date(timeIntervalSinceReferenceDate: 1_000)
+        var dimming = Self.cover("a", .reading)
+        dimming.isFiller = true
+        let brightening = Self.cover("b", .reading)
+        let relight = WallRelight(darkBefore: ["b"], start: start)
+        #expect(relight.darkness(of: dimming, at: start) == 0)
+        #expect(relight.darkness(of: brightening, at: start) == 1)
+        let middle = start.addingTimeInterval(WallRelight.duration / 2)
+        #expect(abs(relight.darkness(of: dimming, at: middle) - 0.5) < 1e-9)
+        #expect(relight.darkness(of: dimming, at: relight.end) == 1)
+        #expect(relight.darkness(of: brightening, at: relight.end) == 0)
+        #expect(!relight.isMoving(at: relight.end))
+    }
+
+    @Test @MainActor func timelinePeriodsRelightInsteadOfChangingTrains() {
+        let model = LibraryWallModel()
+        let week = DateInterval(start: .now.addingTimeInterval(-7 * 86_400), duration: 7 * 86_400)
+        model.context = .period(week)
+        #expect(model.relight != nil)
+        #expect(model.shift == nil)
+        model.context = .period(DateInterval(start: week.start.addingTimeInterval(-7 * 86_400), duration: 7 * 86_400))
+        #expect(model.relight != nil)
+        #expect(model.shift == nil)
+    }
 }

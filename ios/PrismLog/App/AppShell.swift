@@ -61,7 +61,7 @@ struct AppShell: View {
         .onChange(of: wallContext, initial: true) { old, new in
             contextChange?.cancel()
             // Scrolling the timeline changes its period continuously; the
-            // wall changes trains only once the scroll has settled.
+            // wall relights its covers only once the scroll has settled.
             if case .period = old, case .period = new {
                 contextChange = Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(400))

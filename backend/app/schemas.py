@@ -74,7 +74,7 @@ class LogRead(BaseModel):
 
 # --- 기존 도서/미디어 검색 스키마 유지 ---
 
-BookProvider = Literal["naver", "kakao"]
+BookProvider = Literal["kakao", "google_books"]
 
 class BookSearchItem(BaseModel):
     source_provider: BookProvider

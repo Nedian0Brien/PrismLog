@@ -83,7 +83,7 @@ struct LibraryWallView: View {
                     .modifier(WallLegibilityLayer(mode: .hero, dimmingOverride: dimmingOverride))
             } else {
                 let _ = model.focusSettles
-                TimelineView(.animation(paused: model.isPaused && !model.focus.isMoving(at: .now) && !(model.shift?.isMoving(at: .now) ?? false))) { timeline in
+                TimelineView(.animation(paused: model.isPaused && !model.focus.isMoving(at: .now) && !(model.shift?.isMoving(at: .now) ?? false) && !(model.relight?.isMoving(at: .now) ?? false))) { timeline in
                     let date = timeline.date
                     let elapsed = model.elapsed(at: date) * model.speedScale
                     let focus = model.focus
@@ -245,6 +245,7 @@ struct LibraryWallView: View {
                 // Covers set for the stage belong to the library's wall alone.
                 placed: context == .all ? placedCovers : [:],
                 train: train,
+                relight: model.relight,
                 onSelect: model.revealed ? onSelect : nil,
                 onDrag: model.revealed ? { row, translation in model.dragRow(row, by: translation) } : nil,
                 onRelease: { row, velocity in model.releaseRow(row, velocity: velocity) }
@@ -291,12 +292,18 @@ private struct WallRows: View {
     var placed: [Int: [Int: WallCover]] = [:]
     /// Set while the wall changes context: these rows are pulling out or in.
     var train: WallTrain?
+    var relight: WallRelight?
     var onSelect: ((WallCover) -> Void)?
     /// Set while the library is pulled down: a sideways drag pushes a row.
     var onDrag: ((Int, Double) -> Void)?
     var onRelease: ((Int, Double) -> Void)?
 
     static let patternRowCount = WallRowsPattern.rowCount
+
+    private func darkness(of cover: WallCover) -> Double {
+        if let relight, relight.isMoving(at: date) { return relight.darkness(of: cover, at: date) }
+        return cover.isFiller ? 1 : 0
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -321,7 +328,7 @@ private struct WallRows: View {
                             let x = CGFloat(slot) * metrics.pitchX - CGFloat(horizontal.remainder) - metrics.pitchX / 2
                             let cover = placed[rowIndex]?[position] ?? row[horizontal.index(forSlot: slot, itemCount: row.count)]
                             let lifted = hidden[rowIndex]?.contains(position) ?? false
-                            WallTile(image: images[cover.id], accent: cover.accent, metrics: metrics, isFiller: cover.isFiller)
+                            WallTile(image: images[cover.id], accent: cover.accent, metrics: metrics, darkness: darkness(of: cover))
                                 .opacity(lifted ? 0 : 1)
                                 .onTapGesture { onSelect?(cover) }
                                 .offset(x: x)
@@ -423,9 +430,10 @@ private struct WallTile: View {
     let image: UIImage?
     let accent: PrismAccent
     let metrics: WallMetrics
-    /// A cover from outside the context, filling a sparse wall: dark and
-    /// muted, so the ones that belong stand out.
-    var isFiller = false
+    /// 1 for a cover from outside the context — filling a sparse wall, or
+    /// outside the timeline's period — drawn dark and muted so the ones
+    /// that belong stand out; in between while the timeline relights.
+    var darkness: Double = 0
 
     var body: some View {
         Group {
@@ -441,8 +449,8 @@ private struct WallTile: View {
         }
         .frame(width: metrics.coverWidth, height: metrics.coverHeight)
         .clipShape(.rect(cornerRadius: metrics.corner, style: .continuous))
-        .saturation(isFiller ? WallTheater.fillerSaturation : 1)
-        .brightness(isFiller ? -WallTheater.fillerDimming : 0)
+        .saturation(1 - (1 - WallTheater.fillerSaturation) * darkness)
+        .brightness(-WallTheater.fillerDimming * darkness)
     }
 }
 

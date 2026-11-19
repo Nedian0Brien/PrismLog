@@ -10,8 +10,6 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     book_search_timeout_seconds: float = 3.0
     book_search_cache_ttl_seconds: int = 300
-    naver_client_id: str = ""
-    naver_client_secret: str = ""
     kakao_rest_api_key: str = ""
     google_books_api_key: str = ""
     nl_isbn_api_cert_key: str = ""
@@ -24,7 +22,7 @@ class Settings(BaseSettings):
     google_drive_service_account_file: str = ""
     google_drive_backup_folder_id: str = ""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @property
     def cors_origins_list(self) -> list[str]:
